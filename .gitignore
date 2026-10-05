@@ -1,0 +1,63 @@
+# Go
+/bin/
+*.exe
+*.test
+*.out
+vendor/
+
+# Ansible local cache (created by running ansible-playbook/ansible-lint locally)
+.ansible/
+
+# Node / JS-TS
+node_modules/
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl.bak
+crash.log
+
+# Kubeconfig - a credential, same reasoning as .tfvars above
+kubeconfig*.yaml
+kubeconfig*.yml
+*.kubeconfig
+
+# Helm
+**/charts/*.tgz
+
+# Packer
+packer_cache/
+*.pkrvars.hcl
+!*.pkrvars.hcl.example
+infra/packer/output/
+infra/packer/manifest.json
+infra/packer/*.qcow2
+packer_key*
+
+# Secrets / local env (should never be committed regardless of gitignore -
+# push protection and GitGuardian are the real backstop, this is just hygiene)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testdata/**/*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Just
+.justfile.local
+
+# Local-only tracking (stand-in for the GitHub Projects board until it's
+# connected) - never committed, purely a scratch file on disk
+BACKLOG.local.md
