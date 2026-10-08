@@ -1,0 +1,27 @@
+# CODEOWNERS
+#
+# Replace @RaiseOfEASV below with an actual security/platform team handle
+# (e.g. @RaiseOfEASV/security) once the org has one - a single-owner rule
+# doesn't scale past one person and defeats the point of required review.
+
+# Default owner for anything not matched below
+*                           @RaiseOfEASV
+
+# Highest-leverage supply-chain paths - changes here can alter what CI runs,
+# what gets admitted into the cluster, or what every image is built from.
+# These always require security-team review, regardless of who owns the
+# rest of the changed files in the same PR.
+/.github/workflows/        @RaiseOfEASV
+/.github/actions/          @RaiseOfEASV
+/infra/terraform/          @RaiseOfEASV
+/infra/terraform-state/    @RaiseOfEASV
+/infra/helm/               @RaiseOfEASV
+/docker/base/              @RaiseOfEASV
+/infra/k8s/                @RaiseOfEASV
+/infra/packer/             @RaiseOfEASV
+/infra/wazuh/              @RaiseOfEASV
+/infra/headscale/          @RaiseOfEASV
+/infra/keycloak/           @RaiseOfEASV
+/infra/backups/            @RaiseOfEASV
+renovate.json               @RaiseOfEASV
+trivy.yaml                   @RaiseOfEASV

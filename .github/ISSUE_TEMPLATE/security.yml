@@ -1,0 +1,37 @@
+name: Security finding
+description: A non-critical security issue found via review, a scanner, or manual testing (for anything you'd consider a live vulnerability, use private vulnerability reporting instead - see SECURITY.md)
+title: "[Security] "
+labels: ["security"]
+body:
+  - type: textarea
+    id: finding
+    attributes:
+      label: What was found
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact / failure scenario
+      description: What could actually go wrong because of this, concretely.
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: How was this found
+      options:
+        - CodeQL
+        - Semgrep
+        - Trivy
+        - GitGuardian
+        - Wazuh
+        - Falco
+        - Manual review
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: remediation
+    attributes:
+      label: Suggested remediation

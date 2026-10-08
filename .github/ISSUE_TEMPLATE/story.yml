@@ -1,0 +1,39 @@
+name: Story
+description: A single, PR-sized piece of work under an epic
+title: "[Story] "
+labels: ["story"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: Parent epic
+      placeholder: "#12"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs to happen
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete, checkable conditions - what would make a reviewer confident this is actually done.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - ci-cd
+        - infra
+        - secrets
+        - observability
+        - network
+        - governance
+        - dependency-management
+    validations:
+      required: true

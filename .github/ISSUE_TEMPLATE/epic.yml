@@ -1,0 +1,38 @@
+name: Epic
+description: A major area of work from the baseline plan (e.g. "CI/CD Pipelines", "Secrets Management")
+title: "[Epic] "
+labels: ["epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What does this epic deliver, and why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What's explicitly in scope. Link to the relevant section of the baseline plan if one exists.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly out of scope
+      description: What's deferred to the Backlog, or to another epic.
+  - type: textarea
+    id: verification
+    attributes:
+      label: How we'll know this is done
+      description: Concrete verification steps - not "code is written" but "X actually blocks/detects/enforces Y".
+    validations:
+      required: true
+  - type: textarea
+    id: stories
+    attributes:
+      label: Stories
+      description: Checklist of Story issues under this epic (filed incrementally, not all up front).
+      value: |
+        - [ ] #
