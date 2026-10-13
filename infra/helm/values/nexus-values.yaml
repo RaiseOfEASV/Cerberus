@@ -1,0 +1,56 @@
+# Values for the Sonatype nexus-repository-manager chart
+# (https://sonatype.github.io/helm3-charts/, chart: nexus-repository-manager).
+#
+# Cannot actually be applied until Epic 4 (Kubernetes & Infrastructure
+# Baseline) stands up a cluster - this just records the target config as
+# code now, so deploying it later is `helm install` against this file, not
+# a round of manual clicking through setup.
+#
+# Deliberately private-only: no ingress. Reachable in-cluster only, by the
+# ARC runners (Epic 3) and anything else inside the cluster network. Admin
+# UI access later goes through the VPN + oauth2-proxy layer (Epic 8), same
+# as every other admin interface - never direct ingress.
+
+statefulset:
+  enabled: true
+
+persistence:
+  enabled: true
+  storageSize: 50Gi
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 200
+  fsGroup: 200
+
+nexus:
+  env:
+    - name: INSTALL4J_ADD_VM_PARAMS
+      value: "-Xms2g -Xmx2g -XX:MaxDirectMemorySize=3g"
+  livenessProbe:
+    initialDelaySeconds: 90
+  readinessProbe:
+    initialDelaySeconds: 90
+
+nexusProxy:
+  # No public ingress - ClusterIP only. Nothing outside the cluster can
+  # reach this directly.
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 8081
+
+ingress:
+  enabled: false
+
+nexusBackup:
+  enabled: false # covered by the Velero cluster-level backup story (Epic 9) instead
