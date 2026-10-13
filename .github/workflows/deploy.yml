@@ -1,0 +1,81 @@
+name: Deploy
+
+# Never runs kubectl/helm against a cluster directly - CI holds no cluster
+# credentials, period. This only edits the GitOps config path
+# (infra/k8s/environments/<env>/) that ArgoCD (Epic 4) watches and
+# reconciles from; ArgoCD does the actual apply, from inside the cluster,
+# under its own credentials.
+#
+# `environment: ${{ inputs.environment }}` below is what makes this
+# controllable via GitHub Environments: configure `staging` with no
+# required reviewers (fast iteration) and `production` with a required
+# reviewer, in repo Settings > Environments. Not yet done - also a
+# candidate for infra/terraform/github once that's worth the Terraform
+# `github_repository_environment` resource.
+#
+# NOT YET RUNNABLE: infra/k8s/environments/<env>/<app>/ doesn't have a real
+# kustomization or Helm values structure yet - that's Epic 4's job. The tag
+# bump step below is deliberately left as a stub that errors clearly rather
+# than guessing at a manifest shape that doesn't exist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App to deploy (directory name under apps/)
+        required: true
+        type: string
+      version:
+        description: Image tag to deploy (e.g. v1.2.3 or a commit SHA)
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: write
+
+jobs:
+  update-gitops-config:
+    name: update-gitops-config
+    runs-on: arc-runner-set
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump image tag in the GitOps config for this environment
+        run: |
+          target="infra/k8s/environments/${ENVIRONMENT}/${APP}"
+          if [ ! -d "$target" ]; then
+            echo "::error::${target} doesn't exist yet - nothing to deploy. Epic 4 defines the ArgoCD Application/kustomization structure these directories need before this step can do anything real." >&2
+            exit 1
+          fi
+          # TODO(epic-4): once ${target} has a real kustomization or Helm
+          # values file, replace this with the actual image-tag bump
+          # (e.g. `kustomize edit set image` or `yq` against values.yaml).
+          # Left unimplemented rather than guessed, since the manifest
+          # structure doesn't exist yet to edit correctly.
+          echo "Would set image tag ${VERSION} for ${APP} in ${ENVIRONMENT}"
+        env:
+          APP: ${{ inputs.app }}
+          VERSION: ${{ inputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}
+
+      - name: Commit and push the GitOps config change
+        run: |
+          git config user.name "cerberus-ci"
+          git config user.email "ci@cerberus.invalid"
+          git add infra/k8s/environments/
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}"
+          git push
+        env:
+          APP: ${{ inputs.app }}
+          VERSION: ${{ inputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}

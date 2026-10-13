@@ -1,0 +1,153 @@
+name: Build
+
+# Builds, SBOMs, scans, signs, and pushes app images to GHCR after merge to
+# main. Generalized across apps/*/ via a discover job rather than a
+# hardcoded matrix, so nothing here needs editing when the first real app
+# lands - see docker/base/ (Epic 2) for the base images every Dockerfile
+# here builds FROM.
+#
+# Self-hosted ARC runners, same reason as pr-validate.yml: app builds pull
+# go/npm deps through the private Nexus proxy, which GitHub-hosted runners
+# can't reach.
+#
+# Only the mutable `:sha` tag is pushed here - deliberately no `:latest`.
+# release.yml is what adds a human-meaningful tag, and only to an image that
+# already exists and is already signed; it never rebuilds. Keeps "what got
+# built" and "what got released" as separate, auditable steps.
+#
+# NOT YET RUNNABLE: there are no apps/*/Dockerfile yet (this is the
+# pre-app-code security baseline). The discover job will simply find
+# nothing and `build` will be skipped until the first app exists - that's
+# intended, not broken.
+#
+# DEPENDENCY_TRACK_URL/DEPENDENCY_TRACK_API_KEY (Epic 7) are GitHub Actions
+# secrets, not Vault/ESO-managed - CI secrets vs. in-cluster runtime
+# secrets are deliberately two different trust boundaries in this project,
+# see infra/k8s/dependency-track/README.md. Both are unset until that
+# epic's Dependency-Track instance actually exists; the upload step below
+# will fail loudly until then, not silently no-op.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write # cosign keyless signing via GitHub OIDC
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: raiseofeasv
+
+jobs:
+  discover:
+    name: discover
+    runs-on: arc-runner-set
+    outputs:
+      apps: ${{ steps.find.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        name: Find apps/*/ with a Dockerfile
+        run: |
+          apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec test -e '{}/Dockerfile' \; -print \
+            | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          echo "apps=${apps}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build
+    needs: discover
+    if: needs.discover.outputs.apps != '[]'
+    runs-on: arc-runner-set
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.discover.outputs.apps) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (local, not pushed yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.app }}:${{ github.sha }}
+
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.app }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.app }}.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.app }}
+          path: sbom-${{ matrix.app }}.cdx.json
+
+      - name: Upload SBOM to Dependency-Track (Epic 7)
+        run: |
+          curl -sf -X POST "${DEPENDENCY_TRACK_URL}/api/v1/bom" \
+            -H "X-Api-Key: ${DEPENDENCY_TRACK_API_KEY}" \
+            -H "Content-Type: multipart/form-data" \
+            -F "autoCreate=true" \
+            -F "projectName=${{ matrix.app }}" \
+            -F "projectVersion=${{ github.sha }}" \
+            -F "bom=@sbom-${{ matrix.app }}.cdx.json"
+        env:
+          DEPENDENCY_TRACK_URL: ${{ secrets.DEPENDENCY_TRACK_URL }}
+          DEPENDENCY_TRACK_API_KEY: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
+
+      - name: Scan (Trivy) - fail on critical before anything gets pushed
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.app }}:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/${{ matrix.app }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.app }}:${{ github.sha }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless, recorded in Rekor)
+        run: |
+          cosign sign --yes "${REGISTRY}/${OWNER}/${APP}@${DIGEST}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          OWNER: ${{ env.OWNER }}
+          APP: ${{ matrix.app }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+
+      - name: Attach SBOM attestation
+        run: |
+          cosign attest --yes \
+            --predicate "sbom-${APP}.cdx.json" \
+            --type cyclonedx \
+            "${REGISTRY}/${OWNER}/${APP}@${DIGEST}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          OWNER: ${{ env.OWNER }}
+          APP: ${{ matrix.app }}
+          DIGEST: ${{ steps.push.outputs.digest }}
