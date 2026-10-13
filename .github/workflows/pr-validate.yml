@@ -1,0 +1,119 @@
+name: PR Validate
+
+# Required-status-check gate for infra/terraform/github/main.tf's
+# required_checks ruleset (enforcement = "evaluate" there until this file
+# has shipped and reported success at least once - see that file's header).
+# Job names below (lint, sast, sca, secret-scan) MUST match the
+# `required_check { context = "..." }` values there exactly. Renaming a job
+# here means updating that Terraform in the same PR - a mismatch just means
+# the ruleset waits forever for a check that will never report.
+#
+# Runs on the ARC self-hosted runner pool (infra/k8s/arc/, infra/helm/values/
+# arc-*-values.yaml) rather than GitHub-hosted runners, since `just
+# lint-all` and CodeQL autobuild need to reach the private Nexus proxy
+# (Epic 2) for go/npm packages. GitHub-hosted runners have no path to that
+# network - unlike base-images.yml, which only touches public upstreams and
+# GHCR directly.
+#
+# CAVEATS, not yet resolved:
+# - ARC runner pool needs Epic 4's cluster to exist before any job here can
+#   actually start.
+# - secret-scan needs a GITGUARDIAN_API_KEY secret from a GitGuardian
+#   account that doesn't exist yet - nobody has signed up for one.
+# - CodeQL code scanning on a PRIVATE repo requires GitHub Advanced
+#   Security, which is a paid add-on (free only on public repos). Confirm
+#   Cerberus's visibility/licensing before assuming this job is free.
+# - GitHub push protection for secrets (blocks the push before it lands in
+#   history - separate from and earlier than the secret-scan job below) is
+#   a repo setting, not a workflow step. Not wired into Terraform yet:
+#   doing that means importing the existing repo as a `github_repository`
+#   resource, which hands Terraform ownership of the whole repo object
+#   (name, visibility, etc) - a bigger decision than fits in this PR.
+#   Tracked in BACKLOG.local.md.
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+
+permissions:
+  contents: read
+  security-events: write # required for CodeQL SARIF upload
+
+concurrency:
+  group: pr-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+      - name: just lint-all
+        run: just lint-all
+
+  sast:
+    name: sast
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CodeQL init
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go, javascript-typescript
+
+      - name: CodeQL autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: CodeQL analyze
+        uses: github/codeql-action/analyze@v3
+
+      - name: Semgrep - custom org rules, layered on top of CodeQL
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+
+  sca:
+    name: sca
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy - dependency vulnerabilities
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Trivy - IaC misconfiguration (Terraform, Helm, K8s, Dockerfiles)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: config
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Trivy - license scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scanners: license
+          exit-code: "1" # Epic 10: enforced against /trivy.yaml's forbidden-license list, no longer report-only
+
+  secret-scan:
+    name: secret-scan
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # ggshield scans the full PR diff range, not just HEAD
+
+      - name: GitGuardian scan
+        uses: GitGuardian/ggshield-action@v1
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        with:
+          args: secret scan ci

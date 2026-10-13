@@ -1,0 +1,96 @@
+name: Release
+
+# Promotes an already-built, already-signed image to a human-meaningful
+# semver tag - never rebuilds, never re-scans. build.yml's Trivy gate and
+# cosign signature already happened on merge to main; re-running them here
+# would create a second code path that could produce "the release" image,
+# defeating the point of having one build pipeline.
+#
+# ASSUMES one tag releases every app in the monorepo together (e.g. pushing
+# v1.2.3 promotes every app's :sha image from the commit the tag points at).
+# This is the simplest default, not a settled architectural decision - if
+# apps end up needing independent versioning (per-app tags like
+# serviceA/v1.2.3), this workflow's tag pattern and discover step both need
+# rework. Revisit once real apps exist and this actually matters; tracked
+# in BACKLOG.local.md rather than guessed at now.
+#
+# NOT YET RUNNABLE: no apps/*/Dockerfile exist yet, so discover finds
+# nothing. Also assumes the tag is pushed on a commit already on main that
+# build.yml has already built - tagging an arbitrary commit that was never
+# built will fail the cosign verify step below, which is intentional.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # to create the GitHub Release
+  packages: write
+  id-token: write # cosign verify uses GitHub OIDC too
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: raiseofeasv
+
+jobs:
+  discover:
+    name: discover
+    runs-on: arc-runner-set
+    outputs:
+      apps: ${{ steps.find.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        name: Find apps/*/ with a Dockerfile
+        run: |
+          apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec test -e '{}/Dockerfile' \; -print \
+            | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          echo "apps=${apps}" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: release
+    needs: discover
+    if: needs.discover.outputs.apps != '[]'
+    runs-on: arc-runner-set
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.discover.outputs.apps) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify the build-time signature before promoting
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/build.yml@.*" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "${REGISTRY}/${OWNER}/${APP}:${SHA}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          OWNER: ${{ env.OWNER }}
+          APP: ${{ matrix.app }}
+          SHA: ${{ github.sha }}
+
+      - name: Re-tag the verified image with the release version (no rebuild)
+        run: |
+          docker buildx imagetools create \
+            --tag "${REGISTRY}/${OWNER}/${APP}:${GITHUB_REF_NAME}" \
+            "${REGISTRY}/${OWNER}/${APP}:${SHA}"
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          OWNER: ${{ env.OWNER }}
+          APP: ${{ matrix.app }}
+          SHA: ${{ github.sha }}
+
+  github-release:
+    name: github-release
+    needs: release
+    runs-on: arc-runner-set
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
