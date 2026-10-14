@@ -1,0 +1,19 @@
+version: 2
+
+# Ignore list for ggshield (local pre-commit hook + CI scan - see
+# .github/workflows/pr-validate.yml's "GitGuardian scan" step). Only
+# verified false positives go here, each with a reason - never a real
+# secret, and never added just to get a commit through faster. See
+# CONTRIBUTING.md for how this fits into the broader scanning setup.
+secret:
+  ignored_matches:
+    # docker-compose `environment:` blocks across this repo use
+    # ${VAR:?message} - a shell required-env-var reference that fails
+    # fast if unset, never a literal credential. ggshield's generic
+    # "Generic Password"/"Generic High Entropy Secret" detectors key off
+    # variable names like PGPASSWORD=/POSTGRES_PASSWORD: regardless of
+    # whether the value is a literal or a substitution, so this pattern
+    # recurs per-file (each occurrence hashes differently) - entries
+    # below are added as they're actually hit, not pre-emptively.
+    - name: terraform-state docker-compose - PGPASSWORD/POSTGRES_PASSWORD env-var reference
+      match: 3263305dd365e8d07a7ee6a59f5511dd318b804d23bda1152b2f9b2dbcb7dad3

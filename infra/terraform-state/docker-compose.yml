@@ -1,0 +1,62 @@
+# Standalone Postgres instance whose ONLY job is holding Terraform state
+# (`backend "pg"`) for every Terraform root in this repo (infra/terraform/
+# github/, infra/terraform/cluster/, and whatever follows). Deliberately NOT
+# managed by the Terraform it backs - same bootstrapping-paradox resolution
+# used elsewhere in this repo (Nexus/ARC auth: you can't put the thing that
+# unblocks X inside X). This has to exist and be reachable before any
+# `terraform init` here succeeds.
+#
+# Chosen over an S3-compatible backend (e.g. self-hosted MinIO) because
+# Terraform's `pg` backend has built-in state locking via Postgres advisory
+# locks since 0.9 - no DynamoDB-equivalent needed. The newer S3 backend
+# locking (`use_lockfile`) needs Terraform >= 1.10; the Terraform installed
+# in this environment is 1.6.3, so `pg` avoids a version gate entirely.
+#
+# NOT YET RUNNING: needs a persistent host to live on. Fine on a plain VM
+# for now; migrate onto Epic 5's hardened golden image once that exists -
+# this is too security-critical (it's the record of everything Terraform
+# manages) to leave on an unhardened box indefinitely.
+#
+# Set TF_STATE_PG_PASSWORD in the environment before `docker compose up` -
+# do not hardcode it here or commit a .env with it.
+
+services:
+  backup:
+    # Daily pg_dump -> the dedicated backup MinIO (infra/backups/). Epic 9
+    # - this was flagged as a real gap in this file's own header since
+    # Epic 4 ("no backup schedule exists yet"), now closed.
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: [terraform-state-db]
+    environment:
+      - PGHOST=terraform-state-db
+      - PGDATABASE=terraform_state
+      - PGUSER=terraform
+      - PGPASSWORD=${TF_STATE_PG_PASSWORD:?set TF_STATE_PG_PASSWORD}
+      - BACKUP_MINIO_ACCESS_KEY=${BACKUP_MINIO_ACCESS_KEY:?set BACKUP_MINIO_ACCESS_KEY}
+      - BACKUP_MINIO_SECRET_KEY=${BACKUP_MINIO_SECRET_KEY:?set BACKUP_MINIO_SECRET_KEY}
+      - BACKUP_MINIO_ENDPOINT=${BACKUP_MINIO_ENDPOINT:?set BACKUP_MINIO_ENDPOINT, e.g. backup-host:9000}
+      - BUCKET=cerberus-backups
+      - PREFIX=terraform-state-pg
+    volumes:
+      - ../backups/scripts/pg-backup.sh:/scripts/pg-backup.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/pg-backup.sh"]
+
+  terraform-state-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: terraform_state
+      POSTGRES_USER: terraform
+      POSTGRES_PASSWORD: ${TF_STATE_PG_PASSWORD:?set TF_STATE_PG_PASSWORD}
+    volumes:
+      - terraform-state-db-data:/var/lib/postgresql/data
+    ports:
+      # Bind to localhost only - this holds the keys to every piece of
+      # infra Terraform touches. If `terraform init` needs to run from
+      # somewhere other than this host, put it behind the VPN (Epic 8),
+      # never on a public port.
+      - "127.0.0.1:5432:5432"
+
+volumes:
+  terraform-state-db-data:
