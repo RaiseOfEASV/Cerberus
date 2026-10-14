@@ -1,0 +1,19 @@
+# Values for the `gha-runner-scale-set-controller` chart (actions-runner-
+# controller v2, the modern ARC - not the old RunnerDeployment CRD). One
+# controller per cluster; infra/helm/values/arc-runners-values.yaml below
+# defines the actual runner pool and references this controller.
+#
+# helm install arc-controller \
+#   oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller \
+#   --namespace arc-systems --create-namespace -f arc-controller-values.yaml
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi

@@ -1,0 +1,96 @@
+# Default-deny ingress+egress for the arc-runners namespace, then explicit
+# allows for what the runner pods actually need: DNS, the in-cluster Nexus
+# proxy, the in-cluster Vault, and the internet (GitHub's own API/Actions
+# endpoints, ghcr.io, and whatever upstream a build pulls through Nexus).
+#
+# IMPORTANT GAP: vanilla Kubernetes NetworkPolicy can only match by IP/CIDR
+# or pod/namespace selector - it cannot allow egress by hostname (github.com,
+# ghcr.io). The `allow-internet-egress` rule below is therefore coarser than
+# intended: it allows 443/tcp to anywhere, not just GitHub/GHCR. Restricting
+# it to those hostnames specifically needs a CNI with FQDN-aware policies
+# (e.g. Cilium's CiliumNetworkPolicy `toFQDNs`, or Calico's domain-based
+# GlobalNetworkPolicy) - Epic 4 hasn't picked a CNI yet. Once it does, if
+# that CNI supports FQDN egress rules, replace allow-internet-egress with
+# the FQDN-scoped equivalent. Don't treat this file as the final answer.
+#
+# NOT YET APPLIED: no cluster to apply it to (Epic 4), and the Nexus/Vault
+# namespaceSelector values below assume those land in namespaces literally
+# named `nexus` and `vault` - adjust if Epic 2/Epic 6 land them elsewhere.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nexus-egress
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nexus
+      ports:
+        - { protocol: TCP, port: 8081 } # go/npm/helm proxies
+        - { protocol: TCP, port: 8082 } # docker-hub-proxy (Nexus docker port)
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vault-egress
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault
+      ports:
+        - { protocol: TCP, port: 8200 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internet-egress
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    # Coarse by necessity - see the IMPORTANT GAP note above. Scope this
+    # down with FQDN rules once Epic 4's CNI choice supports them.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - { protocol: TCP, port: 443 }

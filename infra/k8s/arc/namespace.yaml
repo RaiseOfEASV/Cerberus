@@ -1,0 +1,17 @@
+# Dedicated namespace for the runner pool (arc-controller-values.yaml goes
+# in a separate `arc-systems` namespace, created by its own helm install
+# --create-namespace - only the runner pool itself lives here).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    # Pod Security Admission, restricted - matches the baseline for every
+    # app namespace (Epic 4). dind containerMode needs a privileged
+    # sidecar, which `restricted` rejects - see the containerMode note in
+    # arc-runners-values.yaml. Until that's resolved, enforcing this label
+    # and running dind are mutually exclusive; left as `restricted` here as
+    # the intended end state, not the current reality.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

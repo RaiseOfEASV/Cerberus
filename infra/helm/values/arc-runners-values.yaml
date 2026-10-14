@@ -1,0 +1,46 @@
+# Values for the `gha-runner-scale-set` chart - the actual ephemeral runner
+# pool the workflows in .github/workflows/ target via `runs-on:
+# arc-runner-set`. The release name given at install time IS that
+# `runs-on` value, so install with exactly:
+#
+#   helm install arc-runner-set \
+#     oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+#     --namespace arc-runners --create-namespace -f arc-runners-values.yaml
+#
+# NOT YET DEPLOYABLE:
+# - needs Epic 4's cluster.
+# - githubConfigSecret below needs a GitHub App (ARC's recommended auth,
+#   preferred over a PAT since it's repo-scoped and doesn't ride on a
+#   personal account) registered against Cerberus, with its private key
+#   stored as a k8s Secret. SOURCING THIS IS NOW SOLVED IN CODE (Epic 6):
+#   see infra/k8s/eso/external-secret-arc-github-app.yaml, which syncs it
+#   from Vault. Still blocked on an actual deployed cluster+Vault with the
+#   real key written into Vault by hand - not on a missing design anymore.
+
+githubConfigUrl: "https://github.com/RaiseOfEASV/Cerberus"
+githubConfigSecret: arc-runner-github-app # synced by infra/k8s/eso/external-secret-arc-github-app.yaml (Epic 6) - not committed here
+
+minRunners: 0
+maxRunners: 5
+
+containerMode:
+  # "dind" (Docker-in-Docker, privileged sidecar) - simplest option and
+  # what's set here, but it directly conflicts with the Kyverno policy
+  # intent from Epic 4 (no privileged containers, non-root). The
+  # alternative is a rootless BuildKit daemon behind buildx's `kubernetes`
+  # driver (no privileged containers, more setup, unverified against a
+  # live cluster). Defaulted to dind for now to keep this unblocked and
+  # flagged honestly rather than left unresolved - revisit before this
+  # pool ever touches a production-adjacent cluster.
+  type: dind
+
+template:
+  spec:
+    containers:
+      - name: runner
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            memory: 2Gi
