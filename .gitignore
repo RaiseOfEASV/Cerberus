@@ -61,3 +61,6 @@ packer_key*
 # Local-only tracking (stand-in for the GitHub Projects board until it's
 # connected) - never committed, purely a scratch file on disk
 BACKLOG.local.md
+
+# Added by ggshield
+.cache_ggshield
