@@ -1,0 +1,19 @@
+# Values for the `metallb` chart (metallb.github.io/metallb). MetalLB gives
+# bare-metal/local clusters a software LoadBalancer implementation -
+# without it, `Service.type: LoadBalancer` (which Traefik below needs)
+# never gets an external IP on kind/k3d or any non-cloud cluster.
+#
+# IPAddressPool/L2Advertisement are CRDs, not Helm values - see
+# infra/k8s/metallb/ after installing this chart.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 100Mi }
+    limits: { memory: 200Mi }
+
+speaker:
+  resources:
+    requests: { cpu: 100m, memory: 100Mi }
+    limits: { memory: 200Mi }

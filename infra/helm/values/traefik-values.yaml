@@ -1,0 +1,35 @@
+# Values for the `traefik` chart (traefik.github.io/charts). Gets its
+# external IP from MetalLB (Service.type: LoadBalancer) - install MetalLB
+# and apply infra/k8s/metallb/ip-address-pool.yaml first.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + MetalLB.
+
+service:
+  type: LoadBalancer
+
+ports:
+  web:
+    # Redirect to websecure - no plaintext HTTP for anything behind this,
+    # including internal admin UIs once Epic 8 puts them here too.
+    redirectTo:
+      port: websecure
+  websecure:
+    tls:
+      enabled: true
+
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesCRD:
+    enabled: true
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 256Mi }
+
+# NOTE: no cert-manager/ACME config here - TLS termination needs real
+# certificates from somewhere. Not decided yet: internal CA (consistent
+# with "admin UIs are never on public ingress", Epic 8) vs. Let's Encrypt
+# (only makes sense for anything actually public-facing). Revisit when
+# Epic 8's VPN/oauth2-proxy design is implemented and it's clear what, if
+# anything, here is ever public.
