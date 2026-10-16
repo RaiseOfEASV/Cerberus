@@ -1,0 +1,75 @@
+# App-of-apps root: one ArgoCD Application per environment, each pointing
+# at this same repo's infra/k8s/environments/<env>/ directory. ArgoCD
+# watches these three; everything else (actual per-app Applications) gets
+# added as children under those paths as real apps/*/ land - not created by
+# hand one at a time.
+#
+# These are applied ONCE, manually (`kubectl apply -f root-apps.yaml`),
+# after ArgoCD itself is installed - app-of-apps bootstraps itself but
+# needs this one manual step to exist in the first place.
+#
+# NOT YET USEFUL: infra/k8s/environments/{dev,staging,prod}/ only has a
+# .gitkeep in each right now (no app manifests, no kustomization). ArgoCD
+# will sync these as "no resources found" until Epic 4 populates at least a
+# kustomization.yaml per environment and real apps exist to deploy.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
+    targetRevision: main
+    path: infra/k8s/environments/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
+    targetRevision: main
+    path: infra/k8s/environments/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
+    targetRevision: main
+    path: infra/k8s/environments/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    # Deliberately NOT automated - production sync should go through the
+    # same required-reviewer gate as everything else prod-facing (the
+    # `production` GitHub Environment in deploy.yml controls what lands in
+    # this path; ArgoCD auto-syncing on top of that would bypass the point
+    # of that gate existing). Sync manually or via `argocd app sync root-prod`
+    # as a deliberate action, not automatically on every git push.
+    automated: null

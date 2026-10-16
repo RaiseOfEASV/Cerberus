@@ -1,0 +1,36 @@
+# Values for the `argo-cd` chart (argoproj.github.io/argo-helm). ArgoCD is
+# the GitOps controller - .github/workflows/deploy.yml (Epic 3) only ever
+# edits infra/k8s/environments/<env>/, never runs kubectl/helm itself;
+# ArgoCD (running in-cluster, under its own ServiceAccount/RBAC) is what
+# actually reconciles that config onto the cluster. CI never holds cluster
+# credentials - this is the piece that makes that true.
+#
+# server.service.type is deliberately ClusterIP, not LoadBalancer - the
+# ArgoCD UI/API is an admin UI and per the plan (Epic 8) admin UIs are
+# never on public ingress. Epic 8 now fronts this via Traefik + the shared
+# oauth2-proxy + headscale instead of `kubectl port-forward` - see
+# infra/k8s/oauth2-proxy/ingressroutes.yaml. ClusterIP stays correct even
+# with that in front: Traefik/oauth2-proxy reach it in-cluster, nothing
+# public touches this Service directly.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+server:
+  service:
+    type: ClusterIP
+  extraArgs:
+    - --insecure # TLS terminates at Traefik/oauth2-proxy once Epic 8 fronts this - revisit if that assumption changes
+
+configs:
+  params:
+    server.insecure: true
+
+controller:
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+repoServer:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 256Mi }
