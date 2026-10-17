@@ -1,0 +1,19 @@
+# Values for the `kyverno` chart (kyverno.github.io/kyverno). Policies
+# themselves live in infra/k8s/kyverno/policies/ - this is just the
+# controller/webhook deployment.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+replicaCount: 1
+
+backgroundScan:
+  # Re-evaluates existing resources on a schedule, not just new admissions -
+  # catches drift and anything that predates a policy being added.
+  enabled: true
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 256Mi }
+
+admissionController:
+  replicas: 1
