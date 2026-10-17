@@ -1,0 +1,114 @@
+# kube-bench: scheduled CIS Kubernetes Benchmark check - a config-
+# correctness check against the live cluster, complementing Kyverno's
+# admission-time enforcement above (Kyverno stops a bad pod spec from being
+# admitted; kube-bench checks the cluster/node CONFIGURATION itself -
+# kubelet flags, file permissions, etc - which Kyverno has no visibility
+# into).
+#
+# Needs hostPath access to node config files (kubeconfig, kubelet config,
+# CNI config) and runs effectively as root on the host filesystem - this
+# directly conflicts with the "no privileged containers" posture enforced
+# everywhere else (Kyverno's require-non-root/readonly-rootfs policies,
+# the restricted PSA baseline). Resolved the same way as ARC's dind
+# tradeoff in Epic 3: by exception, scoped to a dedicated namespace that's
+# excluded from the strict policies (see the exclude lists in
+# enforce-namespace-baseline.yaml) rather than weakening those policies
+# for every namespace to accommodate one tool.
+#
+# Results currently just go to pod logs (`kubectl logs`) - no aggregation,
+# alerting, or dashboard yet. That's Epic 7's job (kube-prometheus-stack/
+# Grafana, or forwarding into Wazuh); don't assume anyone is watching these
+# logs until that's wired up.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster. Namespace creation here will
+# ALSO trigger generate-default-deny-networkpolicy unless `kube-bench` is
+# added to that policy's exclude list - add it there before relying on
+# this (a default-deny NetworkPolicy wouldn't actually block a hostPath-
+# based check like kube-bench runs, but add the exclusion anyway for
+# consistency with how the other privileged-exception namespaces are
+# handled).
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-bench
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kube-bench-master
+  namespace: kube-bench
+spec:
+  schedule: "0 7 * * 1" # weekly, offset from base-images.yml's Monday 06:00 cron
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          hostPID: true
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: kube-bench
+              image: docker.io/aquasec/kube-bench:v0.9.1
+              command: ["kube-bench", "run", "--targets", "master"]
+              volumeMounts:
+                - { name: var-lib-etcd, mountPath: /var/lib/etcd, readOnly: true }
+                - { name: var-lib-kubelet, mountPath: /var/lib/kubelet, readOnly: true }
+                - { name: var-lib-kube-scheduler, mountPath: /var/lib/kube-scheduler, readOnly: true }
+                - { name: var-lib-kube-controller-manager, mountPath: /var/lib/kube-controller-manager, readOnly: true }
+                - { name: etc-systemd, mountPath: /etc/systemd, readOnly: true }
+                - { name: lib-systemd, mountPath: /lib/systemd/, readOnly: true }
+                - { name: srv-kubernetes, mountPath: /srv/kubernetes/, readOnly: true }
+                - { name: etc-kubernetes, mountPath: /etc/kubernetes, readOnly: true }
+                - { name: usr-bin, mountPath: /usr/local/mount-from-host/bin, readOnly: true }
+                - { name: etc-cni-netd, mountPath: /etc/cni/net.d/, readOnly: true }
+                - { name: opt-cni-bin, mountPath: /opt/cni/bin/, readOnly: true }
+          volumes:
+            - { name: var-lib-etcd, hostPath: { path: /var/lib/etcd } }
+            - { name: var-lib-kubelet, hostPath: { path: /var/lib/kubelet } }
+            - { name: var-lib-kube-scheduler, hostPath: { path: /var/lib/kube-scheduler } }
+            - { name: var-lib-kube-controller-manager, hostPath: { path: /var/lib/kube-controller-manager } }
+            - { name: etc-systemd, hostPath: { path: /etc/systemd } }
+            - { name: lib-systemd, hostPath: { path: /lib/systemd } }
+            - { name: srv-kubernetes, hostPath: { path: /srv/kubernetes } }
+            - { name: etc-kubernetes, hostPath: { path: /etc/kubernetes } }
+            - { name: usr-bin, hostPath: { path: /usr/bin } }
+            - { name: etc-cni-netd, hostPath: { path: /etc/cni/net.d } }
+            - { name: opt-cni-bin, hostPath: { path: /opt/cni/bin } }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kube-bench-node
+  namespace: kube-bench
+spec:
+  schedule: "0 7 * * 1"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          hostPID: true
+          containers:
+            - name: kube-bench
+              image: docker.io/aquasec/kube-bench:v0.9.1
+              command: ["kube-bench", "run", "--targets", "node"]
+              volumeMounts:
+                - { name: var-lib-kubelet, mountPath: /var/lib/kubelet, readOnly: true }
+                - { name: etc-systemd, mountPath: /etc/systemd, readOnly: true }
+                - { name: etc-kubernetes, mountPath: /etc/kubernetes, readOnly: true }
+                - { name: usr-bin, mountPath: /usr/local/mount-from-host/bin, readOnly: true }
+          volumes:
+            - { name: var-lib-kubelet, hostPath: { path: /var/lib/kubelet } }
+            - { name: etc-systemd, hostPath: { path: /etc/systemd } }
+            - { name: etc-kubernetes, hostPath: { path: /etc/kubernetes } }
+            - { name: usr-bin, hostPath: { path: /usr/bin } }
