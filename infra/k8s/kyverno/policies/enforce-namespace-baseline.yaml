@@ -1,0 +1,68 @@
+# Automates two plan requirements so they can't be forgotten when a new
+# namespace is created by hand or by ArgoCD: the `restricted` Pod Security
+# Admission labels, and a default-deny-both-directions NetworkPolicy.
+#
+# kube-system, kube-node-lease, kube-public, and the platform namespaces
+# this epic itself creates (metallb-system, argocd, kyverno, arc-systems,
+# arc-runners - the last two already label/policy themselves manually in
+# Epic 3; kube-bench needs `privileged` PSA and hostPath access, see its
+# own manifest) are excluded - PSA `restricted` on kube-system breaks
+# control-plane components, and the platform namespaces manage their own,
+# more specific NetworkPolicies rather than a blanket deny-all.
+#
+# Epic 7 adds: monitoring (node-exporter needs hostPath+hostNetwork),
+# wazuh-agent (DaemonSet needs hostPath+privileged, see its own manifest),
+# falco (eBPF driver needs capabilities beyond restricted). elastic,
+# dependency-track, and vault do NOT need an exception - noted explicitly
+# so a future reader doesn't assume the omission is an oversight.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-restricted-psa-labels
+spec:
+  rules:
+    - name: add-psa-labels
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      exclude:
+        any:
+          - resources:
+              names:
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(pod-security.kubernetes.io/enforce): restricted
+              +(pod-security.kubernetes.io/audit): restricted
+              +(pod-security.kubernetes.io/warn): restricted
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-default-deny-networkpolicy
+spec:
+  rules:
+    - name: default-deny-on-namespace-create
+      match:
+        any:
+          - resources:
+              kinds: [Namespace]
+      exclude:
+        any:
+          - resources:
+              names:
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-all
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes: [Ingress, Egress]

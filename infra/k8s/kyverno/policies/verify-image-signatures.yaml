@@ -1,0 +1,32 @@
+# Rejects any image that isn't keylessly signed by build.yml (Epic 3) via
+# cosign + GitHub OIDC. This is the admission-time enforcement half of the
+# supply-chain story; release.yml's cosign verify (Epic 3) is the same
+# check at promotion time - this is what makes it non-optional at runtime
+# too, not just a CI-time courtesy.
+#
+# CAVEAT: scoped to ghcr.io/raiseofeasv/* only. docker/base/ images
+# (Epic 2) are signed by base-images.yml, a DIFFERENT workflow, so their
+# certificate identity regex differs from app images built by build.yml.
+# If this starts rejecting valid base images, check which workflow actually
+# signed them and widen the regex rather than disabling the rule.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+spec:
+  validationFailureAction: Enforce
+  background: false # signature verification only makes sense at admission time
+  rules:
+    - name: verify-ghcr-signatures
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/raiseofeasv/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subjectRegExp: "https://github.com/RaiseOfEASV/Cerberus/\\.github/workflows/(build|base-images)\\.yml@.*"
+                    issuer: "https://token.actions.githubusercontent.com"

@@ -1,0 +1,19 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: "Images must not use the ':latest' tag (or no tag at all) - pin a real version so Renovate (Epic 2) can track and bump it."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"

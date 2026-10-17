@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-readonly-rootfs
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-readonly-root-filesystem
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: "Containers must set readOnlyRootFilesystem: true - mount an emptyDir for anything that genuinely needs to write."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
