@@ -1,0 +1,33 @@
+---
+- name: Golden image hardening
+  hosts: all
+  become: true
+  vars:
+    wazuh_manager_address: "{{ wazuh_manager_address | default('CHANGE_ME_NO_WAZUH_MANAGER_YET') }}"
+  roles:
+    - devsec.hardening.os_hardening
+    - devsec.hardening.ssh_hardening
+    - firewall
+    - auditd
+    - wazuh_agent
+  tasks:
+    - name: Install Lynis for the build-time gate (scripts/lynis-gate.sh runs it)
+      ansible.builtin.apt:
+        name: lynis
+        state: present
+        update_cache: true
+
+    - name: Enable unattended-upgrades (automatic security updates)
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Configure unattended-upgrades for security updates only
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/51unattended-upgrades-security
+        mode: "0644"
+        content: |
+          Unattended-Upgrade::Origins-Pattern {
+            "origin=Debian,codename=${distro_codename}-security";
+          }
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";

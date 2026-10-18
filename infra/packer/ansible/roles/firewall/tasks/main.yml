@@ -1,0 +1,29 @@
+---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Default deny incoming
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: Default allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  # TODO(epic-8): SSH is open to any source here because there's no VPN
+  # yet to restrict it to - once Epic 8 ships Tailscale/headscale, narrow
+  # this to the VPN's subnet instead of allowing from anywhere. Flagged,
+  # not forgotten.
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled

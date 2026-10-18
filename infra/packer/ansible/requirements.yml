@@ -1,0 +1,8 @@
+# devsec.hardening is the maintained, widely-used OS/SSH hardening
+# collection (CIS/DISA-STIG-inspired, independently written - not a
+# reproduction of CIS's own copyrighted benchmark text). Used instead of
+# writing CIS controls from scratch here, same reasoning as using Renovate/
+# Kyverno/Trivy elsewhere rather than reinventing them.
+collections:
+  - name: devsec.hardening
+    version: ">=8.0.0"

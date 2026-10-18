@@ -1,0 +1,32 @@
+---
+- name: Add Wazuh GPG key
+  ansible.builtin.apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+
+- name: Add Wazuh apt repo
+  ansible.builtin.apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+    filename: wazuh
+
+- name: Install wazuh-agent
+  ansible.builtin.apt:
+    name: wazuh-agent
+    state: present
+    update_cache: true
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_address }}"
+
+# NOT YET FUNCTIONAL: wazuh_manager_address defaults to a placeholder -
+# Epic 7 hasn't deployed a Wazuh manager yet. The agent installs and is
+# enabled below so every VM built from this image is already wired for
+# enrollment; it'll just sit retrying against a address that doesn't
+# resolve/respond until Epic 7 ships a real manager. That's expected, not
+# a bug in this role - don't "fix" it by faking a manager address.
+
+- name: Enable wazuh-agent
+  ansible.builtin.systemd:
+    name: wazuh-agent
+    enabled: true
+    daemon_reload: true
