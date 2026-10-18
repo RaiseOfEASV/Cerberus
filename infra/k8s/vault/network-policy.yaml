@@ -1,0 +1,67 @@
+# default-deny-all is generated automatically by Kyverno (Epic 4) - these
+# are just the specific allows on top of it: DNS egress, and ingress on
+# 8200 from the two namespaces that actually need to reach Vault
+# (external-secrets and arc-runners - the latter already has the matching
+# allow-vault-egress rule in infra/k8s/arc/network-policy.yaml from Epic 3).
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: vault
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-eso-and-arc
+  namespace: vault
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: external-secrets
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: arc-runners
+      ports:
+        - { protocol: TCP, port: 8200 }
+---
+# Epic 9: the vault-backup CronJob's pod lives in THIS namespace, so it's
+# also subject to the default-deny egress above - needs its own explicit
+# allows to reach Vault's own API (snapshot step) and the external backup
+# MinIO host (upload step).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backup-egress
+  namespace: vault
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: vault-backup } # NOTE: verify this matches whatever label the CronJob's pod template actually carries - not yet checked against a live Job
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: {} # same-namespace: Vault's own server pods
+      ports:
+        - { protocol: TCP, port: 8200 }
+    - to:
+        # Coarse by necessity, same gap as infra/k8s/arc/network-policy.yaml's
+        # allow-internet-egress - vanilla NetworkPolicy can't match by
+        # hostname, so this is scoped by port, not by the backup host's
+        # identity. Narrow this once a real network boundary (VPN subnet)
+        # for the backup MinIO host is known.
+        - ipBlock: { cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16] }
+      ports:
+        - { protocol: TCP, port: 9000 }

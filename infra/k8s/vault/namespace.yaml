@@ -1,0 +1,14 @@
+# Just the Namespace - Epic 4's Kyverno policies handle the rest
+# automatically once this namespace exists: `enforce-restricted-psa-labels`
+# adds the restricted PSA labels, and `generate-default-deny-networkpolicy`
+# creates the default-deny-all NetworkPolicy. network-policy.yaml in this
+# directory only adds the specific allows Vault needs on top of that deny.
+#
+# Named literally `vault` because Epic 3's arc/network-policy.yaml and
+# Epic 4's generate-default-deny-networkpolicy exclude list already
+# reference a namespace by this exact name - don't rename without updating
+# both.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
