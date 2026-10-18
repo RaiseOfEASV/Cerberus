@@ -1,0 +1,79 @@
+# Values for the `vault` chart (hashicorp/vault, helm.releases.hashicorp.com).
+# Integrated storage (raft), single node to start, HA-able later by raising
+# replicas - the plan explicitly calls for this, not a redesign.
+#
+# injector.enabled: false - the Vault Agent Injector is a second, competing
+# mechanism for getting Vault secrets into pods (sidecar + templated files).
+# The plan specifically names External Secrets Operator as the chosen
+# mechanism (infra/k8s/eso/) - running both would mean two different ways
+# to do the same thing, so the injector is deliberately off.
+#
+# global.tlsDisable: false - Epic 8 landed the certificate strategy this
+# was deferred for (infra/k8s/cert-manager/, internal CA). The server cert
+# is issued by infra/k8s/vault/certificate.yaml, mounted via
+# extraVolumes/extraEnvironmentVars below. Still scoped by NetworkPolicy
+# (infra/k8s/vault/network-policy.yaml) to only the namespaces that need
+# to reach Vault - TLS and network isolation are complementary, not
+# either/or, same reasoning as the VPN+identity-layer requirement in
+# Epic 8 generally.
+#
+# disable_mlock = true in the raft config below is HashiCorp's own
+# documented default for Kubernetes deployments (CAP_IPC_LOCK is awkward to
+# grant under Pod Security `restricted`, which this namespace gets
+# automatically from Epic 4's Kyverno policy) - not a bespoke weakening.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster. After install, Vault starts
+# SEALED and uninitialized - see docs/security/vault-unseal-procedure.md
+# before doing anything else with it. Nothing in this repo can or should
+# automate that step.
+
+global:
+  tlsDisable: false
+
+injector:
+  enabled: false
+
+server:
+  ha:
+    enabled: true
+    replicas: 1
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+        listener "tcp" {
+          address         = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_cert_file   = "/vault/tls/tls.crt"
+          tls_key_file    = "/vault/tls/tls.key"
+        }
+        storage "raft" {
+          path = "/vault/data"
+        }
+        disable_mlock = true
+        service_registration "kubernetes" {}
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+
+  # UNVERIFIED against the installed chart version: `extraVolumes` with a
+  # `path` override is what should land this secret at /vault/tls/ to
+  # match the listener config above. If the installed vault-helm version
+  # doesn't support overriding the mount path this way, it'll default to
+  # /vault/userconfig/vault-server-tls/ instead - fix whichever side
+  # (this path or the listener's tls_cert_file/tls_key_file) is wrong
+  # before relying on this, don't assume it just works.
+  extraVolumes:
+    - type: secret
+      name: vault-server-tls # issued by infra/k8s/vault/certificate.yaml
+      path: /vault/tls
+
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+ui:
+  enabled: true
+  serviceType: ClusterIP # admin UI, fronted by Epic 8's Traefik IngressRoute + oauth2-proxy + headscale (infra/k8s/oauth2-proxy/) - never a public ingress
