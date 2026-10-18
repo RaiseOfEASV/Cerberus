@@ -1,0 +1,88 @@
+name: Golden Image
+
+# Builds the hardened VM image (infra/packer/) and gates it on Lynis score.
+# GitHub-hosted runner, not ARC - same reasoning as base-images.yml: this
+# only touches public upstreams (Debian cloud image, Wazuh's apt repo,
+# Ansible Galaxy), never the private Nexus proxy.
+#
+# CAVEAT: needs /dev/kvm (the qemu builder's accelerator = "kvm"). GitHub-
+# hosted ubuntu runners have had nested-KVM support since 2023, but this
+# isn't re-verified here beyond the preflight check below - if it starts
+# failing, check that first before assuming the Packer config broke.
+# Falling back to the ARC runner pool (Epic 3) is NOT a given substitute:
+# those are pods, and /dev/kvm passthrough into a pod isn't configured
+# anywhere in infra/k8s/arc/ - don't assume it'd just work there either.
+#
+# Output destination is UNDECIDED. For now this just uploads manifest.json
+# + the qcow2 as a workflow artifact (90-day retention, not a durable
+# store). Nexus (Epic 2) could host a "raw" hosted repo for this once it's
+# deployed - noted as a candidate, not implemented.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/packer/**"
+      - ".github/workflows/golden-image.yml"
+  schedule:
+    - cron: "0 6 * * 1" # weekly, same cadence as base-images.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  LYNIS_MIN_SCORE: "70"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight - confirm KVM is available
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::/dev/kvm not present - this runner can't accelerate the qemu builder. See this workflow's header comment." >&2
+            exit 1
+          fi
+          ls -la /dev/kvm
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: "1.11.2"
+
+      - name: Install Ansible + qemu-system
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible qemu-system-x86 qemu-utils ovmf
+
+      - name: Generate ephemeral SSH keypair for this build
+        run: ssh-keygen -t ed25519 -f "${RUNNER_TEMP}/packer_key" -N ""
+
+      - name: Install Ansible Galaxy requirements
+        working-directory: infra/packer/ansible
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: packer init
+        working-directory: infra/packer
+        run: packer init golden-image.pkr.hcl
+
+      - name: packer build
+        working-directory: infra/packer
+        run: |
+          packer build \
+            -var "ssh_public_key=$(cat "${RUNNER_TEMP}/packer_key.pub")" \
+            -var "ssh_private_key_file=${RUNNER_TEMP}/packer_key" \
+            -var "image_version=${{ github.sha }}" \
+            golden-image.pkr.hcl
+
+      - name: Upload image + manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-image-${{ github.sha }}
+          path: |
+            infra/packer/output/golden-${{ github.sha }}/
+            infra/packer/manifest.json
+          retention-days: 90

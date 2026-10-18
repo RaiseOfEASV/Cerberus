@@ -1,0 +1,19 @@
+#cloud-config
+# Rendered by Packer (templatefile in golden-image.pkr.hcl) with the real
+# ssh_public_key value - this .pkrtpl file itself has no secret in it.
+users:
+  - name: debian
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+ssh_pwauth: false
+disable_root: true
+package_update: true
+
+# Password auth is disabled here at the cloud-init level too (not just by
+# the devsec.hardening.ssh_hardening role later) so the build-time
+# connection itself is key-only from the first boot, not just after
+# Ansible runs.

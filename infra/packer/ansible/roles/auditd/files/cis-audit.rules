@@ -1,0 +1,17 @@
+# Minimal, hand-written starting ruleset covering identity files, sudo
+# scope, SSH config, and exec tracking - NOT a transcription of the CIS
+# benchmark's own rule text (that's copyrighted CIS content, not something
+# to vendor verbatim into this repo). Expand against the actual CIS
+# Debian/Ubuntu Linux Benchmark PDF as a follow-up if/when full CIS audit
+# coverage is actually needed - this is a reasonable baseline, not a claim
+# of full compliance.
+
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k scope
+-w /etc/sudoers.d/ -p wa -k scope
+-w /etc/ssh/sshd_config -p wa -k sshd
+-a always,exit -F arch=b64 -S execve -k exec
+-e 2
