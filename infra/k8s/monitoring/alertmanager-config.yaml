@@ -1,0 +1,32 @@
+# The actual Slack routing for kube-prometheus-stack-values.yaml's
+# Alertmanager - the `alertmanagerConfigSelector.matchLabels` there must
+# match this object's own labels exactly (alertmanagerConfig: cerberus)
+# or Alertmanager never picks this up and silently keeps using the base
+# receiver instead. UNVERIFIED against a live Alertmanager instance - the
+# exact selector-matching behavior (and whether it's namespace-scoped by
+# default) should be confirmed once there's a cluster to test against,
+# same caliber of caveat as several other chart-schema assumptions in
+# this repo (Vault's extraVolumes.path, Keycloak's realm-config schema).
+#
+# Will fail to route anywhere useful until `vault kv put
+# secret/alertmanager/slack webhook_url=...` has been run with a real
+# Slack incoming-webhook URL.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: cerberus-slack
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: cerberus
+spec:
+  route:
+    receiver: slack
+    groupBy: [alertname, namespace]
+  receivers:
+    - name: slack
+      slackConfigs:
+        - channel: "#cerberus-alerts" # create this channel before relying on this
+          sendResolved: true
+          apiURL:
+            name: alertmanager-slack-credentials # synced by ESO
+            key: webhook-url
