@@ -1,0 +1,20 @@
+# Values for the `external-secrets` chart (external-secrets.io). Syncs
+# Vault secrets into native K8s Secret objects - decouples app/pipeline
+# manifests from the backend (Vault could be swapped later without
+# touching anything that currently references a Secret by name).
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault configured
+# (infra/terraform/vault/ applied - its `external-secrets` Kubernetes auth
+# role is what this operator's ServiceAccount authenticates as).
+
+replicaCount: 1
+
+webhook:
+  replicaCount: 1
+
+certController:
+  replicaCount: 1
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 128Mi }
