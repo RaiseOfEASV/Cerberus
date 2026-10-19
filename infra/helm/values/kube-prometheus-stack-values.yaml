@@ -1,0 +1,63 @@
+# Values for the `kube-prometheus-stack` chart (prometheus-community).
+# Prometheus + Grafana + Alertmanager in one chart - monitoring without
+# alerting routes to nobody, so Alertmanager is configured from day one,
+# not bolted on later.
+#
+# Grafana's admin password comes from Vault via ESO
+# (infra/k8s/eso/external-secret-grafana-admin.yaml) - never set it below.
+#
+# `monitoring` namespace is excluded from Epic 4's automatic `restricted`
+# PSA labeling (see enforce-namespace-baseline.yaml) - node-exporter needs
+# hostPath (/proc, /sys) and hostNetwork to scrape node-level metrics,
+# which `restricted` forbids outright. Same kind of named exception as
+# kube-bench and ARC's dind - not an oversight.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault/ESO for the
+# Grafana secret.
+
+grafana:
+  admin:
+    existingSecret: grafana-admin-credentials # synced by ESO, see header
+    userKey: username
+    passwordKey: password
+  service:
+    type: ClusterIP # admin UI, fronted by Epic 8's Traefik IngressRoute + oauth2-proxy + headscale (infra/k8s/oauth2-proxy/) - never a public ingress
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { memory: 1Gi }
+
+# Closes the gap this file flagged since Epic 7 ("real routing destination
+# isn't chosen yet"). Picked Slack, the destination named back when this
+# project's observability requirements were first discussed - matches
+# docs/security/incident-response.md's escalation path (Epic 9).
+#
+# The webhook URL is secret-backed via the AlertmanagerConfig CRD
+# (infra/k8s/monitoring/alertmanager-config.yaml), NOT embedded in this
+# values file - Alertmanager's plain YAML config has no secret-reference
+# syntax of its own; AlertmanagerConfig's `apiURL.secretKeyRef` is what
+# officially supports that. `route.receiver` below must match that CRD's
+# `receivers[].name` exactly ("slack") for anything to actually route.
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { memory: 128Mi }
+    alertmanagerConfigSelector:
+      matchLabels:
+        alertmanagerConfig: cerberus
+  config:
+    route:
+      receiver: "slack"
+      group_by: ["alertname", "namespace"]
+    receivers:
+      - name: "slack" # must exist even though AlertmanagerConfig provides the real routing - the chart's base config needs SOME receiver by this name so unmatched/early alerts (before the CRD is picked up) don't error out
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
