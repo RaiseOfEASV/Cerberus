@@ -1,0 +1,10 @@
+# Values for the `eck-operator` chart (elastic.co) - manages Elasticsearch/
+# Kibana as CRDs. ECK auto-generates its own TLS certs for the resources it
+# manages, so (unlike Traefik/Vault) there's no deferred-cert-decision
+# caveat needed here - that problem is already solved by the operator.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+resources:
+  requests: { cpu: 100m, memory: 150Mi }
+  limits: { memory: 256Mi }

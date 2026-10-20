@@ -1,0 +1,27 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: logs
+  namespace: elastic
+spec:
+  version: 8.15.0
+  nodeSets:
+    - name: default
+      count: 1 # single node for now - raise count + add a HA-aware config once real log volume justifies it
+      config:
+        node.store.allow_mmap: false # avoids the vm.max_map_count requirement - see README
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: [ReadWriteOnce]
+            resources:
+              requests:
+                storage: 20Gi
+      podTemplate:
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests: { cpu: 500m, memory: 2Gi }
+                limits: { memory: 4Gi }
