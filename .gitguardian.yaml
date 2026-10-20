@@ -17,3 +17,10 @@ secret:
     # below are added as they're actually hit, not pre-emptively.
     - name: terraform-state docker-compose - PGPASSWORD/POSTGRES_PASSWORD env-var reference
       match: 3263305dd365e8d07a7ee6a59f5511dd318b804d23bda1152b2f9b2dbcb7dad3
+    # wazuh.manager's INDEXER_USERNAME is a literal "admin" - the indexer's
+    # built-in default internal username, not a secret - paired in the same
+    # block with INDEXER_PASSWORD, which IS correctly sourced from
+    # ${INDEXER_PASSWORD:?...}. The detector flags the username+password
+    # pair together even though only the username is a literal.
+    - name: wazuh docker-compose - INDEXER_USERNAME=admin (literal username, not a secret) next to INDEXER_PASSWORD env-var reference
+      match: e41d3702db9095da22f2661b1c8dc1422a59500c0cf6fc91b0fb7a3fa9fcb841
