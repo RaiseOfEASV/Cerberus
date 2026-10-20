@@ -1,0 +1,21 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: logs
+  namespace: elastic
+spec:
+  version: 8.15.0
+  count: 1
+  elasticsearchRef:
+    name: logs
+  http:
+    service:
+      spec:
+        type: ClusterIP # admin UI, fronted by Epic 8's Traefik IngressRoute + oauth2-proxy + headscale (infra/k8s/oauth2-proxy/) - never a public ingress
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }

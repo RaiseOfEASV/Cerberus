@@ -1,0 +1,41 @@
+# Values for the `filebeat` chart (elastic/beats). DaemonSet that tails
+# every container's logs on each node and ships them to the in-cluster
+# Elasticsearch - the actual "general application and infra logs" pipe the
+# plan calls for. Wazuh (separate, see infra/wazuh/) is NOT fed through
+# this - it has its own agents and is deliberately kept apart from this
+# stack (see that directory's header comment on why).
+#
+# Needs hostPath access to /var/lib/docker/containers and /var/log on each
+# node - same kind of host-access exception as node-exporter. Deployed
+# into the `elastic` namespace, which is excluded from the automatic
+# `restricted` PSA labeling for that reason.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + elasticsearch.yaml applied
+# first (references its auto-created credentials/CA secret, `logs-es-elastic-user`
+# and `logs-es-http-certs-public`, both created by ECK itself).
+
+daemonset:
+  resources:
+    requests: { cpu: 100m, memory: 100Mi }
+    limits: { memory: 200Mi }
+
+elasticsearch:
+  host: "https://logs-es-http.elastic.svc:9200"
+  protocol: "https"
+  username: "elastic"
+  password:
+    valueFrom:
+      secretKeyRef:
+        name: logs-es-elastic-user # auto-created by ECK, not this repo
+        key: elastic
+  ssl:
+    certificateAuthorities: ["/usr/share/filebeat/certs/ca.crt"]
+
+extraVolumes:
+  - name: es-certs
+    secret:
+      secretName: logs-es-http-certs-public # auto-created by ECK
+extraVolumeMounts:
+  - name: es-certs
+    mountPath: /usr/share/filebeat/certs
+    readOnly: true
