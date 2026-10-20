@@ -1,0 +1,105 @@
+# Wazuh manager + indexer + dashboard - a DEDICATED host, deliberately
+# separate from both the app cluster and the Elastic observability stack
+# (infra/k8s/elastic/). The reasoning from the plan: if a workload in the
+# cluster is compromised, it shouldn't also be able to tamper with the
+# security logging that would have caught it. Same "standalone VM, not
+# cluster" pattern as infra/terraform-state/'s Postgres - runs on a plain
+# host for now, migrates onto Epic 5's hardened golden image once that's
+# actually been used to provision a real host (still unresolved, see that
+# epic's README).
+#
+# Mirrors Wazuh's own official single-node docker-compose deployment
+# rather than inventing a custom one - same reasoning as using
+# devsec.hardening in Epic 5 instead of writing CIS controls by hand.
+#
+# NOT YET RUNNING:
+# - TLS certs for manager/indexer/dashboard must be generated with Wazuh's
+#   own `wazuh-certs-generator` tool before first start - not included
+#   here, never committed.
+# - INDEXER_PASSWORD / DASHBOARD_PASSWORD must be set via env, never
+#   hardcoded or committed - see README.
+# - Nothing in this repo has actually stood this up; the Ansible
+#   wazuh_agent role (Epic 5) and the in-cluster DaemonSet
+#   (infra/k8s/wazuh-agent/) both point at a WAZUH_MANAGER address that
+#   doesn't resolve to anything real until this is deployed somewhere and
+#   that address is updated.
+
+services:
+  backup:
+    # Daily tar of the indexer + manager data volumes -> the dedicated
+    # backup MinIO (infra/backups/). Epic 9. NOT point-in-time consistent
+    # (a live tar of an OpenSearch data dir, not its native snapshot API)
+    # - acceptable starting point, not the final answer; see
+    # infra/backups/scripts/tar-backup.sh's header and this epic's README.
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on: [wazuh.indexer, wazuh.manager]
+    environment:
+      - SRC_DIR=/data
+      - BACKUP_MINIO_ACCESS_KEY=${BACKUP_MINIO_ACCESS_KEY:?set BACKUP_MINIO_ACCESS_KEY}
+      - BACKUP_MINIO_SECRET_KEY=${BACKUP_MINIO_SECRET_KEY:?set BACKUP_MINIO_SECRET_KEY}
+      - BACKUP_MINIO_ENDPOINT=${BACKUP_MINIO_ENDPOINT:?set BACKUP_MINIO_ENDPOINT}
+      - BUCKET=cerberus-backups
+      - PREFIX=wazuh
+    volumes:
+      - wazuh-indexer-data:/data/indexer:ro
+      - wazuh-manager-data:/data/manager:ro
+      - ../backups/scripts/tar-backup.sh:/scripts/tar-backup.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/tar-backup.sh"]
+
+  wazuh.indexer:
+    image: wazuh/wazuh-indexer:4.9.0
+    hostname: wazuh.indexer
+    restart: unless-stopped
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - INDEXER_PASSWORD=${INDEXER_PASSWORD:?set INDEXER_PASSWORD}
+    volumes:
+      - wazuh-indexer-data:/var/lib/wazuh-indexer
+      - ./certs/indexer:/usr/share/wazuh-indexer/certs:ro
+    ports:
+      - "127.0.0.1:9200:9200"
+
+  wazuh.manager:
+    image: wazuh/wazuh-manager:4.9.0
+    hostname: wazuh.manager
+    restart: unless-stopped
+    depends_on: [wazuh.indexer]
+    environment:
+      - INDEXER_URL=https://wazuh.indexer:9200
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=${INDEXER_PASSWORD:?set INDEXER_PASSWORD}
+    volumes:
+      - wazuh-manager-data:/var/ossec/data
+      - ./certs/manager:/etc/ssl/wazuh:ro
+    ports:
+      # 1514: agent event collection (TCP+UDP). 1515: agent enrollment.
+      # 514/udp: syslog listener - this is what Falcosidekick (Falco ->
+      # Wazuh bridge) targets. All three need to be reachable from the
+      # cluster's egress allow-list, not just this host's loopback -
+      # unlike indexer/dashboard, which stay on loopback only.
+      - "1514:1514/tcp"
+      - "1514:1514/udp"
+      - "1515:1515"
+      - "514:514/udp"
+
+  wazuh.dashboard:
+    image: wazuh/wazuh-dashboard:4.9.0
+    hostname: wazuh.dashboard
+    restart: unless-stopped
+    depends_on: [wazuh.indexer, wazuh.manager]
+    environment:
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=${INDEXER_PASSWORD:?set INDEXER_PASSWORD}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:?set DASHBOARD_PASSWORD}
+    volumes:
+      - ./certs/dashboard:/usr/share/wazuh-dashboard/certs:ro
+    ports:
+      # Admin UI - loopback only. Same not-public-yet posture as every
+      # other admin UI in this project (Grafana/Kibana/ArgoCD/Vault) until
+      # Epic 8's VPN + oauth2-proxy exists.
+      - "127.0.0.1:443:5601"
+
+volumes:
+  wazuh-indexer-data:
+  wazuh-manager-data:

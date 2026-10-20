@@ -1,0 +1,8 @@
+# Excluded from Epic 4's automatic `restricted` PSA labeling (see
+# enforce-namespace-baseline.yaml) - the agent DaemonSet needs hostPath
+# access to /var/log and /etc to monitor the node itself, which
+# `restricted` forbids. Same kind of named exception as kube-bench.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wazuh-agent

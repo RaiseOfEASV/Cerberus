@@ -1,0 +1,46 @@
+# In-cluster Wazuh agents - one per node, monitoring the node's own
+# filesystem/logs (hostPath mounts below) the same way the systemd agent
+# does on a VM (Epic 5's Ansible wazuh_agent role). Both point at the same
+# WAZUH_MANAGER placeholder - see infra/wazuh/README.md for what updates
+# it once a real manager exists.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster, and the enrollment password
+# ExternalSecret (external-secret-wazuh-agent.yaml) needs a real value in
+# Vault - will fail to sync until then, same as every other ExternalSecret
+# in this repo.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wazuh-agent
+  namespace: wazuh-agent
+spec:
+  selector:
+    matchLabels: { app: wazuh-agent }
+  template:
+    metadata:
+      labels: { app: wazuh-agent }
+    spec:
+      hostPID: true
+      containers:
+        - name: wazuh-agent
+          image: wazuh/wazuh-agent:4.9.0
+          env:
+            - name: WAZUH_MANAGER
+              value: "CHANGE_ME_NO_WAZUH_MANAGER_YET" # see infra/wazuh/README.md
+            - name: WAZUH_REGISTRATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-agent-credentials # synced by ESO
+                  key: password
+          securityContext:
+            privileged: true # needed for host log/file monitoring - see namespace.yaml's PSA exception
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - { name: host-logs, mountPath: /host/var/log, readOnly: true }
+            - { name: host-etc, mountPath: /host/etc, readOnly: true }
+      volumes:
+        - { name: host-logs, hostPath: { path: /var/log } }
+        - { name: host-etc, hostPath: { path: /etc } }
