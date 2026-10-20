@@ -1,0 +1,19 @@
+# Forwards Falco alerts to Wazuh (infra/wazuh/) via syslog -
+# Falcosidekick has no native "Wazuh" output type, so syslog is the
+# integration point: Wazuh's manager already listens on 514/udp
+# specifically for this (see infra/wazuh/docker-compose.yml's port list).
+#
+# UNVERIFIED: this hasn't been checked against a live Wazuh instance -
+# confirm the syslog format Wazuh's manager actually expects to parse
+# (decoder/ruleset) matches what Falcosidekick sends before relying on
+# this. Same kind of "written against docs, not a live instance" caveat
+# as infra/nexus/provision.sh in Epic 2.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + infra/wazuh/ deployed with
+# a real, reachable address (see that directory's README).
+
+config:
+  syslog:
+    host: "CHANGE_ME_NO_WAZUH_MANAGER_YET" # see infra/wazuh/README.md
+    port: "514"
+    protocol: "udp"

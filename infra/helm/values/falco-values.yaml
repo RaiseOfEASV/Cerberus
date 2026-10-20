@@ -1,0 +1,21 @@
+# Values for the `falco` chart (falcosecurity). In-cluster runtime threat
+# detection (shell in a container, unexpected outbound connection, etc).
+#
+# driver.kind: modern_ebpf avoids the kernel-module driver (which needs a
+# privileged DaemonSet and a matching kernel module build) - eBPF still
+# needs CAP_BPF/CAP_SYS_RESOURCE/CAP_PERFMON, beyond what `restricted`
+# allows, so the `falco` namespace is excluded from Epic 4's automatic PSA
+# labeling. Narrower than the old kernel-module driver's privileged
+# requirement, but still a real exception - not pretending otherwise.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+driver:
+  kind: modern_ebpf
+
+falcosidekick:
+  enabled: true # installed as a sub-chart dependency; see falcosidekick-values.yaml for its own output config
+
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 1Gi }
