@@ -1,0 +1,21 @@
+# Values for the `trivy-operator` chart (aquasecurity). Continuously
+# re-scans images/configs already running in the cluster - catches CVEs
+# disclosed AFTER an image shipped, which the build-time Trivy gate in
+# .github/workflows/build.yml (Epic 3) can't, by definition. Complements
+# that gate rather than duplicating it.
+#
+# No host access needed - runs fine under the automatic `restricted` PSA
+# labeling (Epic 4), no exception required.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+trivyOperator:
+  scanJobsConcurrentLimit: 2
+
+trivy:
+  ignoreUnfixed: true
+  severity: "CRITICAL,HIGH"
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 500Mi }
