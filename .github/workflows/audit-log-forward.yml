@@ -1,0 +1,54 @@
+name: Audit Log Forward
+
+# Polls the GitHub org audit log and forwards entries to Wazuh (syslog) -
+# there's no native GitHub audit-log-streaming-to-a-third-party feature
+# available at every plan tier, so this polls instead.
+#
+# IMPORTANT CONSTRAINT, not resolved: GET /orgs/{org}/audit-log, and
+# native audit log streaming, both require GitHub Enterprise Cloud.
+# RaiseOfEASV is very likely NOT on that tier - if so, this workflow will
+# 403/404 every run, not silently do nothing. Confirm the org's actual
+# plan before relying on this; on anything below Enterprise Cloud there is
+# currently no equivalent API, and this plan item may simply not be
+# achievable until/unless the org upgrades. Flagging that honestly rather
+# than shipping something that looks like it works but can't.
+#
+# GitHub-hosted runner - this only talks to the GitHub API and to Wazuh's
+# syslog port over the internet, no private Nexus network needed. NOTE:
+# that means Wazuh's syslog port (514/udp) needs to be reachable from the
+# public internet, not just from the cluster/VM network like Falcosidekick
+# needs - a stronger exposure than infra/wazuh/README.md's port-opening
+# guidance assumed when written. Revisit (e.g. route this through an
+# ARC runner instead, which already shares a network with Wazuh) once this
+# constraint actually matters.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch recent audit log entries
+        id: fetch
+        run: |
+          gh api "/orgs/${GITHUB_ORG}/audit-log?phrase=created:>=-15m" > audit-log.json || {
+            echo "::error::Could not fetch the org audit log - most likely this org isn't on GitHub Enterprise Cloud. See this workflow's header comment." >&2
+            exit 1
+          }
+        env:
+          GH_TOKEN: ${{ secrets.AUDIT_LOG_READ_TOKEN }}
+          GITHUB_ORG: RaiseOfEASV
+
+      - name: Forward each entry to Wazuh over syslog
+        run: |
+          jq -c '.[]' audit-log.json | while read -r entry; do
+            logger -n "${WAZUH_MANAGER_HOST}" -P 514 -d -t github-audit "${entry}"
+          done
+        env:
+          WAZUH_MANAGER_HOST: ${{ secrets.WAZUH_MANAGER_HOST }}
