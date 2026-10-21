@@ -1,0 +1,55 @@
+# headscale: self-hosted control plane for the Tailscale protocol - chosen
+# over Tailscale's own SaaS specifically for zero SaaS dependency, the
+# option the plan itself named as the alternative. Devices still run the
+# standard, unmodified Tailscale client; they just point it at this server
+# instead of Tailscale's coordination service.
+#
+# Runs on its OWN dedicated host, same "standalone VM, not cluster" pattern
+# as infra/terraform-state/ and infra/wazuh/ - and for a sharper reason
+# here: this IS the thing that gates access to admin UIs. Putting it
+# inside the cluster it's meant to gate would mean nobody could ever reach
+# it to set it up. Its coordination port (the whole point of a VPN control
+# plane) has to be reachable from the public internet for clients to
+# register and establish tunnels - that's inherent to how this kind of
+# server works, not a gap to fix. Its actual admin surface (the `headscale`
+# CLI, used to create users/pre-auth-keys/ACLs) is exec'd into the
+# container directly over SSH to this host, not exposed as a web UI.
+#
+# NOT YET RUNNING: needs a persistent host (same "plain VM for now, Epic
+# 5's golden image later" caveat as terraform-state/wazuh).
+
+services:
+  backup:
+    # Daily tar of headscale's sqlite DB + config (device registrations,
+    # ACL policy) -> the dedicated backup MinIO (infra/backups/). Epic 9.
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on: [headscale]
+    environment:
+      - SRC_DIR=/data
+      - BACKUP_MINIO_ACCESS_KEY=${BACKUP_MINIO_ACCESS_KEY:?set BACKUP_MINIO_ACCESS_KEY}
+      - BACKUP_MINIO_SECRET_KEY=${BACKUP_MINIO_SECRET_KEY:?set BACKUP_MINIO_SECRET_KEY}
+      - BACKUP_MINIO_ENDPOINT=${BACKUP_MINIO_ENDPOINT:?set BACKUP_MINIO_ENDPOINT}
+      - BUCKET=cerberus-backups
+      - PREFIX=headscale
+    volumes:
+      - headscale-data:/data/headscale-data:ro
+      - ./config:/data/config:ro
+      - ../backups/scripts/tar-backup.sh:/scripts/tar-backup.sh:ro
+    entrypoint: ["/bin/sh", "/scripts/tar-backup.sh"]
+
+  headscale:
+    image: headscale/headscale:0.23.0
+    restart: unless-stopped
+    command: serve
+    volumes:
+      - ./config:/etc/headscale:ro
+      - headscale-data:/var/lib/headscale
+    ports:
+      - "41641:41641/udp" # WireGuard-protocol coordination traffic - must be public
+      - "8080:8080" # headscale's own gRPC/HTTP control API - also must be public, see header
+    environment:
+      - TZ=UTC
+
+volumes:
+  headscale-data:

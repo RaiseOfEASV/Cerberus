@@ -1,0 +1,22 @@
+{
+  // Baseline ACL: only devices tagged "admin" can reach anything - everyone
+  // registers with no access until explicitly tagged. Least-privilege by
+  // default rather than "VPN connected = full access," which is the usual
+  // failure mode of treating a VPN as the only control.
+  //
+  // HuJSON (JSON + comments), matching Tailscale's own ACL syntax, which
+  // headscale reuses - NOT HCL. An earlier version of this file used HCL
+  // assignment syntax by mistake; fixed before anything tried to parse it.
+
+  "tagOwners": {
+    "tag:admin": ["CHANGE_ME_YOUR_HEADSCALE_USERNAME"]
+  },
+
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["tag:admin"],
+      "dst": ["*:*"]
+    }
+  ]
+}
