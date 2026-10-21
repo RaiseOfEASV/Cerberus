@@ -1,0 +1,53 @@
+# headscale server config. server_url below is a PLACEHOLDER - must be the
+# real public hostname/IP this host ends up at, known only once it's
+# actually provisioned somewhere (same kind of placeholder as MetalLB's
+# CIDR in Epic 4 - not a real value, don't deploy as-is).
+
+server_url: https://CHANGE_ME_HEADSCALE_HOST:8080
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 127.0.0.1:9090
+
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+
+derp:
+  server:
+    enabled: false # relying on the public Tailscale DERP relay fleet for now - self-hosting DERP too is more infra than this needs yet
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+
+dns:
+  magic_dns: true
+  base_domain: admin.cerberus.internal
+  # Static records so VPN-connected clients can resolve each admin UI by
+  # name via MagicDNS, without needing a separate DNS server. IPs below
+  # are PLACEHOLDERS - fill in with Traefik's actual MetalLB-assigned
+  # LoadBalancer IP (see infra/k8s/metallb/ip-address-pool.yaml - also
+  # still a placeholder) once that's known; every hostname here resolves
+  # to the SAME IP since they're all fronted by one Traefik + oauth2-proxy.
+  extra_records:
+    - name: "vault.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "argocd.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "grafana.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "wazuh.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "kibana.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "dependency-track.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+    - name: "keycloak.admin.cerberus.internal"
+      type: "A"
+      value: "CHANGE_ME_TRAEFIK_LB_IP"
+
+acl_policy_path: /etc/headscale/acl-policy.hujson
