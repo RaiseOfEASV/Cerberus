@@ -1,0 +1,153 @@
+# Dependency-Track: ingests the SBOMs build.yml (Epic 3) already generates
+# via Syft, tracks vulnerability status per service over time - the
+# central "what's vulnerable right now across everything we've shipped"
+# view the plan calls for.
+#
+# Plain Deployment/Service manifests, not a community Helm chart - OWASP
+# doesn't publish an official one, and third-party charts' schemas aren't
+# any more stable than hand-written manifests here. Same reasoning as
+# Epic 2's provision.sh preferring Nexus's documented REST API over an
+# unofficial Terraform provider. Mirrors Dependency-Track's own official
+# docker-compose (postgres + apiserver + frontend).
+#
+# DB credentials come from Vault via ESO (external-secret-dependency-track-db.yaml) -
+# never hardcoded here.
+#
+# No host access needed anywhere in this stack - runs fine under the
+# automatic `restricted` PSA labeling, no exception required.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault/ESO.
+# Default admin credentials on first boot are Dependency-Track's own
+# (admin/admin) - changing them is a manual day-1 step, same "human must
+# do this, documented not automated" pattern as Vault's root token.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dependency-track
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dt-postgres
+  namespace: dependency-track
+spec:
+  serviceName: dt-postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: dt-postgres }
+  template:
+    metadata:
+      labels: { app: dt-postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: dtrack
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: dependency-track-db, key: username } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: dependency-track-db, key: password } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 10Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dt-postgres
+  namespace: dependency-track
+spec:
+  selector: { app: dt-postgres }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dt-apiserver
+  namespace: dependency-track
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dt-apiserver }
+  template:
+    metadata:
+      labels: { app: dt-apiserver }
+    spec:
+      containers:
+        - name: apiserver
+          image: dependencytrack/apiserver:4.12.3
+          env:
+            - { name: ALPINE_DATABASE_MODE, value: external }
+            - { name: ALPINE_DATABASE_URL, value: "jdbc:postgresql://dt-postgres:5432/dtrack" }
+            - name: ALPINE_DATABASE_USERNAME
+              valueFrom: { secretKeyRef: { name: dependency-track-db, key: username } }
+            - name: ALPINE_DATABASE_PASSWORD
+              valueFrom: { secretKeyRef: { name: dependency-track-db, key: password } }
+          resources:
+            requests: { cpu: 500m, memory: 2Gi }
+            limits: { memory: 4Gi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: dt-apiserver-data }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dt-apiserver-data
+  namespace: dependency-track
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 5Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dt-apiserver
+  namespace: dependency-track
+spec:
+  selector: { app: dt-apiserver }
+  ports: [{ port: 8080 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dt-frontend
+  namespace: dependency-track
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dt-frontend }
+  template:
+    metadata:
+      labels: { app: dt-frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: dependencytrack/frontend:4.12.3
+          env:
+            - { name: API_BASE_URL, value: "http://dt-apiserver:8080" }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dt-frontend
+  namespace: dependency-track
+spec:
+  type: ClusterIP # admin UI, fronted by Epic 8's Traefik IngressRoute + oauth2-proxy + headscale (infra/k8s/oauth2-proxy/) - never a public ingress
+  selector: { app: dt-frontend }
+  ports: [{ port: 80, targetPort: 8080 }]
