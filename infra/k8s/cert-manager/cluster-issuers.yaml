@@ -1,0 +1,45 @@
+# Standard cert-manager self-signed-CA bootstrap, in 3 steps:
+#   1. A root Issuer that can only self-sign (bootstraps step 2's CA cert).
+#   2. A CA Certificate, self-signed by step 1, with CA:true - this is the
+#      private root. Its cert must be distributed to and trusted by every
+#      VPN-connected admin device (see README) - that trust, combined with
+#      headscale restricting WHO can even reach these hosts, is what makes
+#      "internal CA" an acceptable answer instead of a weaker one.
+#   3. A ClusterIssuer backed by step 2's CA secret - this is what every
+#      admin UI's Certificate/Ingress annotation actually references to
+#      get a real, auto-renewed cert.
+#
+# NOT YET APPLIABLE: needs cert-manager installed (Epic 4's cluster first).
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-bootstrap
+  namespace: cert-manager
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cerberus-internal-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: cerberus-internal-ca
+  secretName: cerberus-internal-ca-secret
+  duration: 87600h # 10 years - this is a root CA, not a leaf cert; rotating it means re-distributing trust to every admin device
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cerberus-internal-ca
+spec:
+  ca:
+    secretName: cerberus-internal-ca-secret
