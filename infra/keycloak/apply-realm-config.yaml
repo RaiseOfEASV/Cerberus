@@ -1,0 +1,29 @@
+# One-off Job running keycloak-config-cli against realm-config.yaml. Run
+# manually after Keycloak reports healthy, not wired into any automated
+# trigger - re-run it any time realm-config.yaml changes.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-apply-realm-config
+  namespace: keycloak
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-config-cli
+          image: adorsys/keycloak-config-cli:6.2.0-25.0.1
+          env:
+            - { name: KEYCLOAK_URL, value: "http://keycloak.keycloak.svc:80" }
+            - name: KEYCLOAK_USER
+              valueFrom: { secretKeyRef: { name: keycloak-admin-credentials, key: admin-user } }
+            - name: KEYCLOAK_PASSWORD
+              valueFrom: { secretKeyRef: { name: keycloak-admin-credentials, key: admin-password } }
+            - name: CLIENT_SECRET_OAUTH2_PROXY
+              valueFrom: { secretKeyRef: { name: oauth2-proxy-credentials, key: client-secret } }
+            - { name: IMPORT_FILES_LOCATIONS, value: "/config/realm-config.yaml" }
+          volumeMounts:
+            - { name: config, mountPath: /config }
+      volumes:
+        - name: config
+          configMap: { name: keycloak-realm-config }
