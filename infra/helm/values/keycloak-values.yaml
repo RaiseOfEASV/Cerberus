@@ -1,0 +1,34 @@
+# Values for the `keycloak` chart (bitnami). OIDC provider for every admin
+# UI's identity-layer check (oauth2-proxy, infra/k8s/oauth2-proxy/).
+# Keycloak's own admin console is protected by its own built-in login -
+# it doesn't need oauth2-proxy in front of itself, but it DOES still sit
+# behind headscale like every other admin surface (Traefik Ingress below
+# only has an internal hostname, never public).
+#
+# Admin credentials and the dedicated Postgres DB both come from Vault via
+# ESO - never hardcoded here. Bitnami's bundled `postgresql` subchart is
+# used rather than sharing any other Postgres in this repo (same
+# one-DB-per-app pattern as Dependency-Track in Epic 7).
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault/ESO +
+# Epic 8's cert-manager (for the Ingress's TLS).
+
+auth:
+  existingSecret: keycloak-admin-credentials # synced by ESO
+
+postgresql:
+  enabled: true
+  auth:
+    existingSecret: keycloak-db-credentials # synced by ESO
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hostname: keycloak.admin.cerberus.internal
+  tls: true
+  annotations:
+    cert-manager.io/cluster-issuer: cerberus-internal-ca
+
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { memory: 1Gi }

@@ -1,0 +1,40 @@
+# Declarative realm/client config - "code-defined, not click-ops" applied
+# to Keycloak the same way it's applied everywhere else in this repo.
+# Consumed by keycloak-config-cli (adorsys), not a Terraform provider -
+# Keycloak's own Terraform providers are third-party and less battle-
+# tested than this tool, which is purpose-built for exactly this file
+# format and widely used for Keycloak-as-code.
+#
+# UNVERIFIED against a live Keycloak instance - same caliber of caveat as
+# Epic 2's Nexus provision.sh and Epic 7's Falcosidekick->Wazuh syslog
+# bridge. Double-check keycloak-config-cli's exact schema version
+# compatibility with whatever Keycloak version the chart pins before
+# relying on this.
+#
+# redirectUris below use the same *.admin.cerberus.internal hostnames as
+# infra/headscale/config/config.yaml's extra_records and
+# infra/k8s/oauth2-proxy/ingressroutes.yaml - keep all three in sync if
+# the domain ever changes.
+
+realm: cerberus-admin
+enabled: true
+sslRequired: external
+
+clients:
+  - clientId: oauth2-proxy
+    enabled: true
+    clientAuthenticatorType: client-secret
+    secret: "${CLIENT_SECRET_OAUTH2_PROXY}" # keycloak-config-cli resolves ${VAR} from its own env - never hardcode the real value here
+    redirectUris:
+      - "https://vault.admin.cerberus.internal/oauth2/callback"
+      - "https://argocd.admin.cerberus.internal/oauth2/callback"
+      - "https://grafana.admin.cerberus.internal/oauth2/callback"
+      - "https://wazuh.admin.cerberus.internal/oauth2/callback"
+      - "https://kibana.admin.cerberus.internal/oauth2/callback"
+      - "https://dependency-track.admin.cerberus.internal/oauth2/callback"
+    webOrigins: ["+"]
+    standardFlowEnabled: true
+    directAccessGrantsEnabled: false
+
+groups:
+  - name: admins
