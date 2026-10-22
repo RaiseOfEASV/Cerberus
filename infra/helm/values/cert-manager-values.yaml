@@ -1,0 +1,24 @@
+# Values for the `cert-manager` chart (jetstack). Resolves the TLS
+# decision deferred since Epic 4 (Traefik) and Epic 6 (Vault, "revisit
+# when Epic 8 lands a certificate strategy"): an internal CA, not public
+# ACME. Nothing behind it is actually internet-facing - every admin UI
+# this issues certs for is only reachable over headscale - so there's no
+# public domain to prove ownership of for Let's Encrypt, and no reason to
+# want one. Trusting a private root CA on VPN-connected admin devices is
+# the right-sized answer here, not a corner cut.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+
+installCRDs: true
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 128Mi }
+
+webhook:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+
+cainjector:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
