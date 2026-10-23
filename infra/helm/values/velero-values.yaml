@@ -1,0 +1,49 @@
+# Values for the `velero` chart (vmware-tanzu). Backs up cluster
+# resources into the dedicated backup MinIO (infra/backups/) - NOT
+# anything inside the cluster Velero itself backs up, same reasoning as
+# headscale/Wazuh/terraform-state all living outside what they serve: if
+# the cluster is gone, the backup needs to survive that.
+#
+# IMPORTANT, easy to get wrong: Velero alone backs up Kubernetes API
+# object definitions, NOT the actual contents of PersistentVolumes, unless
+# either a CSI volume-snapshot driver is configured (none is - Epic 4
+# never picked a CNI/CSI stack) or Velero's own File System Backup
+# (node-agent, Kopia-based) is enabled. `deployNodeAgent: true` and
+# `defaultVolumesToFsBackup: true` below turn that on - without them,
+# Vault's raft data, every app's Postgres data, Elasticsearch data, etc.
+# would silently NOT be in these backups despite looking like a complete
+# cluster backup. (Vault's own data has a SEPARATE, more appropriate
+# snapshot mechanism anyway - infra/k8s/vault/backup-cronjob.yaml - since
+# Velero pausing/snapshotting a live raft data directory isn't how Vault
+# wants to be backed up; FSB here is the safety net for everything else.)
+#
+# Credentials: a DEDICATED MinIO user/policy scoped only to the backup
+# bucket (see infra/backups/README.md), via Vault/ESO - never the MinIO
+# root user. "Access-controlled separately from general infra access,"
+# per the plan's own wording for this epic.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster + infra/backups/ deployed
+# with a real, reachable address (same placeholder pattern as Wazuh's
+# manager address in Epic 7).
+
+deployNodeAgent: true
+
+configuration:
+  defaultVolumesToFsBackup: true
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: cerberus-backups
+      prefix: velero
+      config:
+        region: minio
+        s3ForcePathStyle: true
+        s3Url: "https://CHANGE_ME_BACKUP_MINIO_HOST:9000" # see infra/backups/README.md
+
+credentials:
+  useSecret: true
+  existingSecret: velero-minio-credentials # synced by ESO, INI-format "cloud" key
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 512Mi }
