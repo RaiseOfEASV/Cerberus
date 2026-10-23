@@ -1,0 +1,13 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-full-backup
+  namespace: velero
+spec:
+  schedule: "0 3 * * *"
+  template:
+    ttl: 720h0m0s # 30 days
+    excludedNamespaces:
+      - kube-system
+      - kube-node-lease
+      - kube-public
