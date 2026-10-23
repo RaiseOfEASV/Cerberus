@@ -1,0 +1,35 @@
+# Values for the `oauth2-proxy` chart. ONE shared instance fronting every
+# admin UI (Vault, ArgoCD, Grafana, Wazuh dashboard, Kibana,
+# Dependency-Track) via a single Traefik ForwardAuth middleware - not six
+# separate oauth2-proxy deployments. Cookie domain covers the whole
+# *.admin.cerberus.internal zone so one login works across all of them.
+#
+# This is the identity-layer half of Epic 8's two-layer requirement;
+# headscale (infra/headscale/) is the network-layer half. Both are
+# required together, not either/or.
+#
+# client-id/client-secret come from Keycloak's `oauth2-proxy` client
+# (infra/keycloak/realm-config.yaml) - the secret itself synced from Vault
+# via ESO, never hardcoded here.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster, Epic 6's Vault/ESO, and
+# Keycloak's realm actually applied (infra/k8s/keycloak/README.md).
+
+config:
+  clientID: oauth2-proxy
+  existingSecret: oauth2-proxy-credentials # synced by ESO - provides client-secret and cookie-secret
+
+extraArgs:
+  provider: keycloak-oidc
+  oidc-issuer-url: https://keycloak.admin.cerberus.internal/realms/cerberus-admin
+  redirect-url: https://admin.cerberus.internal/oauth2/callback
+  cookie-domain: .admin.cerberus.internal
+  whitelist-domain: .admin.cerberus.internal
+  email-domain: "*"
+  upstreams: "static://202" # this instance never proxies the actual response body - Traefik ForwardAuth only asks "is this request authorized," then forwards to the real backend itself
+  set-xauthrequest: true
+  pass-authorization-header: true
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 128Mi }

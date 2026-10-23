@@ -1,0 +1,150 @@
+# One IngressRoute per admin UI, each applying oauth2-proxy-forwardauth
+# and getting its cert from the internal CA (Epic 8's cert-manager). This
+# SUPERSEDES the "ClusterIP only, reach via kubectl port-forward" note
+# written into each of these services' own values files/READMEs back in
+# Epics 4/6/7 - that was correct for its time (no VPN/identity layer
+# existed yet to do anything safer), and this is what replaces it.
+#
+# Hostnames must exactly match infra/headscale/config/config.yaml's
+# extra_records and infra/keycloak/realm-config.yaml's redirectUris - all
+# three were written together, keep them that way if the domain changes.
+#
+# NOT YET APPLIABLE: needs every backend service it references already
+# deployed (Vault, ArgoCD, Grafana, Wazuh dashboard - which is NOT in this
+# cluster, see the caveat on wazuh.admin below, Kibana, Dependency-Track),
+# plus cert-manager and oauth2-proxy.
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`vault.admin.cerberus.internal`)"
+      kind: Rule
+      middlewares: [{ name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }]
+      services: [{ name: vault-ui, port: 8200 }]
+  tls:
+    secretName: vault-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-admin-tls
+  namespace: vault
+spec:
+  secretName: vault-admin-tls
+  dnsNames: ["vault.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`argocd.admin.cerberus.internal`)"
+      kind: Rule
+      middlewares: [{ name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }]
+      services: [{ name: argocd-server, port: 80 }]
+  tls:
+    secretName: argocd-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-admin-tls
+  namespace: argocd
+spec:
+  secretName: argocd-admin-tls
+  dnsNames: ["argocd.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`grafana.admin.cerberus.internal`)"
+      kind: Rule
+      middlewares: [{ name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }]
+      services: [{ name: kube-prometheus-stack-grafana, port: 80 }]
+  tls:
+    secretName: grafana-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-admin-tls
+  namespace: monitoring
+spec:
+  secretName: grafana-admin-tls
+  dnsNames: ["grafana.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kibana
+  namespace: elastic
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`kibana.admin.cerberus.internal`)"
+      kind: Rule
+      middlewares: [{ name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }]
+      services: [{ name: logs-kb-http, port: 5601 }]
+  tls:
+    secretName: kibana-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kibana-admin-tls
+  namespace: elastic
+spec:
+  secretName: kibana-admin-tls
+  dnsNames: ["kibana.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: dependency-track
+  namespace: dependency-track
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`dependency-track.admin.cerberus.internal`)"
+      kind: Rule
+      middlewares: [{ name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }]
+      services: [{ name: dt-frontend, port: 80 }]
+  tls:
+    secretName: dependency-track-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dependency-track-admin-tls
+  namespace: dependency-track
+spec:
+  secretName: dependency-track-admin-tls
+  dnsNames: ["dependency-track.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+
+# NOTE: Wazuh dashboard is deliberately NOT in this cluster (infra/wazuh/
+# runs on its own dedicated host, separate on purpose - see that
+# directory's header). It can't get a Traefik IngressRoute here. Its
+# network-layer gate is already handled (loopback-only + headscale reaches
+# that host directly); its identity-layer gate would need either a
+# standalone oauth2-proxy + reverse-proxy pair on that same host, or
+# exposing it through this cluster's Traefik some other way - NOT solved
+# here, flagged as a real gap rather than silently covered by this file's
+# name implying otherwise.
