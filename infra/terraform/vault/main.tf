@@ -50,6 +50,74 @@ resource "vault_kubernetes_auth_backend_config" "k8s" {
   # Supply them explicitly if ever applying this from outside the cluster.
 }
 
+# --- Day-to-day admin ---
+# What a human operator (and this Terraform, after the initial root-token
+# apply) uses instead of the root token. Covers everything this root
+# manages plus writing secret values and managing tokens. Deliberately
+# excludes root-only powers - sys/raw, generate-root, rekey, seal config.
+# Create the token as an ORPHAN: it's created by the root token, and
+# revoking root would otherwise revoke this child token along with it.
+# See docs/security/vault-unseal-procedure.md.
+
+resource "vault_policy" "admin" {
+  name = "admin"
+
+  policy = <<-EOT
+    # Secret values (KV v2)
+    path "secret/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Mounts, auth methods, policies - what this Terraform manages
+    path "sys/mounts" {
+      capabilities = ["read", "list"]
+    }
+    path "sys/mounts/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "sys/auth" {
+      capabilities = ["read", "list"]
+    }
+    path "sys/auth/*" {
+      capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+    }
+    path "auth/kubernetes/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/policies/acl" {
+      capabilities = ["list"]
+    }
+    path "sys/policies/acl/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "sys/policy/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Tokens - the Terraform provider mints a child token per run
+    path "auth/token/create" {
+      capabilities = ["create", "update"]
+    }
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+    path "auth/token/renew-self" {
+      capabilities = ["update"]
+    }
+    path "auth/token/revoke-self" {
+      capabilities = ["update"]
+    }
+    path "auth/token/revoke-accessor" {
+      capabilities = ["update"]
+    }
+
+    # Manual raft snapshots (see the unseal doc's break-glass section)
+    path "sys/storage/raft/snapshot" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+
 # --- External Secrets Operator ---
 # Reads Nexus admin creds (Epic 2), the ARC runner pool's GitHub App key
 # (Epic 3), and Grafana/Wazuh-agent/Dependency-Track-DB creds (Epic 7) -
