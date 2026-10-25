@@ -53,3 +53,8 @@ variable "admin_source_ip" {
   description = "CIDR allowed to reach SSH (22) and the Kubernetes API (6443). No safe default - set in terraform.tfvars."
   type        = string
 }
+
+variable "metallb_pool_ip" {
+  type    = string
+  default = "10.0.2.50"
+}

@@ -66,3 +66,9 @@ variable "admin_source_ip" {
   description = "CIDR allowed to reach SSH (22) and the Kubernetes API (6443). No safe default - must be set explicitly, same reasoning as the bootstrap root's own admin_source_ip."
   type        = string
 }
+
+variable "metallb_pool_ip" {
+  description = "Single private IP registered as a secondary IP configuration on the cluster NIC, for MetalLB's L2Advertisement to claim (see the NIC resource's comment on why this has to be a real Azure IP config, not just something MetalLB ARPs for on its own). Must be a free address inside the cluster subnet (10.0.2.0/24)."
+  type        = string
+  default     = "10.0.2.50"
+}
