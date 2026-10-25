@@ -1,0 +1,7 @@
+#	This file tunes zaproxy/action-baseline's output - IGNORE/WARN/FAIL per
+#	ZAP rule ID. Empty (all rules at ZAP's own default) until a real scan
+#	against a real staging endpoint has actually run once - tuning this
+#	blind, against nothing, would just be guessing which findings are
+#	false positives. Fill it in from real scan output, not in advance.
+#
+#	Format once populated: <rule id>	<IGNORE|WARN|FAIL>	<url regex, optional>

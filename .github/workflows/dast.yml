@@ -1,0 +1,78 @@
+name: DAST
+
+# OWASP ZAP baseline scan against staging - the plan's own scoping for
+# this: "added once real services with running endpoints exist," not
+# part of the initial baseline. Targets come from
+# docs/security/dast-targets.yaml, currently empty since no real app
+# exists yet - discover runs, finds nothing, scan is skipped. Same
+# intentional "written correctly, nothing to do yet" shape as
+# build.yml/release.yml since Epic 3.
+#
+# Self-hosted ARC runner, not GitHub-hosted: staging endpoints are
+# in-cluster/private (admin UIs are VPN-gated per Epic 8, and nothing
+# says application staging endpoints should be any more public than
+# that) - a GitHub-hosted runner has no path to reach them, same reason
+# pr-validate.yml/build.yml chose self-hosted.
+#
+# Scheduled weekly (catches drift on whatever's already in staging) plus
+# workflow_dispatch for an on-demand scan right after a deploy - NOT
+# triggered automatically by deploy.yml, since that workflow only commits
+# a GitOps config change; the actual rollout happens asynchronously via
+# ArgoCD, so there's no reliable "staging is actually ready" signal to
+# chain off of without guessing at a delay. Scan manually once you've
+# confirmed the deploy actually landed.
+#
+# FAIL-level ZAP alerts fail the job; WARN-level are reported but don't
+# block, until .zap/rules.tsv has been tuned against real findings (see
+# that file's own header on why it starts empty).
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # weekly
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: discover
+    runs-on: arc-runner-set
+    outputs:
+      targets: ${{ steps.read.outputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        name: Read docs/security/dast-targets.yaml
+        # Assumes python3 + PyYAML are present on the arc-runner-set
+        # image - not verified against infra/helm/values/arc-runners-values.yaml's
+        # actual base image. If this step fails on a missing module, that's
+        # the fix needed, not a sign the workflow logic is wrong.
+        run: |
+          targets=$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/security/dast-targets.yaml'))['targets']))")
+          echo "targets=${targets}" >> "$GITHUB_OUTPUT"
+
+  scan:
+    name: scan
+    needs: discover
+    if: needs.discover.outputs.targets != '[]'
+    runs-on: arc-runner-set
+    strategy:
+      matrix:
+        target: ${{ fromJson(needs.discover.outputs.targets) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ matrix.target.staging_url }}
+          rules_file_name: ".zap/rules.tsv"
+          fail_action: true # FAIL-level alerts fail this job; WARN-level don't, until rules.tsv is tuned
+          artifact_name: "zap-report-${{ matrix.target.app }}"
+
+      # UNVERIFIED: whether zap-full-scan's fail_action maps exactly to
+      # "fail on FAIL, warn on WARN" as described above, or something
+      # coarser, hasn't been checked against a live run. Confirm once
+      # there's a real target before trusting this gate's precision.

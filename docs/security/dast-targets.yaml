@@ -1,0 +1,19 @@
+# Convention: one entry per app that has a real, running staging
+# endpoint. .github/workflows/dast.yml reads this file to decide what to
+# scan - empty for now because no real app exists yet (this whole project
+# has been the pre-app-code security baseline). Add an entry here the
+# same PR that gives an app its first real staging deployment, not as an
+# afterthought.
+#
+# app: the apps/<name> directory this corresponds to.
+# staging_url: the app's staging endpoint, reachable from the ARC runner
+#   pool's network (same network staging itself lives on - see
+#   dast.yml's header on why this isn't scanned from a GitHub-hosted
+#   runner).
+
+targets: []
+
+# Example of what a real entry looks like, once one exists:
+# targets:
+#   - app: example-api
+#     staging_url: "http://example-api.staging.svc.cluster.local:8080"

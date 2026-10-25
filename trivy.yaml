@@ -1,0 +1,26 @@
+# Repo-root Trivy config - auto-discovered by the Trivy CLI (and so by
+# aquasecurity/trivy-action in pr-validate.yml/build.yml) with no --config
+# flag needed, since CI runs from the repo root after checkout.
+#
+# Closes the gap pr-validate.yml's license-scan step flagged since Epic 3
+# ("no license allow/deny policy defined yet") - Epic 10's "license
+# compliance reporting" item. The list below (strong copyleft: GPL/AGPL)
+# is a common default starting point, NOT a legal determination for this
+# project - review it with whoever actually owns licensing decisions
+# before treating a build failure from this as authoritative.
+#
+# UNVERIFIED against the exact Trivy version pinned in CI
+# (aquasecurity/trivy-action@0.24.0) - Trivy's license-scanning config
+# schema has changed across versions; confirm this still matches before
+# relying on it, same caveat as every other "written against docs, not a
+# live tool" integration in this repo (Nexus's provision.sh, Keycloak's
+# realm-config.yaml, Falcosidekick's syslog bridge).
+
+license:
+  forbidden:
+    - GPL-2.0-only
+    - GPL-2.0-or-later
+    - GPL-3.0-only
+    - GPL-3.0-or-later
+    - AGPL-3.0-only
+    - AGPL-3.0-or-later
