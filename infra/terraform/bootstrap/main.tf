@@ -77,6 +77,10 @@ resource "azurerm_network_security_group" "bootstrap" {
     destination_address_prefix = "*"
   }
 
+  # Despite the name, this isn't headscale's - headscale only listens on
+  # 8080. It's the WireGuard port of this host's own tailscaled (the VNet
+  # subnet router), so admin devices can connect to it directly instead of
+  # relaying through DERP. Name left as-is to avoid churning a live rule.
   security_rule {
     name                       = "AllowHeadscaleWireguard"
     priority                   = 111

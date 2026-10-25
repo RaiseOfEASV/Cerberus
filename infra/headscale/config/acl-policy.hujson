@@ -7,9 +7,27 @@
   // HuJSON (JSON + comments), matching Tailscale's own ACL syntax, which
   // headscale reuses - NOT HCL. An earlier version of this file used HCL
   // assignment syntax by mistake; fixed before anything tried to parse it.
+  //
+  // Plain usernames (no "@") - headscale 0.23's format. Newer headscale
+  // versions require "user@" here; update this if headscale is upgraded.
 
   "tagOwners": {
-    "tag:admin": ["CHANGE_ME_YOUR_HEADSCALE_USERNAME"]
+    "tag:admin": ["cerberus"],
+    // The bootstrap VM's own tailscale node: subnet router for the whole
+    // VNet. Owns no ACL rules as a source - it only forwards admin traffic.
+    "tag:router": ["cerberus"]
+  },
+
+  // The bootstrap VM routes the whole VNet (both subnets: 10.0.1.0/24 for
+  // itself, 10.0.2.0/24 for the cluster) rather than the cluster VM routing
+  // its own subnet - the bootstrap VM is always on (free tier) and is
+  // already the VPN's single point of failure, while the cluster VM gets
+  // deallocated to save credit. Auto-approved here so the allowed routes
+  // live in reviewed config, not in a manual `headscale routes enable`.
+  "autoApprovers": {
+    "routes": {
+      "10.0.0.0/16": ["tag:router"]
+    }
   },
 
   "acls": [

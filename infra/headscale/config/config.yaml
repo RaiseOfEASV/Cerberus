@@ -42,10 +42,10 @@ dns:
   # Traefik's real MetalLB-assigned LoadBalancer IP (confirmed - see
   # infra/k8s/metallb/ip-address-pool.yaml), not a placeholder anymore;
   # every hostname here resolves to the SAME IP since they're all fronted
-  # by one Traefik + oauth2-proxy. Still not actually reachable by VPN
-  # clients yet, though - that needs the cluster VM to join headscale's
-  # own tailnet as a subnet router advertising 10.0.2.0/24 first (not
-  # done - see BACKLOG.local.md).
+  # by one Traefik + oauth2-proxy. Reachable over the VPN via the bootstrap
+  # VM's subnet route (10.0.0.0/16, see README.md) - but clients run with
+  # --accept-dns=false until upstream nameservers are configured here, so
+  # these names don't resolve on clients yet; use the IP.
   extra_records:
     - name: "vault.admin.cerberus.internal"
       type: "A"
