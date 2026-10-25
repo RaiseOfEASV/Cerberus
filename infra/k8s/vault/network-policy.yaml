@@ -38,6 +38,38 @@ spec:
       ports:
         - { protocol: TCP, port: 8200 }
 ---
+# Vault's own server pods must reach the Kubernetes API, for two reasons:
+# `service_registration "kubernetes"` (vault-values.yaml) does a GetPod
+# BEFORE the listeners start serving, and the kubernetes auth method ESO
+# uses (infra/terraform/vault/) calls TokenReview on every login. Without
+# this, default-deny-all blocks both. That bug was nasty to find: k3s's
+# policy controller takes a few seconds to apply default-deny to a new
+# pod, so Vault worked whenever its startup call won that race and hung
+# on startup otherwise (socket bound, TLS handshake never answered, "Vault
+# server started!" never printed). Confirmed with a goroutine dump showing
+# main blocked in serviceRegistration.Run -> setInitialState.
+#
+# Matches the real API endpoint (node IP, :6443), not the kubernetes
+# Service's 10.43.0.1:443 - policy is evaluated after kube-proxy's DNAT.
+# The whole cluster subnet rather than a /32, since the node's private IP
+# is Azure-dynamic; port 6443 is only k3s's API server there.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apiserver-egress
+  namespace: vault
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      component: server
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: { cidr: 10.0.2.0/24 }
+      ports:
+        - { protocol: TCP, port: 6443 }
+---
 # Epic 9: the vault-backup CronJob's pod lives in THIS namespace, so it's
 # also subject to the default-deny egress above - needs its own explicit
 # allows to reach Vault's own API (snapshot step) and the external backup

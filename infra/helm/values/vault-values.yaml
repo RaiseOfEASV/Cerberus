@@ -34,6 +34,16 @@ injector:
   enabled: false
 
 server:
+  # Pinned so the server doesn't silently follow the chart's default
+  # (2.0.4 at time of writing). 1.17 matches infra/k8s/vault/
+  # backup-cronjob.yaml's snapshot container. The init/unseal hangs hit
+  # during first deploy were NOT version-related (same behavior on both) -
+  # they were a missing API-server egress allow, see
+  # infra/k8s/vault/network-policy.yaml's allow-apiserver-egress.
+  image:
+    repository: hashicorp/vault
+    tag: "1.17"
+
   ha:
     enabled: true
     replicas: 1
