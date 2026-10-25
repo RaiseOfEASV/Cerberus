@@ -1,0 +1,84 @@
+# Closes the gap docs/security/vault-unseal-procedure.md named explicitly
+# since Epic 6: "No snapshot schedule exists yet... tracked for Epic 9."
+#
+# Two containers, not one: an initContainer takes the raft snapshot using
+# Vault's own CLI (authenticating via this pod's own ServiceAccount token
+# against Vault's kubernetes auth method - no static Vault token anywhere),
+# writing it to a shared emptyDir; a second container uploads that file to
+# the dedicated backup MinIO (infra/backups/). Split this way so the
+# upload step doesn't need Vault credentials at all, and the snapshot step
+# doesn't need MinIO credentials at all - least privilege per container,
+# not just per Job.
+#
+# Uses vault-server-tls's own `ca.crt` key (issued in this same namespace
+# by infra/k8s/vault/certificate.yaml) rather than reaching into the
+# cert-manager namespace for the CA secret directly - a plain Secret
+# volume mount can't cross namespaces, but cert-manager already copies
+# the CA bundle into every Certificate it issues, so this namespace
+# already has a copy.
+#
+# NOT YET DEPLOYABLE: needs Epic 4's cluster, Vault deployed+unsealed+
+# configured (Epic 6), and infra/backups/ deployed (this epic).
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-backup
+  namespace: vault
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-raft-snapshot
+  namespace: vault
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-backup
+          restartPolicy: Never
+          initContainers:
+            - name: snapshot
+              image: hashicorp/vault:1.17
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  export VAULT_ADDR=https://vault.vault.svc:8200
+                  export VAULT_CACERT=/vault-tls/ca.crt
+                  jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+                  VAULT_TOKEN="$(vault write -field=token auth/kubernetes/login role=vault-backup jwt="${jwt}")"
+                  export VAULT_TOKEN
+                  vault operator raft snapshot save /backup/vault-snapshot.snap
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+                - { name: vault-tls, mountPath: /vault-tls, readOnly: true }
+          containers:
+            - name: upload
+              image: alpine:3.20
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  apk add --no-cache curl >/dev/null
+                  curl -sO https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc
+                  export MC_HOST_backup="https://${BACKUP_MINIO_ACCESS_KEY}:${BACKUP_MINIO_SECRET_KEY}@${BACKUP_MINIO_ENDPOINT}"
+                  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+                  ./mc cp /backup/vault-snapshot.snap "backup/cerberus-backups/vault/vault-${ts}.snap"
+              env:
+                - name: BACKUP_MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: access-key } }
+                - name: BACKUP_MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: secret-key } }
+                - name: BACKUP_MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: endpoint } }
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+          volumes:
+            - { name: backup, emptyDir: {} }
+            - name: vault-tls
+              secret: { secretName: vault-server-tls }
