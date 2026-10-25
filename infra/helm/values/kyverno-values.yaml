@@ -2,18 +2,29 @@
 # themselves live in infra/k8s/kyverno/policies/ - this is just the
 # controller/webhook deployment.
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster.
-
-replicaCount: 1
-
-backgroundScan:
-  # Re-evaluates existing resources on a schedule, not just new admissions -
-  # catches drift and anything that predates a policy being added.
-  enabled: true
-
-resources:
-  requests: { cpu: 100m, memory: 128Mi }
-  limits: { memory: 256Mi }
+# Chart v3.9.2 (Kyverno v1.19.2) split what used to be one controller into
+# four (admission/background/cleanup/reports), each with its own `replicas`
+# key - the top-level `replicaCount`/`backgroundScan`/`resources` keys this
+# originally used don't exist in that schema. Unlike the Traefik chart,
+# this one has no strict values.schema.json, so those stale keys were
+# silently ignored rather than erroring - installed "successfully" while
+# doing nothing, confirmed by checking the real schema after the fact
+# rather than trusting a clean `helm install` exit code.
+#
+# backgroundController.enabled is already `true` by default (re-evaluates
+# existing resources on a schedule, not just new admissions - catches
+# drift and anything that predates a policy being added) - set explicitly
+# below anyway so the intent isn't silently dependent on a chart default.
 
 admissionController:
   replicas: 1
+  container:
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 200m, memory: 256Mi }
+
+backgroundController:
+  enabled: true
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
