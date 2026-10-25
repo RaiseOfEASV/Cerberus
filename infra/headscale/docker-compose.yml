@@ -46,8 +46,13 @@ services:
       - ./config:/etc/headscale:ro
       - headscale-data:/var/lib/headscale
     ports:
-      - "41641:41641/udp" # WireGuard-protocol coordination traffic - must be public
-      - "8080:8080" # headscale's own gRPC/HTTP control API - also must be public, see header
+      # headscale's own HTTP/Noise control API - must be public, see header.
+      # It's the ONLY port headscale listens on (checked with `ss` inside
+      # the container). 41641/udp used to be mapped here too, but that's
+      # the tailscale CLIENT's WireGuard port, not the server's - the
+      # mapping did nothing except stop this host's own tailscaled (the
+      # VNet subnet router, see infra/headscale/README.md) from binding it.
+      - "8080:8080"
     environment:
       - TZ=UTC
 
