@@ -103,9 +103,27 @@ resource "azurerm_network_interface" "cluster" {
 
   ip_configuration {
     name                          = "internal"
+    primary                       = true
     subnet_id                     = azurerm_subnet.cluster.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.cluster.id
+  }
+
+  # MetalLB's default L2/ARP mode doesn't work on Azure's SDN unmodified -
+  # Azure only routes traffic to IPs it actually knows about on a NIC, it
+  # won't deliver to an address a VM just ARPs for on its own. Registering
+  # this IP as a real secondary IP configuration here is what makes
+  # Azure's network actually forward traffic to it; MetalLB's
+  # L2Advertisement (infra/k8s/metallb/ip-address-pool.yaml) then answers
+  # ARP for it as usual on top of that. Single IP, not a range/pool -
+  # this design only ever needs one (Traefik's own Service), see
+  # infra/headscale/config/config.yaml's own comment on why every admin
+  # hostname resolves to the same IP.
+  ip_configuration {
+    name                          = "metallb-pool"
+    subnet_id                     = azurerm_subnet.cluster.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = var.metallb_pool_ip
   }
 }
 
@@ -157,10 +175,26 @@ resource "azurerm_linux_virtual_machine" "cluster" {
   # kubeconfig this module fetches (pointed at the public IP, since
   # that's the only address reachable from outside the VM) would never
   # actually work.
+  #
+  # --disable traefik/servicelb: k3s bundles its own Traefik + ServiceLB
+  # (klipper) by default, which would otherwise fight the plan's own
+  # Helm-installed MetalLB + Traefik (infra/k8s/README.md) over the
+  # LoadBalancer IP. Disabled so only the deliberately-configured stack
+  # runs.
+  #
+  # --node-ip matters too: Azure's Linux agent brings up the NIC's
+  # secondary IP config (the MetalLB pool address) as eth0's OS-level
+  # primary address, ahead of the "internal" config this module marks
+  # `primary = true` at the Azure resource level - confirmed by actually
+  # SSHing in and checking `ip addr`. Without this flag k3s auto-detects
+  # its own node IP as the MetalLB pool address, which then collides
+  # with MetalLB's L2Advertisement trying to claim that same address as
+  # a floating Service VIP. Pinning it to the NIC's real primary address
+  # keeps the node's identity and the floating VIP separate.
   custom_data = base64encode(<<-CLOUDINIT
     #cloud-config
     runcmd:
-      - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${var.kubernetes_version} sh -s - server --write-kubeconfig-mode 644 --tls-san ${azurerm_public_ip.cluster.ip_address}
+      - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${var.kubernetes_version} sh -s - server --write-kubeconfig-mode 644 --tls-san ${azurerm_public_ip.cluster.ip_address} --disable traefik --disable servicelb --node-ip ${azurerm_network_interface.cluster.private_ip_address}
     CLOUDINIT
   )
 }
