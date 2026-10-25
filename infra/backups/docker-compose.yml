@@ -25,10 +25,20 @@
 #
 # NOT YET RUNNING: needs a persistent host (same "plain VM for now, Epic
 # 5's golden image later" caveat as every other standalone host here).
-
+#
+# Image: MinIO pulled its own images from Docker Hub and Quay stopped
+# anonymous pulls (project looks abandoned, no official announcement) -
+# confirmed by hitting "pull access denied" directly. Using Chainguard's
+# community mirror as a stopgap, pinned by digest per this repo's own
+# pinning policy. Real risk, not hidden: Chainguard's model generally
+# keeps only the rolling `latest` tag free, so if this exact digest ever
+# needs re-pulling somewhere it isn't already cached (a fresh clone, a
+# rebuilt host) and Chainguard has tightened access by then, it may
+# require auth. Revisit - an actively-maintained alternative (Garage,
+# SeaweedFS) was considered and deferred, not ruled out.
 services:
   minio-backups:
-    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    image: cgr.dev/chainguard/minio@sha256:268d68a2a3b6fc65f905a61f84d7eab6345ce6bff14f551e2b028ec31e6a1341
     restart: unless-stopped
     command: server /data --console-address ":9091"
     environment:
