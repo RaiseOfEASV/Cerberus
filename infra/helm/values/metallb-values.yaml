@@ -6,14 +6,27 @@
 # IPAddressPool/L2Advertisement are CRDs, not Helm values - see
 # infra/k8s/metallb/ after installing this chart.
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+# frrk8s.enabled is true by default - that's a BGP speaker sidecar
+# DaemonSet, unneeded since this design only ever uses L2Advertisement
+# (see infra/k8s/metallb/ip-address-pool.yaml). Left running it would've
+# meant patching its FRR container to satisfy require-readonly-rootfs
+# (Kyverno, below) for a component we don't actually use at all -
+# disabling it outright is the more honest fix than papering over it.
+#
+# limits.cpu was missing on both controller/speaker below - background
+# scan after Kyverno's require-resource-limits policy went in flagged
+# both as real violations (admission control doesn't retroactively evict
+# already-running pods, but any future recreation would have been
+# blocked). Only limits.memory was set before.
+frrk8s:
+  enabled: false
 
 controller:
   resources:
     requests: { cpu: 100m, memory: 100Mi }
-    limits: { memory: 200Mi }
+    limits: { cpu: 200m, memory: 200Mi }
 
 speaker:
   resources:
     requests: { cpu: 100m, memory: 100Mi }
-    limits: { memory: 200Mi }
+    limits: { cpu: 200m, memory: 200Mi }

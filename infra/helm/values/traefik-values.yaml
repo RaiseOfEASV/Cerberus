@@ -32,9 +32,14 @@ providers:
   kubernetesCRD:
     enabled: true
 
+# limits.cpu was missing - background scan after Kyverno's
+# require-resource-limits policy went in flagged this as a real
+# violation (admission control doesn't retroactively evict an
+# already-running pod, but any future recreation would have been
+# blocked).
 resources:
   requests: { cpu: 100m, memory: 128Mi }
-  limits: { memory: 256Mi }
+  limits: { cpu: 200m, memory: 256Mi }
 
 # NOTE: no cert-manager/ACME config here - TLS termination needs real
 # certificates from somewhere. Not decided yet: internal CA (consistent
