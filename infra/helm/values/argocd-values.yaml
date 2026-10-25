@@ -13,13 +13,33 @@
 # with that in front: Traefik/oauth2-proxy reach it in-cluster, nothing
 # public touches this Service directly.
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster.
+# dex (built-in SSO) and notifications are both chart defaults that this
+# design doesn't use - Epic 8 puts oauth2-proxy + Keycloak in front of
+# every admin UI instead of ArgoCD's own Dex, and no notification
+# receiver (Slack webhook, etc.) exists to wire up yet. Disabled rather
+# than left running unconfigured.
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
 
 server:
   service:
     type: ClusterIP
   extraArgs:
     - --insecure # TLS terminates at Traefik/oauth2-proxy once Epic 8 fronts this - revisit if that assumption changes
+  # limits.cpu was missing here and on every resources block below (chart
+  # defaults ship ALL of these as `resources: {}` - checked directly
+  # against the chart rather than guessing) - the same gap Kyverno's
+  # require-resource-limits policy already caught for real on
+  # metallb/traefik (see infra/k8s/README.md). Unlike that case, these
+  # components don't exist yet, so a missing limit here would have
+  # failed at admission time (helm install itself erroring), not shown
+  # up later via background scan.
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
 
 configs:
   params:
@@ -28,9 +48,30 @@ configs:
 controller:
   resources:
     requests: { cpu: 250m, memory: 256Mi }
-    limits: { memory: 512Mi }
+    limits: { cpu: 500m, memory: 512Mi }
 
 repoServer:
   resources:
     requests: { cpu: 100m, memory: 128Mi }
-    limits: { memory: 256Mi }
+    limits: { cpu: 200m, memory: 256Mi }
+
+redis:
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+applicationSet:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 200m, memory: 256Mi }
+
+# Found by actually running the install, not by auditing the chart
+# upfront: this Job's pre-install hook got blocked outright by Kyverno
+# before any of the main components even started - require-resource-
+# limits applies to Jobs too via Kyverno's autogen (it generates
+# equivalent rules for every pod-template-owning kind, not just bare
+# Pods).
+redisSecretInit:
+  resources:
+    requests: { cpu: 50m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 64Mi }
