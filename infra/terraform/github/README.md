@@ -52,8 +52,14 @@ state until then, flagged as a known gap; now resolved for every Terraform root,
 including this one. Run that instance first, then:
 
 ```
-terraform init -backend-config="conn_str=postgres://terraform:${TF_STATE_PG_PASSWORD}@<host>:5432/terraform_state?sslmode=require"
+terraform init -backend-config="conn_str=postgres://terraform:${TF_STATE_PG_PASSWORD}@<host>:5432/terraform_state?sslmode=disable"
 ```
+
+`sslmode=disable`, not `require` - the Postgres container has no SSL cert configured
+(confirmed against the real server - `require` fails with
+`pq: SSL is not enabled on the server`). `<host>` should be `localhost` via an SSH
+tunnel to the bootstrap VM, not its public IP - see
+`infra/terraform/cluster/README.md`'s "Reaching the backend" section.
 
 If you already ran `terraform init` against local state before this changed, you'll
 need `terraform init -migrate-state` to move the existing state into Postgres rather
