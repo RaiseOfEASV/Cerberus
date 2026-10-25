@@ -30,3 +30,13 @@ spec:
                 - keyless:
                     subjectRegExp: "https://github.com/RaiseOfEASV/Cerberus/\\.github/workflows/(build|base-images)\\.yml@.*"
                     issuer: "https://token.actions.githubusercontent.com"
+                    # Required now - Kyverno's admission webhook rejected this
+                    # policy outright without it ("Either Rekor URL or roots
+                    # are required"), where an older version apparently
+                    # defaulted silently to the public instance. Sigstore's
+                    # public transparency log - matches cosign's own default
+                    # when signing keylessly via GitHub OIDC in build.yml/
+                    # base-images.yml (Epic 2/3), so no separate Rekor
+                    # instance to stand up.
+                    rekor:
+                      url: https://rekor.sigstore.dev
