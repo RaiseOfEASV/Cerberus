@@ -8,7 +8,14 @@
 terraform {
   required_version = ">= 1.6"
 
-  backend "pg" {}
+  # Every root shares one Postgres database, and the pg backend keys state
+  # only by schema + workspace - each root needs its own schema_name or
+  # they silently read/write each other's state. This root's state already
+  # lives in the backend's default schema, so it's pinned there explicitly
+  # rather than moved.
+  backend "pg" {
+    schema_name = "terraform_remote_state"
+  }
 }
 
 provider "azurerm" {

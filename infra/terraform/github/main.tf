@@ -30,7 +30,12 @@ terraform {
   # via -backend-config, never committed (it embeds a password). See
   # infra/terraform-state/README.md for the instance this points at and why
   # pg over S3/MinIO.
-  backend "pg" {}
+  # Own schema - every root shares one Postgres database and the pg backend
+  # keys state only by schema + workspace (see infra/terraform/cluster/
+  # main.tf's backend comment).
+  backend "pg" {
+    schema_name = "github"
+  }
 }
 
 provider "github" {
