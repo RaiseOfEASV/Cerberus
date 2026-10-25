@@ -1,3 +1,17 @@
+# KNOWN GAP, not yet fixed: the `=(...)` anchors below are Kyverno's
+# CONDITIONAL anchor syntax - "if this field is present, it must equal
+# this value", not "this field must be present". A container that omits
+# securityContext entirely passes this policy vacuously, which defeats
+# its own stated intent. Confirmed for real: Traefik's own pod has no
+# runAsNonRoot key at all and is currently passing only because of this
+# looseness (checked directly via kubectl against the live pod).
+# Deliberately NOT tightened to a mandatory pattern (matching
+# require-readonly-rootfs.yaml's style) in the same pass that found
+# this - doing so would immediately fail Traefik (and likely MetalLB) on
+# their next recreation, and fixing that properly means auditing and
+# patching every already-deployed component's own Helm values, not a
+# one-line policy change. Tracked in the local backlog instead of fixed
+# piecemeal under an unrelated task.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
