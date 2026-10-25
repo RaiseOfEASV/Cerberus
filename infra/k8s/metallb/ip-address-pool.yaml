@@ -1,12 +1,13 @@
-# TODO before applying: the CIDR below is a PLACEHOLDER, not a real value -
-# don't apply this as-is. On a kind cluster, find the real range with:
-#
-#   docker network inspect kind | jq -r '.[0].IPAM.Config[0].Subnet'
-#
-# and pick a small, unused slice near the top of that subnet (kind assigns
-# node IPs from the bottom). On k3d or a real bare-metal network, the range
-# must be reachable from wherever you're running `kubectl`/`curl` against
-# Traefik's resulting external IP, and must not collide with DHCP.
+# Real value, not a placeholder: 10.0.2.50 is registered as a secondary IP
+# configuration on the cluster VM's own NIC (see
+# infra/terraform/modules/k8s-cluster/azure-k3s/main.tf's NIC resource) -
+# that registration is what makes Azure's SDN actually deliver traffic for
+# this address to the node at all. MetalLB's default L2/ARP mode doesn't
+# work unmodified on Azure otherwise, since Azure only routes to IPs it
+# knows about on a NIC, not whatever a VM ARPs for on its own. Single
+# address, not a range - this design only ever needs one (Traefik's own
+# Service; every admin hostname resolves to the same IP, see
+# infra/headscale/config/config.yaml's comment on why).
 
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
@@ -15,7 +16,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 172.18.255.200-172.18.255.250 # PLACEHOLDER - see above, confirm against your actual kind network
+    - 10.0.2.50/32
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
