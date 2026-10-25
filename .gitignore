@@ -64,3 +64,7 @@ BACKLOG.local.md
 
 # Added by ggshield
 .cache_ggshield
+
+# Saved `terraform plan` output - a local, transient artifact (and can
+# embed resource values), never meant to be version controlled.
+tfplan

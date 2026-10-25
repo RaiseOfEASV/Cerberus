@@ -11,7 +11,12 @@ those can never be Terraform resources, since the value would end up in state).
    initialized and unsealed per `docs/security/vault-unseal-procedure.md`.
 2. `export VAULT_TOKEN=<a real, sufficiently privileged token>` (not the raw root
    token for routine use - see the unseal doc on creating a scoped admin token).
-   `terraform init -backend-config="conn_str=postgres://terraform:${TF_STATE_PG_PASSWORD}@<host>:5432/terraform_state?sslmode=require"`,
+   `terraform init -backend-config="conn_str=postgres://terraform:${TF_STATE_PG_PASSWORD}@<host>:5432/terraform_state?sslmode=disable"` -
+   `disable`, not `require`: the Postgres container has no SSL cert configured
+   (confirmed against the real server - `require` fails with
+   `pq: SSL is not enabled on the server`). `<host>` should be `localhost` via an
+   SSH tunnel to the bootstrap VM, not its public IP - see
+   `infra/terraform/cluster/README.md`'s "Reaching the backend" section.
    then `terraform apply`. This creates the `secret/` KV mount, the `kubernetes`
    auth method, and the `eso-read`/`ci-read` policies + roles - but no actual
    secrets exist at any path yet.
