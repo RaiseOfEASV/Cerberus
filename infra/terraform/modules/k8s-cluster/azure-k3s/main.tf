@@ -191,10 +191,61 @@ resource "azurerm_linux_virtual_machine" "cluster" {
   # with MetalLB's L2Advertisement trying to claim that same address as
   # a floating Service VIP. Pinning it to the NIC's real primary address
   # keeps the node's identity and the floating VIP separate.
+  #
+  # pod-egress-snat-fix matters for a related reason, caught by actually
+  # exec-ing into a pod and testing outbound internet access: with two
+  # private IPs on eth0, flannel's generic MASQUERADE rule for pod-CIDR
+  # egress nondeterministically picks the MetalLB pool address (no
+  # public IP attached) instead of this node's real primary address (the
+  # one Azure's outbound NAT actually maps to the public IP) - confirmed
+  # by tcpdump on eth0: SYNs sourced from the pool address never got a
+  # SYN-ACK back, SYNs sourced from the primary address did. Fixed with
+  # an explicit SNAT rule for the pod subnet, inserted ahead of flannel's
+  # own rule, as a systemd service (not just a one-off runcmd command) so
+  # it's reasserted on every boot, not just the first one.
   custom_data = base64encode(<<-CLOUDINIT
     #cloud-config
+    write_files:
+      - path: /usr/local/bin/pod-egress-snat-fix.sh
+        permissions: "0755"
+        content: |
+          #!/bin/sh
+          set -eu
+          IFACE=eth0
+          POD_CIDR=10.42.0.0/16
+          SRC_IP=${azurerm_network_interface.cluster.private_ip_address}
+          # Wait for flannel's own chain to exist first - inserting our
+          # rule before flannel has set up its own would risk flannel's
+          # setup landing ABOVE ours afterward (both use `-I ... 1`, so
+          # whichever runs last wins the top position). Running after
+          # flannel is already in place means our insert is the one that
+          # ends up on top, deterministically.
+          for i in $(seq 1 30); do
+            iptables -t nat -L FLANNEL-POSTRTG >/dev/null 2>&1 && break
+            sleep 2
+          done
+          if ! iptables -t nat -C POSTROUTING -s "$POD_CIDR" ! -d "$POD_CIDR" -o "$IFACE" -j SNAT --to-source "$SRC_IP" 2>/dev/null; then
+            iptables -t nat -I POSTROUTING 1 -s "$POD_CIDR" ! -d "$POD_CIDR" -o "$IFACE" -j SNAT --to-source "$SRC_IP"
+          fi
+      - path: /etc/systemd/system/pod-egress-snat-fix.service
+        permissions: "0644"
+        content: |
+          [Unit]
+          Description=Pin pod-subnet egress SNAT to the NIC's public-IP-backed address
+          After=network-online.target k3s.service
+          Wants=network-online.target
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/bin/pod-egress-snat-fix.sh
+          RemainAfterExit=true
+
+          [Install]
+          WantedBy=multi-user.target
     runcmd:
       - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${var.kubernetes_version} sh -s - server --write-kubeconfig-mode 644 --tls-san ${azurerm_public_ip.cluster.ip_address} --disable traefik --disable servicelb --node-ip ${azurerm_network_interface.cluster.private_ip_address}
+      - systemctl daemon-reload
+      - systemctl enable --now pod-egress-snat-fix.service
     CLOUDINIT
   )
 }
