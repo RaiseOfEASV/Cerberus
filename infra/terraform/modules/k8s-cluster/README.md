@@ -22,8 +22,14 @@ without changing anything that consumes the module.
 | `kubeconfig`       | string, sensitive | Raw kubeconfig content, usable directly by the `kubernetes`/`helm` Terraform providers or written to disk for `kubectl`. |
 | `cluster_endpoint` | string         | The API server URL. |
 
-## Only one implementation exists today
+## Implementations
 
-`kind/` - local, single-host, for the "local kind/k3d now" phase of the plan. Nothing
-here is cloud-specific; adding `eks/`/`gke/`/`aks/` later means a new directory
-honoring the same contract, not a rewrite of `infra/terraform/cluster/`.
+- `kind/` - local, single-host, for the "local kind/k3d now" phase of the plan.
+- `azure-k3s/` - self-hosted k3s on a single Azure VM, reusing the resource
+  group/VNet `infra/terraform/bootstrap/` already created. Chosen over AKS to stay
+  consistent with the rest of this project's self-hosted-everything approach (own
+  runners, own Vault, own Nexus, own VPN). Single-node only for now - see that
+  module's `node_count` validation.
+
+Adding a different cloud (`eks/`/`gke/`) later means a new directory honoring the
+same contract, not a rewrite of `infra/terraform/cluster/`.
