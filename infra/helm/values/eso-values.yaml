@@ -3,18 +3,36 @@
 # manifests from the backend (Vault could be swapped later without
 # touching anything that currently references a Secret by name).
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault configured
-# (infra/terraform/vault/ applied - its `external-secrets` Kubernetes auth
-# role is what this operator's ServiceAccount authenticates as).
+# Needs infra/terraform/vault/ applied - its `external-secrets` Kubernetes
+# auth role is bound to exactly this ServiceAccount name + namespace.
+#
+# Checked against chart 2.14.0 before installing: all three components
+# ship `resources: {}`, which Kyverno's require-resource-limits would
+# reject at admission (same gap as every other chart here). The chart's
+# own securityContext defaults already satisfy the Kyverno/PSA baseline.
+# Its CRDs serve only external-secrets.io/v1 - v1beta1 is no longer
+# served, so every manifest in infra/k8s/eso/ was moved to v1.
 
 replicaCount: 1
 
-webhook:
-  replicaCount: 1
-
-certController:
-  replicaCount: 1
+# Pinned rather than derived from the release name - Vault's
+# `external-secrets` role binds to this exact name, so a different
+# release name would otherwise silently break auth.
+serviceAccount:
+  name: external-secrets
 
 resources:
   requests: { cpu: 50m, memory: 64Mi }
-  limits: { memory: 128Mi }
+  limits: { cpu: 100m, memory: 128Mi }
+
+webhook:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 64Mi }
+
+certController:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 128Mi }
