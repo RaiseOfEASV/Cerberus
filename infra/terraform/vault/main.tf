@@ -17,7 +17,13 @@ terraform {
     }
   }
 
-  backend "pg" {}
+  # Own schema - every root shares one Postgres database and the pg backend
+  # keys state only by schema + workspace (see infra/terraform/cluster/
+  # main.tf's backend comment). Without this, this root would load the
+  # cluster root's state.
+  backend "pg" {
+    schema_name = "vault"
+  }
 }
 
 provider "vault" {
