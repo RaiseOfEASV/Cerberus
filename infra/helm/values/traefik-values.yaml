@@ -2,7 +2,11 @@
 # external IP from MetalLB (Service.type: LoadBalancer) - install MetalLB
 # and apply infra/k8s/metallb/ip-address-pool.yaml first.
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster + MetalLB.
+# ports.web/websecure's shape is chart v42's (Traefik v3.7) - the
+# top-level `redirectTo`/`tls` keys this originally used are from an older
+# chart major version and were rejected outright by the schema
+# (`additional properties 'redirectTo'/'tls' not allowed`) the first time
+# this was actually installed. Nested under `http` now.
 
 service:
   type: LoadBalancer
@@ -11,11 +15,16 @@ ports:
   web:
     # Redirect to websecure - no plaintext HTTP for anything behind this,
     # including internal admin UIs once Epic 8 puts them here too.
-    redirectTo:
-      port: websecure
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
   websecure:
-    tls:
-      enabled: true
+    http:
+      tls:
+        enabled: true
 
 providers:
   kubernetesIngress:
