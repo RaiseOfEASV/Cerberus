@@ -21,8 +21,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
-    targetRevision: main
+    repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+    targetRevision: master
     path: infra/k8s/environments/dev
   destination:
     server: https://kubernetes.default.svc
@@ -40,8 +40,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
-    targetRevision: main
+    repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+    targetRevision: master
     path: infra/k8s/environments/staging
   destination:
     server: https://kubernetes.default.svc
@@ -59,8 +59,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:RaiseOfEASV/Cerberus.git
-    targetRevision: main
+    repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+    targetRevision: master
     path: infra/k8s/environments/prod
   destination:
     server: https://kubernetes.default.svc
