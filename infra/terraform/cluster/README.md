@@ -18,28 +18,35 @@ so it can reach terraform-state's Postgres and the backups MinIO (both on
    depends on).
 2. `infra/terraform-state/` must be running (see its README) - this uses the shared
    `pg` backend.
-3. Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in `admin_source_ip`
-   (gitignored, never commit it).
-4. `terraform init -backend-config="conn_str=postgres://terraform:${TF_STATE_PG_PASSWORD}@<host>:5432/terraform_state?sslmode=disable"`
-   (`sslmode=disable`, not `require` - the Postgres container has no SSL cert configured,
-   confirmed by hitting `pq: SSL is not enabled on the server` on the real first attempt.
-   Safe here because `<host>` should be `localhost`, reached through an SSH tunnel to the
-   bootstrap VM - see "Reaching the backend" below - not a plaintext connection over the
-   open internet.)
+3. **Be on the VPN** (`infra/headscale/README.md`). The cluster VM has no inbound
+   internet rules at all, so the kubeconfig fetch (SSH to the node's private IP) only
+   works over the tailnet.
+4. Export the backend connection string as `PG_CONN_STR` - the `pg` backend reads it
+   from the environment, which keeps the password off the command line (a
+   `-backend-config` argument shows up in `ps`):
+   ```
+   export PG_CONN_STR="postgres://terraform:${TF_STATE_PG_PASSWORD}@localhost:5432/terraform_state?sslmode=disable"
+   terraform init
+   ```
+   `sslmode=disable`, not `require` - the Postgres container has no SSL cert
+   configured. Safe because `localhost` is an SSH tunnel to the bootstrap VM (below),
+   not a plaintext connection over the open internet.
 
 ### Reaching the backend
 
 Postgres is bound to `127.0.0.1:5432` on the bootstrap VM only (see
 `infra/terraform-state/docker-compose.yml`'s own comment on why) - it is NOT reachable
-at the VM's public IP, by design. Until this VM has joined headscale's own tailnet
-(Epic 8), `terraform init`/`plan`/`apply` need an SSH tunnel first:
+at the VM's public IP, by design. Tunnel to it over SSH first:
 
 ```
-ssh -f -N -L 5432:127.0.0.1:5432 -i ~/.ssh/cerberus_azure cerberus-admin@<bootstrap-public-ip>
+ssh -f -N -o ServerAliveInterval=30 -L 5432:127.0.0.1:5432 -i ~/.ssh/cerberus_azure cerberus-admin@<bootstrap-ip>
 ```
 
-Then use `localhost:5432` as `<host>` in the `conn_str` above. Kill the tunnel
-(`pkill -f "5432:127.0.0.1:5432"`) when done.
+`<bootstrap-ip>` can be its public IP (SSH is still open there, admin-IP-restricted)
+or `10.0.1.4` over the VPN. `ServerAliveInterval` matters: a tunnel that sat idle for
+hours went stale once and hung `terraform init` indefinitely while still accepting
+local TCP connections, so a plain port check didn't catch it.
+
 5. `terraform plan` / `terraform apply`. The apply takes longer than the bootstrap
    VM's did - it waits (via a `null_resource` provisioner, polling over SSH) for
    k3s to finish installing before it can fetch the kubeconfig.
@@ -56,9 +63,16 @@ get installed against this cluster, in the order documented in `infra/k8s/README
 - Single node only (control-plane + worker combined) - `azure-k3s`'s `node_count`
   variable rejects anything but `1`. Adding workers means fetching k3s's join token
   from this node and feeding it into additional VMs' cloud-init - not built yet.
-- The Kubernetes API (6443) is restricted to `admin_source_ip`, not VPN-gated - same
-  reasoning as the bootstrap VM's SSH rule. Revisit once this VM has joined
-  headscale's tailnet as a client.
+- No inbound internet access at all: SSH and the Kubernetes API are reachable only
+  over the VPN, at the node's private IP (`10.0.2.4`). Break-glass if the VPN is
+  down: `az vm run-command invoke -g cerberus-rg -n cerberus-k3s-vm --command-id
+  RunShellScript --scripts '...'` - goes through the Azure VM agent, no network path
+  needed.
+- The plan shows a perpetual in-place diff on the VM
+  (`vm_agent_platform_updates_enabled = true -> false`) - an azurerm provider quirk,
+  Azure sets it itself. Don't apply it casually: an in-place VM update risks a reboot,
+  which reseals Vault (needs 2 unseal shares). Target other changes with `-target`
+  until the provider is upgraded.
 - VM size is `Standard_D4s_v4` (4 vCPU/16GB) on-demand, not Spot - chosen so the
   cluster doesn't go down mid-session from an eviction. `Standard_B4ms` hit a real
   `SkuNotAvailable` capacity stockout; `Standard_D4s_v5` hit a hard 0-vCPU quota on

@@ -1,4 +1,0 @@
-# Copy to terraform.tfvars (gitignored, never commit it) and fill in your
-# real current public IP - same one used for infra/terraform/bootstrap/,
-# unless it's changed since.
-admin_source_ip = "203.0.113.1/32"
