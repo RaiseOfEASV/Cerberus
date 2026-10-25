@@ -49,43 +49,27 @@ resource "azurerm_subnet" "cluster" {
   address_prefixes     = ["10.0.2.0/24"]
 }
 
+# No inbound rules from the internet at all. SSH (22) and the Kubernetes
+# API (6443) used to be open to a single admin IP; both are now reached
+# only over the VPN - the bootstrap VM's tailscale subnet router forwards
+# admin traffic across the VNet (infra/headscale/README.md), which Azure's
+# default AllowVnetInBound rule permits. Break-glass if the VPN is down:
+# `az vm run-command invoke` (goes through the Azure VM agent, no network
+# path needed - tested before these rules were removed).
+#
+# The public IP itself stays: it's this VM's outbound internet path, which
+# pod egress depends on (see pod-egress-snat-fix below).
 resource "azurerm_network_security_group" "cluster" {
   name                = "cerberus-cluster-nsg"
   resource_group_name = data.azurerm_resource_group.main.name
   location            = var.location
 
-  security_rule {
-    name                       = "AllowSSHAdmin"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = var.admin_source_ip
-    destination_address_prefix = "*"
-  }
-
-  # Kubernetes API - restricted to the admin IP for now, same as SSH.
-  # Not VPN-gated yet because kubectl needs to work before this VM has
-  # joined headscale's tailnet as a client, which is a follow-up step
-  # this module doesn't perform - see the module README.
-  security_rule {
-    name                       = "AllowKubernetesAPI"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "6443"
-    source_address_prefix      = var.admin_source_ip
-    destination_address_prefix = "*"
-  }
-
-  # Everything else (MetalLB/Traefik's future LoadBalancer IP, etc.) is
-  # deliberately not opened here - that's later Epic 4 work, once there's
-  # an actual ingress to expose and a considered call on public vs.
-  # VPN-only.
+  # Explicitly empty - NOT the same as omitting it. security_rule is an
+  # optional+computed attribute in azurerm 3.x: with no blocks at all,
+  # Terraform stops managing the rules and leaves whatever exists in Azure
+  # (a plan after just deleting the blocks showed "No changes" - the old
+  # SSH/API rules would have silently stayed open).
+  security_rule = []
 }
 
 resource "azurerm_public_ip" "cluster" {
@@ -250,19 +234,26 @@ resource "azurerm_linux_virtual_machine" "cluster" {
   )
 }
 
+locals {
+  # The node's private IP - the only address SSH and the API are reachable
+  # on (over the VPN), since the NSG above has no inbound rules.
+  node_ip = azurerm_network_interface.cluster.private_ip_address
+}
+
 # Pulls the kubeconfig off the VM once k3s is up, rewriting its
-# 127.0.0.1 server URL to the VM's real public IP. kind's provider hands
+# 127.0.0.1 server URL to the node's private IP. kind's provider hands
 # back a ready-to-use kubeconfig directly as a resource attribute; k3s
 # instead writes one to disk on the node that only works from localhost,
 # so this module has to fetch + rewrite it to honor the same output
 # contract. Retried in a loop because cloud-init's runcmd finishing
-# doesn't guarantee k3s has written the file yet.
+# doesn't guarantee k3s has written the file yet. Over SSH to the private
+# IP, so whoever runs this Terraform must be on the VPN.
 resource "null_resource" "fetch_kubeconfig" {
   depends_on = [azurerm_linux_virtual_machine.cluster]
 
   connection {
     type        = "ssh"
-    host        = azurerm_public_ip.cluster.ip_address
+    host        = local.node_ip
     user        = var.admin_username
     private_key = file(pathexpand(var.ssh_private_key_path))
     timeout     = "5m"
@@ -271,12 +262,12 @@ resource "null_resource" "fetch_kubeconfig" {
   provisioner "remote-exec" {
     inline = [
       "for i in $(seq 1 30); do [ -f /etc/rancher/k3s/k3s.yaml ] && break; sleep 10; done",
-      "sudo sed \"s/127.0.0.1/${azurerm_public_ip.cluster.ip_address}/\" /etc/rancher/k3s/k3s.yaml > /tmp/kubeconfig-fetched.yaml"
+      "sudo sed \"s/127.0.0.1/${local.node_ip}/\" /etc/rancher/k3s/k3s.yaml > /tmp/kubeconfig-fetched.yaml"
     ]
   }
 
   provisioner "local-exec" {
-    command = "scp -o StrictHostKeyChecking=accept-new -i ${pathexpand(var.ssh_private_key_path)} ${var.admin_username}@${azurerm_public_ip.cluster.ip_address}:/tmp/kubeconfig-fetched.yaml ${path.module}/kubeconfig-${var.cluster_name}.yaml"
+    command = "scp -o StrictHostKeyChecking=accept-new -i ${pathexpand(var.ssh_private_key_path)} ${var.admin_username}@${local.node_ip}:/tmp/kubeconfig-fetched.yaml ${path.module}/kubeconfig-${var.cluster_name}.yaml"
   }
 }
 
