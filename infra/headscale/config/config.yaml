@@ -38,33 +38,36 @@ dns:
   magic_dns: true
   base_domain: admin.cerberus.internal
   # Static records so VPN-connected clients can resolve each admin UI by
-  # name via MagicDNS, without needing a separate DNS server. IPs below
-  # are PLACEHOLDERS - fill in with Traefik's actual MetalLB-assigned
-  # LoadBalancer IP (see infra/k8s/metallb/ip-address-pool.yaml - also
-  # still a placeholder) once that's known; every hostname here resolves
-  # to the SAME IP since they're all fronted by one Traefik + oauth2-proxy.
+  # name via MagicDNS, without needing a separate DNS server. 10.0.2.50 is
+  # Traefik's real MetalLB-assigned LoadBalancer IP (confirmed - see
+  # infra/k8s/metallb/ip-address-pool.yaml), not a placeholder anymore;
+  # every hostname here resolves to the SAME IP since they're all fronted
+  # by one Traefik + oauth2-proxy. Still not actually reachable by VPN
+  # clients yet, though - that needs the cluster VM to join headscale's
+  # own tailnet as a subnet router advertising 10.0.2.0/24 first (not
+  # done - see BACKLOG.local.md).
   extra_records:
     - name: "vault.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "argocd.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "grafana.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "wazuh.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "kibana.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "dependency-track.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
     - name: "keycloak.admin.cerberus.internal"
       type: "A"
-      value: "CHANGE_ME_TRAEFIK_LB_IP"
+      value: "10.0.2.50"
 
 # headscale 0.23.0 moved this under policy.path (flat acl_policy_path is
 # a hard FATAL now, not just a deprecation warning - confirmed by hitting
