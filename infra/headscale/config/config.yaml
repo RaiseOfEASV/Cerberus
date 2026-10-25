@@ -1,11 +1,27 @@
-# headscale server config. server_url below is a PLACEHOLDER - must be the
-# real public hostname/IP this host ends up at, known only once it's
-# actually provisioned somewhere (same kind of placeholder as MetalLB's
-# CIDR in Epic 4 - not a real value, don't deploy as-is).
+# headscale server config. server_url is now the bootstrap VM's real
+# public IP (infra/terraform/bootstrap/) - plain HTTP, not HTTPS, because
+# nothing on this standalone host terminates TLS yet (cert-manager's
+# internal CA only covers in-cluster services). Real gap, not papered
+# over: headscale's own auth/registration traffic is unencrypted until
+# this gets a cert (e.g. certbot directly on this VM, since it has a
+# real public IP, unlike anything behind the internal CA).
 
-server_url: https://CHANGE_ME_HEADSCALE_HOST:8080
+server_url: http://4.223.133.113:8080
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 127.0.0.1:9090
+
+# Required since 0.23.0 for the Noise-based protocol (Tailscale v2).
+# Written to the data volume (not the read-only config mount) since
+# headscale generates this key itself on first run.
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+# Standard Tailscale CGNAT ranges - clients won't accept anything outside
+# what their own protocol supports, so these aren't arbitrary.
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
 
 database:
   type: sqlite
@@ -50,4 +66,9 @@ dns:
       type: "A"
       value: "CHANGE_ME_TRAEFIK_LB_IP"
 
-acl_policy_path: /etc/headscale/acl-policy.hujson
+# headscale 0.23.0 moved this under policy.path (flat acl_policy_path is
+# a hard FATAL now, not just a deprecation warning - confirmed by hitting
+# the crash directly).
+policy:
+  mode: file
+  path: /etc/headscale/acl-policy.hujson
