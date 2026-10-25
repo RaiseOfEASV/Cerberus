@@ -3,16 +3,21 @@
 # Admission labels, and a default-deny-both-directions NetworkPolicy.
 #
 # kube-system, kube-node-lease, kube-public, and the platform namespaces
-# this epic itself creates (metallb-system, traefik, argocd, kyverno,
-# arc-systems, arc-runners - the last two already label/policy themselves
-# manually in Epic 3; kube-bench needs `privileged` PSA and hostPath
-# access, see its own manifest) are excluded - PSA `restricted` on
-# kube-system breaks control-plane components, and the platform
-# namespaces manage their own, more specific NetworkPolicies rather than
-# a blanket deny-all. `traefik` was missing from this list until applying
-# it for real against the live cluster made clear a default-deny-all
-# NetworkPolicy on Traefik's own namespace would cut off all its ingress
-# and egress - caught before it ever got applied, not after.
+# this epic itself creates (metallb-system, traefik, cert-manager,
+# external-secrets, argocd, kyverno, arc-systems, arc-runners - the last
+# two already label/policy themselves manually in Epic 3; kube-bench
+# needs `privileged` PSA and hostPath access, see its own manifest) are
+# excluded - PSA `restricted` on kube-system breaks control-plane
+# components, and the platform namespaces manage their own, more
+# specific NetworkPolicies rather than a blanket deny-all. `traefik` was
+# missing from this list until applying it for real against the live
+# cluster made clear a default-deny-all NetworkPolicy on Traefik's own
+# namespace would cut off all its ingress and egress - `cert-manager` and
+# `external-secrets` added proactively afterward for the same reason
+# (neither has a tailored network-policy.yaml of its own, unlike `vault`
+# and `arc-runners`, which deliberately rely on this policy's
+# auto-generated default-deny and layer their own specific allows on top -
+# vault/arc-runners are correctly NOT in this list).
 #
 # Epic 7 adds: monitoring (node-exporter needs hostPath+hostNetwork),
 # wazuh-agent (DaemonSet needs hostPath+privileged, see its own manifest),
@@ -35,7 +40,7 @@ spec:
         any:
           - resources:
               names:
-                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
       mutate:
         patchStrategicMerge:
           metadata:
@@ -59,7 +64,7 @@ spec:
         any:
           - resources:
               names:
-                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
       generate:
         apiVersion: networking.k8s.io/v1
         kind: NetworkPolicy
