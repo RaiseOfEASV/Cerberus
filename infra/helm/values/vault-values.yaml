@@ -11,7 +11,7 @@
 # global.tlsDisable: false - Epic 8 landed the certificate strategy this
 # was deferred for (infra/k8s/cert-manager/, internal CA). The server cert
 # is issued by infra/k8s/vault/certificate.yaml, mounted via
-# extraVolumes/extraEnvironmentVars below. Still scoped by NetworkPolicy
+# volumes/volumeMounts below. Still scoped by NetworkPolicy
 # (infra/k8s/vault/network-policy.yaml) to only the namespaces that need
 # to reach Vault - TLS and network isolation are complementary, not
 # either/or, same reasoning as the VPN+identity-layer requirement in
@@ -58,21 +58,81 @@ server:
     enabled: true
     size: 10Gi
 
-  # UNVERIFIED against the installed chart version: `extraVolumes` with a
-  # `path` override is what should land this secret at /vault/tls/ to
-  # match the listener config above. If the installed vault-helm version
-  # doesn't support overriding the mount path this way, it'll default to
-  # /vault/userconfig/vault-server-tls/ instead - fix whichever side
-  # (this path or the listener's tls_cert_file/tls_key_file) is wrong
-  # before relying on this, don't assume it just works.
-  extraVolumes:
-    - type: secret
-      name: vault-server-tls # issued by infra/k8s/vault/certificate.yaml
-      path: /vault/tls
+  # Resolved the UNVERIFIED flag this comment used to carry: checked the
+  # installed chart (0.34.1) directly - `extraVolumes` is flagged
+  # deprecated there, and its `path` override's actual behavior relative
+  # to the chart's own `/vault/userconfig/<name>/` default isn't
+  # unambiguous. Switched to `volumes`/`volumeMounts`, which set the
+  # mount path directly and exactly - no guessing about chart-internal
+  # path-joining behavior.
+  volumes:
+    - name: vault-server-tls
+      secret:
+        secretName: vault-server-tls # issued by infra/k8s/vault/certificate.yaml
+    # readOnlyRootFilesystem broke Vault's own entrypoint script, caught
+    # from the real crash log ("cp: can't create '/tmp/storageconfig.hcl':
+    # Read-only file system") - it copies its rendered storage config to
+    # /tmp at startup, which needs to be writable even though nothing
+    # else does.
+    - name: tmp
+      emptyDir: {}
+  volumeMounts:
+    - name: vault-server-tls
+      mountPath: /vault/tls
+      readOnly: true
+    - name: tmp
+      mountPath: /tmp
 
+  # Without this, docs/security/vault-unseal-procedure.md's own claim
+  # that "kubectl exec into the pod still works exactly as below
+  # regardless [of TLS]" isn't actually true - `vault status`/`vault
+  # operator init` run with no flags and VAULT_CACERT unset fail with
+  # "certificate signed by unknown authority", since the CLI doesn't
+  # know to trust cerberus-internal-ca. cert-manager always includes the
+  # issuing CA in every Certificate's Secret under ca.crt, so this is
+  # already sitting right next to the server cert - just needed pointing
+  # to.
+  extraEnvironmentVars:
+    VAULT_CACERT: /vault/tls/ca.crt
+
+  # limits.cpu was missing (memory only) - same gap caught repeatedly on
+  # every other chart this session, fixed proactively here before
+  # installing rather than after.
   resources:
     requests: { cpu: 250m, memory: 256Mi }
-    limits: { memory: 512Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+  # The real key is server.statefulSet.securityContext, NOT
+  # server.securityContext (a different, unused key - confirmed by
+  # reading the chart's actual template helper after a first attempt
+  # with the wrong key got silently ignored and fell through to the
+  # chart's own hardcoded default, which only sets
+  # allowPrivilegeEscalation: false). require-readonly-rootfs (Kyverno,
+  # Epic 4) is a STRICT/mandatory pattern, unlike require-non-root's
+  # known-loose one (see that policy's own comment) - a missing
+  # readOnlyRootFilesystem fails admission outright, not vacuously.
+  # Vault's own writes go to /vault/data (the PV below) and /vault/tls
+  # (the mounted cert, already read-only) - nothing it needs requires a
+  # writable root filesystem.
+  statefulSet:
+    securityContext:
+      pod:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+        # Missing seccompProfile is what actually blocked the pod, caught
+        # from the real FailedCreate event, not the install command's own
+        # (non-fatal) warning text - PSA `restricted` rejected it at the
+        # StatefulSet-controller level, after `helm install` itself had
+        # already reported success.
+        seccompProfile:
+          type: RuntimeDefault
+      container:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
 
 ui:
   enabled: true
