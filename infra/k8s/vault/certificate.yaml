@@ -4,6 +4,13 @@
 # ARC runners connect to) and the admin-facing hostname (what a human
 # reaches via Traefik+oauth2-proxy+headscale) - a TLS cert checked by two
 # very different kinds of clients needs both.
+#
+# ipAddresses: 127.0.0.1 matters for docs/security/vault-unseal-
+# procedure.md's own claim that "kubectl exec into the pod still works
+# exactly as below regardless [of TLS]" - that command's default
+# VAULT_ADDR is https://127.0.0.1:8200, which failed cert verification
+# ("doesn't contain any IP SANs") until this was added. Without it, the
+# documented init/unseal commands don't actually work as written.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -15,6 +22,8 @@ spec:
     - vault.vault.svc
     - vault.vault.svc.cluster.local
     - vault.admin.cerberus.internal
+  ipAddresses:
+    - 127.0.0.1
   issuerRef:
     name: cerberus-internal-ca
     kind: ClusterIssuer
