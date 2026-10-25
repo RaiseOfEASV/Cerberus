@@ -11,14 +11,27 @@
 
 installCRDs: true
 
+# Checked the chart's real defaults before installing (every component -
+# controller, webhook, cainjector, startupapicheck - ships `resources: {}`
+# unless overridden): the same require-resource-limits gap caught on
+# every other chart this session, this time including a completely
+# missing limits block on webhook/cainjector, and startupapicheck
+# (a Job, like ArgoCD's redis-secret-init) not being set at all.
 resources:
   requests: { cpu: 50m, memory: 64Mi }
-  limits: { memory: 128Mi }
+  limits: { cpu: 100m, memory: 128Mi }
 
 webhook:
   resources:
     requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 64Mi }
 
 cainjector:
   resources:
     requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 64Mi }
+
+startupapicheck:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { cpu: 50m, memory: 64Mi }
