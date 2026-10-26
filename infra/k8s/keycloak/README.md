@@ -17,6 +17,17 @@ OIDC provider for the admin-UI identity layer, at two separate levels:
 and both native SSO logins have been confirmed end-to-end against a real
 browser session, not just config review.
 
+**The gate deliberately does NOT auto-redirect to Keycloak login.** Visiting
+`https://vault.admin.cerberus.internal/` or `https://argocd.admin.cerberus.internal/`
+unauthenticated gets a bare, opaque `401 Unauthorized` - no `Location` header,
+no indication Keycloak exists at all. This was built the other way first (a
+real `302` via Traefik's `errors` middleware + `statusRewrites`), then
+reverted on purpose: redirecting confirms to anyone who can merely reach the
+hostname (on the VPN, not yet authenticated) that it's live and exactly which
+Keycloak realm fronts it. **To actually log in, go to `/oauth2/start`
+directly** (e.g. `https://vault.admin.cerberus.internal/oauth2/start`) -
+bookmark that, not the bare hostname.
+
 ## Order of operations
 
 1. Epic 4's cluster, Epic 6's Vault/ESO, Epic 8's cert-manager + headscale.
