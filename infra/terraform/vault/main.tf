@@ -74,6 +74,13 @@ resource "vault_auth_backend" "kubernetes" {
 resource "vault_auth_backend" "oidc" {
   type = "oidc"
   path = "oidc"
+  # unauth here (not hidden - the opposite setting from kubernetes
+  # above) is what makes Vault's login UI actually feature this as the
+  # prominent/default option instead of a generic "Token" field with
+  # OIDC buried in a method dropdown a human has to know to switch to.
+  tune {
+    listing_visibility = "unauth"
+  }
 }
 
 # role_type/user_claim/bound_audiences/redirect URIs are all non-secret -
