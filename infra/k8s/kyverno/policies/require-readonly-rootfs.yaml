@@ -1,3 +1,14 @@
+# Named, scoped exception for Keycloak (infra/helm/values/keycloak-
+# values.yaml), same category as ARC's dind and kube-bench's privileged
+# mode (infra/k8s/README.md) - not a weakening of the policy for its
+# whole namespace. The codecentric/keycloakx chart's image isn't
+# pre-built "optimized", so Keycloak re-augments its Quarkus runtime on
+# every boot, rewriting /opt/keycloak/lib/quarkus/transformed-
+# bytecode.jar in place - confirmed by hitting the real
+# FileSystemException naming that exact path when this was still
+# readOnlyRootFilesystem: true. Scoped by label, not just namespace, so
+# keycloak-postgres (same namespace) and the keycloak-config-cli Job
+# stay fully subject to this policy.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -11,6 +22,13 @@ spec:
         any:
           - resources:
               kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              namespaces: [keycloak]
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: keycloakx
       validate:
         message: "Containers must set readOnlyRootFilesystem: true - mount an emptyDir for anything that genuinely needs to write."
         pattern:

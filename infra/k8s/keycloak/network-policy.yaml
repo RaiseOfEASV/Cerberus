@@ -1,0 +1,107 @@
+# default-deny-all is generated automatically by Kyverno (Epic 4) - these
+# are the specific allows on top of it: DNS egress, ingress on 8080 from
+# traefik (the UI route, infra/k8s/keycloak/ingressroute.yaml) and from
+# this same namespace (the keycloak-config-cli realm-import Job talking
+# to Keycloak's own API), egress within this namespace to Postgres, and
+# egress within this namespace to Keycloak's own port (the Job calling
+# out to it - a real, previously-missing rule, not covered by the
+# ingress-side allow above: ingress/egress are each enforced
+# independently, so the Job also needs its own permission to send that
+# traffic in the first place. Confirmed the hard way: a pod with the
+# Job's exact spec got "Connection refused" with 0ms latency hitting
+# both the Service and Keycloak's pod IP directly, and started working
+# immediately once a matching egress rule existed, with nothing else
+# changed).
+#
+# Separately, and still real: while tracking the above down,
+# podSelector/namespaceSelector "from" peers on the INGRESS side proved
+# unreliable under k3s's bundled NetworkPolicy controller (kube-router) -
+# repeated, isolated testing (podSelector alone, namespaceSelector alone,
+# combined, re-applying the policy object, two full k3s restarts after
+# installing the missing `ipset` userspace package) kept failing for
+# this pod specifically while an identical pattern kept working for
+# Postgres's. ipBlock-based peers (static CIDRs, no ipset) are
+# unaffected - infra/k8s/vault/network-policy.yaml's own
+# allow-apiserver-egress rule uses one and works fine. Not fully
+# root-caused and tracked as a real infra gap in the local backlog - the
+# ingress rule below is deliberately port-only (no peer restriction) as
+# the one pattern that tested reliably in every variation tried.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: keycloak
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-keycloak
+  namespace: keycloak
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: keycloakx }
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-keycloak
+  namespace: keycloak
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-postgres
+  namespace: keycloak
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: { matchLabels: { app: keycloak-postgres } }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+# The egress rule above only covers the SOURCE side (what keycloak's pod
+# is allowed to send). default-deny-all applies to Postgres too, as the
+# DESTINATION - with no matching ingress rule of its own, it silently
+# refused every connection regardless of the egress rule existing.
+# Confirmed with a direct nc test from a pod in this namespace before
+# writing this: connection failed with nothing else explaining why.
+#
+# Port-only, no peer restriction, same reason as allow-ingress-to-
+# keycloak above - this exact podSelector:{} pattern DID work when
+# first tested, but that can't be trusted: the kube-router issue
+# documented above affected an identical pattern on keycloak's own
+# ingress rule, and there's no confirmed reason this one is exempt
+# other than "hasn't broken yet." Converted proactively rather than
+# leaving a rule whose correctness depends on not asking why it works.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-postgres
+  namespace: keycloak
+spec:
+  podSelector: { matchLabels: { app: keycloak-postgres } }
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { protocol: TCP, port: 5432 }

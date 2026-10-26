@@ -15,6 +15,12 @@
 # infra/headscale/config/config.yaml's extra_records and
 # infra/k8s/oauth2-proxy/ingressroutes.yaml - keep all three in sync if
 # the domain ever changes.
+#
+# The "admins" group gates nothing by itself - without the client's own
+# protocolMappers (below) adding group membership to the token, and
+# oauth2-proxy's --oidc-groups-claim/--allowed-group actually checking
+# it, any authenticated user in this realm would pass through, group
+# membership or not.
 
 realm: cerberus-admin
 enabled: true
@@ -35,6 +41,25 @@ clients:
     webOrigins: ["+"]
     standardFlowEnabled: true
     directAccessGrantsEnabled: false
+    # Without this, the "admins" group below gates nothing - group
+    # membership isn't in the ID token by default, so oauth2-proxy's
+    # --allowed-group would have no claim to check against and every
+    # successfully authenticated Keycloak user would pass through
+    # regardless of group. full.path: "false" matters too: with it true
+    # the claim value is "/admins", which has to match oauth2-proxy's
+    # --allowed-group exactly - set to "false" so the claim is the bare
+    # group name instead, consistent with the oauth2-proxy-values.yaml
+    # flag below.
+    protocolMappers:
+      - name: groups
+        protocol: openid-connect
+        protocolMapper: oidc-group-membership-mapper
+        config:
+          claim.name: groups
+          full.path: "false"
+          id.token.claim: "true"
+          access.token.claim: "true"
+          userinfo.token.claim: "true"
 
 groups:
   - name: admins

@@ -1,34 +1,124 @@
-# Values for the `keycloak` chart (bitnami). OIDC provider for every admin
-# UI's identity-layer check (oauth2-proxy, infra/k8s/oauth2-proxy/).
-# Keycloak's own admin console is protected by its own built-in login -
-# it doesn't need oauth2-proxy in front of itself, but it DOES still sit
-# behind headscale like every other admin surface (Traefik Ingress below
-# only has an internal hostname, never public).
+# Values for the `keycloakx` chart (codecentric/helm-charts). OIDC
+# provider for every admin UI's identity-layer check (oauth2-proxy,
+# infra/k8s/oauth2-proxy/). Keycloak's own admin console is protected by
+# its own built-in login - it doesn't need oauth2-proxy in front of
+# itself, but it DOES still sit behind headscale like every other admin
+# surface (Traefik IngressRoute below only has an internal hostname,
+# never public).
 #
-# Admin credentials and the dedicated Postgres DB both come from Vault via
-# ESO - never hardcoded here. Bitnami's bundled `postgresql` subchart is
-# used rather than sharing any other Postgres in this repo (same
-# one-DB-per-app pattern as Dependency-Track in Epic 7).
+# Originally scaffolded against Bitnami's keycloak chart - switched to
+# codecentric/keycloakx, which uses the official quay.io/keycloak/keycloak
+# image directly. Bitnami moved most of their free images to a slower
+# "legacy" tier after Broadcom's acquisition (the same class of problem
+# that hit MinIO's own Docker Hub distribution, infra/backups/), and
+# their chart also bundles its own Postgres subchart rather than this
+# project's existing one-DB-per-app pattern. Dedicated Postgres for this
+# app is infra/k8s/keycloak/postgres.yaml instead.
 #
-# NOT YET DEPLOYABLE: needs Epic 4's cluster + Epic 6's Vault/ESO +
-# Epic 8's cert-manager (for the Ingress's TLS).
+# Admin credentials and the DB password both come from Vault via ESO -
+# never hardcoded here.
 
-auth:
-  existingSecret: keycloak-admin-credentials # synced by ESO
+# Without this, the chart's default fullname helper produces
+# "keycloak-keycloakx" (release name + chart name, since "keycloak"
+# doesn't contain "keycloakx") - every cross-reference to this chart's
+# Service (IngressRoute, NetworkPolicy, the realm-import Job) assumes the
+# plain "keycloak" name instead.
+fullnameOverride: keycloak
 
-postgresql:
-  enabled: true
-  auth:
-    existingSecret: keycloak-db-credentials # synced by ESO
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: "26.8.1"
 
-ingress:
-  enabled: true
-  ingressClassName: traefik
-  hostname: keycloak.admin.cerberus.internal
-  tls: true
-  annotations:
-    cert-manager.io/cluster-issuer: cerberus-internal-ca
+# Chart defaults command/args to [] - with nothing overriding the
+# image's own entrypoint, the container just printed kc.sh's help text
+# and exited cleanly (so Running -> immediate restart, not an obvious
+# crash). "start" runs production mode on the plain, un-optimized image
+# (no custom "kc.sh build" step baked into a custom image here, so
+# --optimized isn't available - this re-augments the config at every
+# boot instead, slower but works unmodified).
+#
+# --http-host=0.0.0.0 matters too: without it, Keycloak/Quarkus bound to
+# [::]:8080 (IPv6 only) on this image/JVM - confirmed by reading
+# /proc/net/tcp *and* /proc/net/tcp6 directly inside the pod (tcp was
+# completely empty, tcp6 showed it listening). The cluster's pod network
+# (flannel) is IPv4-only, so every IPv4 connection attempt - from
+# literally any namespace, including Traefik's - got an immediate
+# "connection refused" (nothing silently dropped, genuinely no IPv4
+# listener), which looked exactly like a NetworkPolicy block until ruled
+# out by testing from multiple namespaces and getting the identical
+# result each time.
+#
+# --http-host=0.0.0.0 alone didn't fix it, confirmed by reading
+# /proc/net/tcp again after setting it - still only tcp6, still
+# "connection refused" from every namespace tested, including directly
+# to the pod's own IP (bypassing the Service entirely). That flag
+# apparently only affects the hostname Quarkus reports/redirects to, not
+# which socket family it actually binds. Forcing IPv4 at the JVM level
+# instead, via JAVA_OPTS_APPEND (kc.sh's own startup script picks this
+# up) - this is what actually changed the bind.
+args: ["start"]
+
+database:
+  vendor: postgres
+  hostname: keycloak-postgres.keycloak.svc
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-db-credentials
+  existingSecretKey: postgres-password
+
+# Keycloak 26 dropped the /auth context path by default; this chart
+# re-adds it "for backwards compatibility" - overridden back to root so
+# every hostname/redirectUri already written (infra/keycloak/
+# realm-config.yaml, infra/k8s/oauth2-proxy/oauth2-proxy-values.yaml,
+# infra/headscale/) doesn't need an extra /auth segment.
+http:
+  relativePath: "/"
+
+# Keycloak 26's production ("start", not "start-dev") mode needs an
+# explicit hostname - Traefik terminates TLS and forwards via
+# X-Forwarded-*, which proxy.mode: forwarded (chart default) already
+# expects.
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: https://keycloak.admin.cerberus.internal
+  - name: JAVA_OPTS_APPEND
+    value: -Djava.net.preferIPv4Stack=true
+  # Keycloak 26 renamed the admin-bootstrap env vars from
+  # KEYCLOAK_ADMIN/KEYCLOAK_ADMIN_PASSWORD to these - only takes effect
+  # on a genuinely empty database (first boot), same as the old ones did.
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    valueFrom: { secretKeyRef: { name: keycloak-admin-credentials, key: admin-user } }
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom: { secretKeyRef: { name: keycloak-admin-credentials, key: admin-password } }
+
+# Default is {} on every field this chart ships - checked before
+# installing, same gap as every other chart this session.
+#
+# readOnlyRootFilesystem: false is a deliberate, named exception to the
+# restricted-everywhere posture - same category as ARC's dind and
+# kube-bench's privileged mode (infra/k8s/README.md), not an oversight.
+# This image isn't pre-built "optimized" (no custom Dockerfile/kc.sh
+# build step here), so Keycloak re-augments its Quarkus runtime on every
+# boot, which means writing a rebuilt transformed-bytecode.jar back into
+# /opt/keycloak/lib/quarkus - not just /tmp, which was the actual first
+# guess and wasn't enough (confirmed by the real FileSystemException
+# naming that exact path). A real fix exists - build a custom optimized
+# image ("kc.sh build") the same "rebuild, don't patch" way Epic 5's
+# golden VM image works - but that's a bigger piece of infra than this
+# pass covers; tracked in the local backlog instead of half-done here.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities: { drop: [ALL] }
+  seccompProfile: { type: RuntimeDefault }
 
 resources:
-  requests: { cpu: 250m, memory: 512Mi }
-  limits: { memory: 1Gi }
+  requests: { cpu: 250m, memory: 768Mi }
+  limits: { cpu: 500m, memory: 1Gi }
+
+# This project fronts every admin UI with its own Traefik IngressRoute +
+# Certificate (infra/k8s/keycloak/ingressroute.yaml), matching Vault's and
+# ArgoCD's pattern, rather than this chart's own Ingress resource.
+ingress:
+  enabled: false

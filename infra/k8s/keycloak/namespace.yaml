@@ -1,0 +1,8 @@
+# Just the Namespace - Kyverno's enforce-restricted-psa-labels and
+# generate-default-deny-networkpolicy (Epic 4) handle the rest
+# automatically, same as infra/k8s/vault/namespace.yaml. network-
+# policy.yaml in this directory only adds the specific allows on top.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
