@@ -1,0 +1,52 @@
+# Interim VPN-only route to Vault's UI/API through Traefik - no identity
+# layer yet (Epic 8's Keycloak/oauth2-proxy aren't deployed). Access today
+# is gated by the VPN alone (infra/headscale/) plus Vault's own login.
+# Same hostname, cert Secret name, and Certificate resource that
+# infra/k8s/oauth2-proxy/ingressroutes.yaml already defines for the full,
+# identity-gated version - when oauth2-proxy lands, delete THIS file and
+# apply that one instead of duplicating/diverging the route definition.
+#
+# scheme: https + the ServersTransport below: vault's own listener is
+# TLS-only (no plain HTTP), so Traefik has to speak HTTPS to the backend
+# too. insecureSkipVerify is a real, deliberate gap, not an oversight -
+# Traefik has no CA bundle to validate vault-ui's cert against (it's
+# issued by cerberus-internal-ca, in a different namespace). Acceptable
+# for now because this hop never leaves the cluster's own pod network -
+# revisit by giving the ServersTransport that CA via a synced secret if
+# this needs tightening later.
+
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: vault-backend-tls
+  namespace: vault
+spec:
+  insecureSkipVerify: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`vault.admin.cerberus.internal`)"
+      kind: Rule
+      services:
+        - name: vault-ui
+          port: 8200
+          scheme: https
+          serversTransport: vault-backend-tls
+  tls:
+    secretName: vault-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-admin-tls
+  namespace: vault
+spec:
+  secretName: vault-admin-tls
+  dnsNames: ["vault.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }

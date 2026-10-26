@@ -1,0 +1,36 @@
+# Interim VPN-only route to the ArgoCD UI through Traefik - no identity
+# layer yet (Epic 8's Keycloak/oauth2-proxy aren't deployed). Access today
+# is gated by the VPN alone (infra/headscale/) plus ArgoCD's own login.
+# Same hostname, cert Secret name, and Certificate resource that
+# infra/k8s/oauth2-proxy/ingressroutes.yaml already defines for the full,
+# identity-gated version - when oauth2-proxy lands, delete THIS file and
+# apply that one instead of duplicating/diverging the route definition.
+#
+# Plain port 80: argocd-server runs with --insecure (argocd-values.yaml) -
+# TLS already terminates here at Traefik, so the backend hop is HTTP.
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`argocd.admin.cerberus.internal`)"
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+  tls:
+    secretName: argocd-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-admin-tls
+  namespace: argocd
+spec:
+  secretName: argocd-admin-tls
+  dnsNames: ["argocd.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
