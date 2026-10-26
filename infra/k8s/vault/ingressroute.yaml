@@ -69,12 +69,20 @@ spec:
     - match: "Host(`vault.admin.cerberus.internal`)"
       kind: Rule
       priority: 10
-      # Traefik applies middlewares outermost-first, so the errors
-      # middleware (which needs to catch forwardAuth's 401 response) has
-      # to be listed BEFORE forwardAuth here, not after - confirmed the
-      # hard way, forwardauth-then-errors never triggered the redirect.
+      # Deliberately NO oauth2-proxy-errors middleware here - that one
+      # substitutes a redirect-to-Keycloak-login body onto forwardAuth's
+      # 401, which auto-navigates a browser straight into a login screen.
+      # That's a real information disclosure to anyone who can merely
+      # reach this hostname (on the VPN) but hasn't authenticated at all:
+      # it confirms the hostname is live, gated, and tells them exactly
+      # which Keycloak realm to go attack. forwardAuth alone just
+      # returns its own bare 401 ("Unauthorized", no Location header, no
+      # hint of Keycloak) - unauthenticated requests get nothing to work
+      # with. The real cost: nobody gets auto-redirected into login
+      # anymore either - a legitimate admin has to know to visit
+      # /oauth2/start on this host directly to begin a session, not just
+      # browse to "/". Deliberate tradeoff, not an oversight.
       middlewares:
-        - { name: oauth2-proxy-errors, namespace: oauth2-proxy } # catches the 401 and redirects to Keycloak login - see infra/k8s/oauth2-proxy/forwardauth-middleware.yaml
         - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
       services:
         - name: vault-ui
