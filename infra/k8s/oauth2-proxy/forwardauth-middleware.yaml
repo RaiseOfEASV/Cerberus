@@ -21,18 +21,13 @@ spec:
 # directly: a real unauthenticated request got back a 401 with no
 # Location header at all). This catches that 401 and queries oauth2-
 # proxy's real sign-in flow (/oauth2/start), which does produce a 302 to
-# Keycloak - but Traefik's errors middleware preserves the ORIGINAL
-# triggering status code (401) while substituting the error-service's
-# body/headers, confirmed both by inspecting the raw response and by
-# curl's own -L (redirect-follow) logic refusing to follow it (0
-# redirects). So the end result is a 401 whose body is a working
-# clickable link to Keycloak's login (not a blind bug - Traefik's
-# `errors` middleware is genuinely built for serving custom error PAGES,
-# preserving the triggering status, not for turning one status into
-# another). Real security gate either way (unauthenticated requests
-# never reach the backend) - this only affects whether a browser
-# auto-navigates or a person clicks once. Tracked in the local backlog
-# as a UX gap, not a security one.
+# Keycloak - but Traefik's errors middleware, without statusRewrites,
+# preserves the ORIGINAL triggering status (401) while substituting the
+# error-service's body/headers. A real browser doesn't auto-navigate a
+# 401+Location (confirmed hitting this live - the user got a raw "<a
+# href=...>Found</a>" link, not a redirect), so statusRewrites below
+# forces the client-facing status to a real 302, which Traefik v3.5+
+# supports on this exact middleware for exactly this case.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -41,6 +36,8 @@ metadata:
 spec:
   errors:
     status: ["401-403"]
+    statusRewrites:
+      "401-403": 302
     query: "/oauth2/start?rd={url}"
     service:
       name: oauth2-proxy
