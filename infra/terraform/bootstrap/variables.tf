@@ -38,13 +38,16 @@ variable "ssh_public_key_path" {
   default     = "~/.ssh/cerberus_azure.pub"
 }
 
-variable "admin_source_ip" {
+variable "admin_source_ips" {
   description = <<-EOT
-    CIDR allowed to reach SSH (22). No safe default - must be set
-    explicitly. Detected as 91.101.59.222/32 at the time this root was
-    written; if that IP is dynamic, update this and re-apply when it
-    changes, or SSH will start failing with no obvious error from this
-    side.
+    CIDRs allowed to reach SSH (22). No safe default - must be set
+    explicitly. A list, not a single value, because the admin's actual
+    source IP isn't singular: two homes, each with its own dynamic ISP
+    IP. Caught for real when a plain SSH to the public IP started
+    silently failing with no error on this side, while the VPN path
+    (unaffected - that's a WireGuard connection to the VM's own tailnet
+    identity, not this NSG rule) kept working and made the mismatch easy
+    to spot. Update and re-apply whenever either IP changes.
   EOT
-  type        = string
+  type        = list(string)
 }
