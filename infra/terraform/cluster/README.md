@@ -47,6 +47,17 @@ or `10.0.1.4` over the VPN. `ServerAliveInterval` matters: a tunnel that sat idl
 hours went stale once and hung `terraform init` indefinitely while still accepting
 local TCP connections, so a plain port check didn't catch it.
 
+**`TF_STATE_PG_PASSWORD` has nowhere durable to live - save it yourself, somewhere
+real.** This password is only ever passed as an env var at `docker compose up`
+time on the bootstrap VM (see `infra/terraform-state/docker-compose.yml`'s own
+`${TF_STATE_PG_PASSWORD:?...}` references) - it's never written to a file there,
+and it can't go in Vault either (this is the backend that stores the state for
+the Terraform root that sets Vault up in the first place - a circular
+dependency). Found this out the hard way: an earlier rotation of this exact
+password was never saved anywhere, and was unrecoverable except by rotating it
+again. If you rotate it, put the new value in your own password manager
+immediately - not a local file, not this repo, not anywhere "temporary."
+
 5. `terraform plan` / `terraform apply`. The apply takes longer than the bootstrap
    VM's did - it waits (via a `null_resource` provisioner, polling over SSH) for
    k3s to finish installing before it can fetch the kubeconfig.

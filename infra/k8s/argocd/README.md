@@ -14,6 +14,20 @@ reconciles that onto the cluster from here, under its own in-cluster credentials
    port-forward svc/argocd-server -n argocd 8080:80` still works as a fallback -
    never expose this via a public ingress either way.
 
+## Logging in - two separate options, deployed and verified
+
+- **The default `admin` user** - password from `argocd-initial-admin-secret`
+  initially, same as any fresh install. Still works as a break-glass path.
+- **"Log in via Keycloak"** - real native SSO (`configs.cm.oidc.config` in
+  `../../helm/values/argocd-values.yaml`), separate from the oauth2-proxy gate
+  in front of this UI - that gate only checks "is this request allowed through
+  at all," this is ArgoCD's own login, mapping the Keycloak `admins` group to
+  `role:admin` via `configs.rbac`. See `infra/k8s/keycloak/README.md` for the
+  full setup (dedicated `argocd` Keycloak client, the CA-trust fix this needed
+  for its own outbound discovery call, and a real recurring hazard around
+  re-running the realm-config Job that's worth reading before touching any of
+  this again).
+
 ## Why prod doesn't auto-sync
 
 `root-prod`'s `syncPolicy.automated` is `null` on purpose. `deploy.yml`'s `production`
