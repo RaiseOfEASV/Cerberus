@@ -39,6 +39,14 @@ resource "vault_mount" "kv" {
 
 resource "vault_auth_backend" "kubernetes" {
   type = "kubernetes"
+  # Hides this from Vault's own login UI's method list - ESO authenticates
+  # via the API directly (TokenReview), never through the UI, so this is
+  # purely about not showing a human a login option that was never meant
+  # for them. Doesn't affect API/CLI access at all - listing_visibility is
+  # a UI-discovery setting, not an authorization control.
+  tune {
+    listing_visibility = "hidden"
+  }
 }
 
 # --- Native SSO: Keycloak login directly into Vault itself ---
