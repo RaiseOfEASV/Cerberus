@@ -1,8 +1,11 @@
 # default-deny-all is generated automatically by Kyverno (Epic 4) - these
 # are just the specific allows on top of it: DNS egress, and ingress on
-# 8200 from the two namespaces that actually need to reach Vault
+# 8200 from the namespaces that actually need to reach Vault
 # (external-secrets and arc-runners - the latter already has the matching
-# allow-vault-egress rule in infra/k8s/arc/network-policy.yaml from Epic 3).
+# allow-vault-egress rule in infra/k8s/arc/network-policy.yaml from Epic 3;
+# and traefik, for the UI route in infra/k8s/vault/ingressroute.yaml - a
+# real 502 on first testing that route, confirmed with a test pod in the
+# traefik namespace getting nothing back at all, led straight here).
 
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -35,6 +38,9 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: arc-runners
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
       ports:
         - { protocol: TCP, port: 8200 }
 ---
