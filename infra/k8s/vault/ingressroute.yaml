@@ -28,8 +28,27 @@ metadata:
 spec:
   entryPoints: [websecure]
   routes:
+    # oauth2-proxy's own /oauth2/* paths (callback, start, sign_in,
+    # static assets) must reach oauth2-proxy itself directly, with NO
+    # forwardAuth/errors middleware applied - confirmed the hard way:
+    # without this, Keycloak's redirect back to /oauth2/callback?code=...
+    # also got routed through forwardAuth, which found no session cookie
+    # yet (the callback hasn't been processed to SET one), returned 401,
+    # and the errors middleware wrapped the callback's OWN URL as the
+    # "rd" target of a brand new login - an infinite nested-redirect
+    # loop, not a one-off glitch. Higher priority than the catch-all rule
+    # below so this always wins regardless of Traefik's default rule-
+    # length-based ordering.
+    - match: "Host(`vault.admin.cerberus.internal`) && PathPrefix(`/oauth2`)"
+      kind: Rule
+      priority: 100
+      services:
+        - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 80
     - match: "Host(`vault.admin.cerberus.internal`)"
       kind: Rule
+      priority: 10
       # Traefik applies middlewares outermost-first, so the errors
       # middleware (which needs to catch forwardAuth's 401 response) has
       # to be listed BEFORE forwardAuth here, not after - confirmed the
