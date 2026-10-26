@@ -16,20 +16,78 @@
 # Keycloak's realm actually applied (infra/k8s/keycloak/README.md).
 
 config:
-  clientID: oauth2-proxy
   existingSecret: oauth2-proxy-credentials # synced by ESO - provides client-secret and cookie-secret
+  # The chart only renders config.clientID as a flag/env var when
+  # client-id is ALSO in requiredSecretKeys (i.e. it assumes every value
+  # here comes from existingSecret, or none do) - confirmed by a real
+  # "provider missing setting: client-id" crash with clientID set but
+  # requiredSecretKeys excluding it. client-id isn't actually a secret
+  # (it's the public client identifier, matching infra/keycloak/
+  # realm-config.yaml), so it's passed directly below instead of syncing
+  # a non-secret into Vault just to satisfy the chart's all-or-nothing
+  # existingSecret handling.
+  requiredSecretKeys:
+    - client-secret
+    - cookie-secret
 
 extraArgs:
+  client-id: oauth2-proxy
   provider: keycloak-oidc
   oidc-issuer-url: https://keycloak.admin.cerberus.internal/realms/cerberus-admin
-  redirect-url: https://admin.cerberus.internal/oauth2/callback
+  # No --redirect-url: a fixed value here would send every login back to
+  # one hostname regardless of which admin UI the browser actually came
+  # from - wrong for one shared instance fronting six different
+  # hostnames (realm-config.yaml's redirectUris list is per-host, e.g.
+  # vault.admin.cerberus.internal/oauth2/callback, for exactly this
+  # reason). Omitting it lets oauth2-proxy build the callback from the
+  # request's own Host header instead, scoped by whitelist-domain below.
+  # reverse-proxy: true matters so it reads scheme/host from Traefik's
+  # forwarded headers rather than assuming the plain-http hop it actually
+  # receives the ForwardAuth call over.
+  reverse-proxy: true
+  # Without this, --reverse-proxy trusts X-Forwarded-* from literally any
+  # source IP (0.0.0.0/0) to supply the real client IP - a real warning
+  # this chart logs on startup. Traefik's pod IP is dynamic (Services
+  # don't preserve a static source IP for outbound ForwardAuth calls),
+  # so the pod CIDR is the narrowest static scope available; the
+  # NetworkPolicy ingress rule (only from traefik, port 4180) is the
+  # actual enforcement boundary for who can reach this port at all.
+  trusted-proxy-ip: 10.42.0.0/16
   cookie-domain: .admin.cerberus.internal
   whitelist-domain: .admin.cerberus.internal
   email-domain: "*"
-  upstreams: "static://202" # this instance never proxies the actual response body - Traefik ForwardAuth only asks "is this request authorized," then forwards to the real backend itself
+  # Without these two, any authenticated Keycloak user in the
+  # cerberus-admin realm reaches every admin UI - the "admins" group
+  # (infra/keycloak/realm-config.yaml) wouldn't actually gate anything.
+  # Needs that file's groups-membership protocolMapper to put group
+  # names in the token at all; full.path: "false" there is why this is
+  # the bare name "admins", not "/admins".
+  oidc-groups-claim: groups
+  allowed-group: admins
+  code-challenge-method: S256 # PKCE - defends the auth code exchange against interception, Keycloak's client supports it
+  upstream: "static://202" # this instance never proxies the actual response body - Traefik ForwardAuth only asks "is this request authorized," then forwards to the real backend itself
   set-xauthrequest: true
   pass-authorization-header: true
+  # OIDC discovery/token exchange calls the issuer URL above directly
+  # (not through a browser, which trusts it via its own OS/VPN config) -
+  # without this, that call fails with a real "x509: certificate signed
+  # by unknown authority", since Traefik's cert there comes from
+  # cert-manager's internal CA (infra/k8s/oauth2-proxy/ca-configmap.yaml),
+  # which isn't in the container's default trust store.
+  # use-system-trust-store: true keeps the normal public-CA trust store
+  # too - this is additive, not a replacement.
+  provider-ca-file: /etc/ssl/certs/cerberus-internal-ca.crt
+  use-system-trust-store: true
+
+extraVolumes:
+  - name: cerberus-internal-ca
+    configMap: { name: cerberus-internal-ca }
+extraVolumeMounts:
+  - name: cerberus-internal-ca
+    mountPath: /etc/ssl/certs/cerberus-internal-ca.crt
+    subPath: ca.crt
+    readOnly: true
 
 resources:
   requests: { cpu: 50m, memory: 64Mi }
-  limits: { memory: 128Mi }
+  limits: { cpu: 100m, memory: 128Mi }

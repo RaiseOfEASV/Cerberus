@@ -1,0 +1,33 @@
+# The internal CA's public certificate (cert-manager's cerberus-internal-ca
+# ClusterIssuer, stored as cerberus-internal-ca-secret in the cert-manager
+# namespace) - oauth2-proxy's own OIDC discovery and token exchange call
+# Keycloak over https://keycloak.admin.cerberus.internal, which Traefik
+# serves with a cert from this CA. Without trusting it, that call fails
+# with a real "x509: certificate signed by unknown authority".
+#
+# Just the public cert, no private key - safe to commit. Secrets are
+# namespace-scoped, so this can't be read directly out of cert-manager's
+# own copy; a plain ConfigMap (not an ExternalSecret - this isn't a
+# secret) is the simplest way to get it into this namespace too. If this
+# CA cert is ever rotated, re-run:
+#   kubectl get secret cerberus-internal-ca-secret -n cert-manager \
+#     -o jsonpath='{.data.ca\.crt}' | base64 -d
+# and update the block below to match.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cerberus-internal-ca
+  namespace: oauth2-proxy
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBgjCCASigAwIBAgIUMcyyAJR8FXTZCEE1TvI48dZwNgMwCgYIKoZIzj0EAwIw
+    HzEdMBsGA1UEAxMUY2VyYmVydXMtaW50ZXJuYWwtY2EwHhcNMjYxMDI1MTg0MzIz
+    WhcNMzYxMDIyMTg0MzIzWjAfMR0wGwYDVQQDExRjZXJiZXJ1cy1pbnRlcm5hbC1j
+    YTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMe2m55ezGW1qp2f1GyKs35T/ol0
+    W9BAeTXS5e0IfzQPK/il6q/k0nYdsnTCKJe4euq4M6DBwrj6kkONygJcPfujQjBA
+    MA4GA1UdDwEB/wQEAwICpDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQsdlKu
+    Hlf/TTxzWOHd5btjy4G8YzAKBggqhkjOPQQDAgNIADBFAiEAi4BEan5cEo+BKQ8S
+    i71TH7UT2Qo3dEXWjhUeSLn02WwCIFZqCju8QFQvOLVOAHlZvM1v9Bnu9l1Yx5RG
+    NCrfLW34
+    -----END CERTIFICATE-----

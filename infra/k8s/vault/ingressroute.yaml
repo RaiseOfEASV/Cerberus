@@ -1,10 +1,7 @@
-# Interim VPN-only route to Vault's UI/API through Traefik - no identity
-# layer yet (Epic 8's Keycloak/oauth2-proxy aren't deployed). Access today
-# is gated by the VPN alone (infra/headscale/) plus Vault's own login.
-# Same hostname, cert Secret name, and Certificate resource that
-# infra/k8s/oauth2-proxy/ingressroutes.yaml already defines for the full,
-# identity-gated version - when oauth2-proxy lands, delete THIS file and
-# apply that one instead of duplicating/diverging the route definition.
+# Now identity-gated via oauth2-proxy/Keycloak, same shape as
+# infra/k8s/oauth2-proxy/ingressroutes.yaml's version for every other
+# admin UI (that file still covers Grafana/Kibana/Dependency-Track, none
+# deployed yet - this one can be folded back into it once they land).
 #
 # scheme: https + the ServersTransport below: vault's own listener is
 # TLS-only (no plain HTTP), so Traefik has to speak HTTPS to the backend
@@ -33,6 +30,13 @@ spec:
   routes:
     - match: "Host(`vault.admin.cerberus.internal`)"
       kind: Rule
+      # Traefik applies middlewares outermost-first, so the errors
+      # middleware (which needs to catch forwardAuth's 401 response) has
+      # to be listed BEFORE forwardAuth here, not after - confirmed the
+      # hard way, forwardauth-then-errors never triggered the redirect.
+      middlewares:
+        - { name: oauth2-proxy-errors, namespace: oauth2-proxy } # catches the 401 and redirects to Keycloak login - see infra/k8s/oauth2-proxy/forwardauth-middleware.yaml
+        - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
       services:
         - name: vault-ui
           port: 8200

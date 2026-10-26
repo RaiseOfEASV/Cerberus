@@ -1,10 +1,7 @@
-# Interim VPN-only route to the ArgoCD UI through Traefik - no identity
-# layer yet (Epic 8's Keycloak/oauth2-proxy aren't deployed). Access today
-# is gated by the VPN alone (infra/headscale/) plus ArgoCD's own login.
-# Same hostname, cert Secret name, and Certificate resource that
-# infra/k8s/oauth2-proxy/ingressroutes.yaml already defines for the full,
-# identity-gated version - when oauth2-proxy lands, delete THIS file and
-# apply that one instead of duplicating/diverging the route definition.
+# Now identity-gated via oauth2-proxy/Keycloak, same shape as
+# infra/k8s/oauth2-proxy/ingressroutes.yaml's version for every other
+# admin UI (that file still covers Grafana/Kibana/Dependency-Track, none
+# deployed yet - this one can be folded back into it once they land).
 #
 # Plain port 80: argocd-server runs with --insecure (argocd-values.yaml) -
 # TLS already terminates here at Traefik, so the backend hop is HTTP.
@@ -19,6 +16,13 @@ spec:
   routes:
     - match: "Host(`argocd.admin.cerberus.internal`)"
       kind: Rule
+      # Traefik applies middlewares outermost-first, so the errors
+      # middleware (which needs to catch forwardAuth's 401 response) has
+      # to be listed BEFORE forwardAuth here, not after - see
+      # infra/k8s/vault/ingressroute.yaml for how this was confirmed.
+      middlewares:
+        - { name: oauth2-proxy-errors, namespace: oauth2-proxy }
+        - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
       services:
         - name: argocd-server
           port: 80

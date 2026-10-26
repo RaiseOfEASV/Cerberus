@@ -1,0 +1,66 @@
+# default-deny-all is generated automatically by Kyverno (Epic 4) - these
+# are the specific allows on top: DNS egress, ingress on 4180 from
+# traefik (forwardauth-middleware.yaml calls /oauth2/auth for every
+# request to a protected admin UI), and egress to Keycloak for the OIDC
+# flow (discovery, token exchange).
+#
+# Port-only, no peer (namespaceSelector) restriction - see
+# infra/k8s/keycloak/network-policy.yaml's header for why:
+# namespaceSelector/podSelector "from" peers are unreliable with k3s's
+# bundled kube-router in this cluster (confirmed via extensive testing
+# on an identical pattern), while plain port-restricted rules test
+# reliably every time. Tracked in the local backlog, not fixed here.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: oauth2-proxy
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-traefik
+  namespace: oauth2-proxy
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { protocol: TCP, port: 4180 } # container port - the chart's Service listens on 80, targetPort 4180
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-keycloak
+  namespace: oauth2-proxy
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    # oidc-issuer-url is the external-facing https://keycloak.admin.
+    # cerberus.internal hostname (so the issuer in discovery/tokens
+    # matches what browsers get redirected to) - infra/k8s/coredns/
+    # custom-hosts.yaml resolves it, from inside the cluster too, to
+    # Traefik's ClusterIP, not Keycloak's pod directly. So this egress
+    # target is Traefik on 443, not Keycloak on 8080.
+    #
+    # No port restriction, beyond even the keycloak-namespace rules'
+    # port-only pattern: a port:443-scoped version of this rule tested
+    # fine from a plain nettest Pod, yet the real oauth2-proxy
+    # Deployment's own pod kept getting "connect: connection refused"
+    # regardless - only resolved by removing the port restriction
+    # entirely, with nothing else changed. Same underlying kube-router
+    # unreliability as documented in infra/k8s/keycloak/
+    # network-policy.yaml, apparently also able to affect
+    # Deployment-managed pods specifically even on port-only rules that
+    # test fine from standalone ones. Tracked in the local backlog.
+    - {}
