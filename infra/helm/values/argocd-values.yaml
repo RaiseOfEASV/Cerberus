@@ -44,6 +44,30 @@ server:
 configs:
   params:
     server.insecure: true
+  cm:
+    # Native OIDC, not Dex (disabled above) - ArgoCD's server handles
+    # this directly since chart v2+/ArgoCD 2.x+. url matters beyond just
+    # being descriptive: ArgoCD computes its own OIDC redirect_uri from
+    # it, so without this being set to the real external hostname, the
+    # redirect_uri it sends to Keycloak wouldn't match the one registered
+    # on the "argocd" client in infra/keycloak/realm-config.yaml.
+    url: https://argocd.admin.cerberus.internal
+    oidc.config: |
+      name: Keycloak
+      issuer: https://keycloak.admin.cerberus.internal/realms/cerberus-admin
+      clientID: argocd
+      clientSecret: $argocd-secret:oidc.keycloak.clientSecret
+      requestedScopes: ["openid", "profile", "email", "groups"]
+  rbac:
+    # Without this, a Keycloak login gets you authenticated into ArgoCD
+    # but with NO permissions at all (ArgoCD's RBAC defaults deny
+    # everything not explicitly granted) - maps the same "admins" group
+    # everything else in this project gates on to ArgoCD's own built-in
+    # full-access role.
+    policy.default: role:readonly
+    policy.csv: |
+      g, admins, role:admin
+    scopes: "[groups]"
 
 controller:
   resources:

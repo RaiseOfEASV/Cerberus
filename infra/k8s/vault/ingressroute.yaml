@@ -46,6 +46,26 @@ spec:
         - name: oauth2-proxy
           namespace: oauth2-proxy
           port: 80
+    # Vault's own API (/v1/*) - used by the `vault` CLI, Terraform's
+    # vault provider, and Vault's own native OIDC auth method's token
+    # exchange callback (/v1/auth/oidc/oidc/callback). None of these are
+    # a browser with an oauth2-proxy session cookie - they authenticate
+    # with Vault's own X-Vault-Token header (or, for the OIDC callback,
+    # are mid-flow and have no cookie yet either), so routing the API
+    # through the same ForwardAuth gate as the UI breaks every
+    # programmatic/CLI access path outright. Vault's own token auth is
+    # already the real protection for the API - the UI (the catch-all
+    # route below) is the only piece that actually needs oauth2-proxy's
+    # gate, since it's the only piece a human browses to without
+    # already proving who they are first.
+    - match: "Host(`vault.admin.cerberus.internal`) && PathPrefix(`/v1`)"
+      kind: Rule
+      priority: 100
+      services:
+        - name: vault-ui
+          port: 8200
+          scheme: https
+          serversTransport: vault-backend-tls
     - match: "Host(`vault.admin.cerberus.internal`)"
       kind: Rule
       priority: 10

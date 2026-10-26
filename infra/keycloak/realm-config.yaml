@@ -88,5 +88,57 @@ clients:
       - basic
       - groups
 
+  # Separate from oauth2-proxy's client - this is NATIVE SSO, a
+  # different thing from the ForwardAuth gate (oauth2-proxy checks "is
+  # this request allowed through at all" before Traefik forwards it;
+  # Vault itself has no idea who you are once past that - you still
+  # need to authenticate to Vault separately). This client lets Vault's
+  # own `oidc` auth method log a user directly into Vault, with a real
+  # Vault token mapped from their Keycloak identity/groups.
+  # Both redirect URIs are Vault's own fixed callback paths for its
+  # default "oidc" auth mount path - /ui/... for browser-initiated UI
+  # logins, /v1/... for `vault login -method=oidc` from the CLI.
+  - clientId: vault
+    enabled: true
+    clientAuthenticatorType: client-secret
+    secret: "${CLIENT_SECRET_VAULT}"
+    redirectUris:
+      - "https://vault.admin.cerberus.internal/ui/vault/auth/oidc/oidc/callback"
+      - "https://vault.admin.cerberus.internal/v1/auth/oidc/oidc/callback"
+      - "http://localhost:8250/oidc/callback" # vault login -method=oidc's local CLI callback listener
+    webOrigins: ["+"]
+    standardFlowEnabled: true
+    directAccessGrantsEnabled: false
+    defaultClientScopes:
+      - profile
+      - email
+      - roles
+      - web-origins
+      - acr
+      - basic
+      - groups
+
+  # Same reasoning as the vault client above - ArgoCD's own native OIDC
+  # support (argocd-cm's oidc.config), not routed through Dex (disabled,
+  # argocd-values.yaml). /auth/callback is ArgoCD server's fixed OIDC
+  # callback path in this mode.
+  - clientId: argocd
+    enabled: true
+    clientAuthenticatorType: client-secret
+    secret: "${CLIENT_SECRET_ARGOCD}"
+    redirectUris:
+      - "https://argocd.admin.cerberus.internal/auth/callback"
+    webOrigins: ["+"]
+    standardFlowEnabled: true
+    directAccessGrantsEnabled: false
+    defaultClientScopes:
+      - profile
+      - email
+      - roles
+      - web-origins
+      - acr
+      - basic
+      - groups
+
 groups:
   - name: admins
