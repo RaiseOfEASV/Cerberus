@@ -48,12 +48,15 @@ spec:
     - match: "Host(`argocd.admin.cerberus.internal`)"
       kind: Rule
       priority: 10
-      # Traefik applies middlewares outermost-first, so the errors
-      # middleware (which needs to catch forwardAuth's 401 response) has
-      # to be listed BEFORE forwardAuth here, not after - see
-      # infra/k8s/vault/ingressroute.yaml for how this was confirmed.
+      # Deliberately NO oauth2-proxy-errors middleware - see
+      # infra/k8s/vault/ingressroute.yaml for the full reasoning. An
+      # unauthenticated request gets forwardAuth's own bare 401, not a
+      # redirect that confirms this hostname is live and tells an
+      # unauthenticated caller exactly which Keycloak realm fronts it.
+      # Cost: nobody gets auto-redirected into login either - visiting
+      # "/" directly no longer works for starting a session, only
+      # /oauth2/start does.
       middlewares:
-        - { name: oauth2-proxy-errors, namespace: oauth2-proxy }
         - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
       services:
         - name: argocd-server
