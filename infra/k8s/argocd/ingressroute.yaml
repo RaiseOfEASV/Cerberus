@@ -48,15 +48,12 @@ spec:
     - match: "Host(`argocd.admin.cerberus.internal`)"
       kind: Rule
       priority: 10
-      # Deliberately NO oauth2-proxy-errors middleware - see
-      # infra/k8s/vault/ingressroute.yaml for the full reasoning. An
-      # unauthenticated request gets forwardAuth's own bare 401, not a
-      # redirect that confirms this hostname is live and tells an
-      # unauthenticated caller exactly which Keycloak realm fronts it.
-      # Cost: nobody gets auto-redirected into login either - visiting
-      # "/" directly no longer works for starting a session, only
-      # /oauth2/start does.
+      # oauth2-proxy-errors before forwardauth - see
+      # infra/k8s/vault/ingressroute.yaml for the full reasoning. Shows
+      # oauth2-proxy's own styled sign-in page (click to proceed) on the
+      # 401, without auto-redirecting into Keycloak.
       middlewares:
+        - { name: oauth2-proxy-errors, namespace: oauth2-proxy }
         - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
       services:
         - name: argocd-server
