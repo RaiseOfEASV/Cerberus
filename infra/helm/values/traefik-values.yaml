@@ -31,6 +31,15 @@ providers:
     enabled: true
   kubernetesCRD:
     enabled: true
+    # Default false - every admin UI's IngressRoute (vault, argocd,
+    # keycloak's own) lives in its own app namespace but references the
+    # ONE shared oauth2-proxy-forwardauth Middleware in the oauth2-proxy
+    # namespace (Epic 8's whole point - one shared instance, not one per
+    # app). Confirmed the hard way: without this, Traefik logs a real
+    # "allowCrossNamespace is disabled" error per IngressRoute and serves
+    # a bare 404 instead of ever calling the middleware - looks like a
+    # routing failure, not a config omission, until read from the logs.
+    allowCrossNamespace: true
 
 # limits.cpu was missing - background scan after Kyverno's
 # require-resource-limits policy went in flagged this as a real

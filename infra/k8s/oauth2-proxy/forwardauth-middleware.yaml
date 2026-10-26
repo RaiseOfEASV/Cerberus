@@ -1,6 +1,7 @@
-# Traefik Middleware CRD - this is what actually wires every admin UI's
-# IngressRoute to the shared oauth2-proxy instance. Each IngressRoute in
-# ingressroutes.yaml references this ONE middleware by name.
+# Traefik Middleware CRDs - this is what actually wires every admin UI's
+# IngressRoute to the shared oauth2-proxy instance. Each IngressRoute
+# (vault's, argocd's, keycloak's isn't - it has its own login) references
+# BOTH middlewares by name, in order.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -14,3 +15,33 @@ spec:
       - X-Auth-Request-User
       - X-Auth-Request-Email
       - Authorization
+---
+# /oauth2/auth (above) is the forward-auth CHECK endpoint - by design it
+# returns a bare 401 on no session, with no redirect of its own (confirmed
+# directly: a real unauthenticated request got back a 401 with no
+# Location header at all). This catches that 401 and queries oauth2-
+# proxy's real sign-in flow (/oauth2/start), which does produce a 302 to
+# Keycloak - but Traefik's errors middleware preserves the ORIGINAL
+# triggering status code (401) while substituting the error-service's
+# body/headers, confirmed both by inspecting the raw response and by
+# curl's own -L (redirect-follow) logic refusing to follow it (0
+# redirects). So the end result is a 401 whose body is a working
+# clickable link to Keycloak's login (not a blind bug - Traefik's
+# `errors` middleware is genuinely built for serving custom error PAGES,
+# preserving the triggering status, not for turning one status into
+# another). Real security gate either way (unauthenticated requests
+# never reach the backend) - this only affects whether a browser
+# auto-navigates or a person clicks once. Tracked in the local backlog
+# as a UX gap, not a security one.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: oauth2-proxy-errors
+  namespace: oauth2-proxy
+spec:
+  errors:
+    status: ["401-403"]
+    query: "/oauth2/start?rd={url}"
+    service:
+      name: oauth2-proxy
+      port: 80

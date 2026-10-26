@@ -1,0 +1,40 @@
+# Every admin UI hostname (*.admin.cerberus.internal) is only ever meant
+# to be reachable over the VPN - headscale's MagicDNS resolves it for
+# external/VPN clients to the node's VPN IP, which Traefik then serves
+# from. But pods INSIDE the cluster that also need to reach these same
+# hostnames (oauth2-proxy doing OIDC discovery against Keycloak's own
+# issuer URL, so the issuer it validates matches the issuer browsers get
+# redirected to) have no path to that external resolution at all - the
+# cluster's own CoreDNS has never heard of this zone.
+#
+# k3s auto-imports a ConfigMap named exactly "coredns-custom" from
+# kube-system (keys ending .server/.override are picked up by the
+# Corefile's own "import /etc/coredns/custom/*" lines - confirmed by
+# reading the live coredns ConfigMap, not assumed) - editing the
+# coredns ConfigMap's own Corefile directly would get reverted, since
+# that one's addon-managed.
+#
+# Points every admin hostname at Traefik's ClusterIP, the same ingress
+# path real browsers go through (not at the backend Service directly),
+# so TLS/IngressRoute routing, the oauth2-proxy ForwardAuth middleware,
+# etc. all apply identically regardless of whether the request originated
+# on the VPN or from inside the cluster.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+# 10.43.231.238 is Traefik's current ClusterIP (`kubectl get svc traefik
+# -n traefik`) - the hosts plugin only does static IP mappings, no
+# indirection to a Service name, so this needs updating by hand if that
+# Service is ever deleted and recreated (ClusterIP isn't pinned there).
+data:
+  admin-cerberus-internal.server: |
+    admin.cerberus.internal:53 {
+        hosts {
+            10.43.231.238 keycloak.admin.cerberus.internal
+            10.43.231.238 vault.admin.cerberus.internal
+            10.43.231.238 argocd.admin.cerberus.internal
+            fallthrough
+        }
+    }
