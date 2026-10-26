@@ -1,6 +1,25 @@
 # One-off Job running keycloak-config-cli against realm-config.yaml. Run
 # manually after Keycloak reports healthy, not wired into any automated
 # trigger - re-run it any time realm-config.yaml changes.
+#
+# REAL, CONFIRMED HAZARD: re-running this Job for ANY reason - even just
+# adding a brand-new client - appears to silently regenerate the
+# `secret` of EXISTING clients too, even when the given value already
+# matches. Hit this for real: re-ran this Job solely to add the "vault"
+# and "argocd" clients, and oauth2-proxy's own login broke immediately
+# after with a genuine client-secret mismatch (confirmed via a direct
+# token-endpoint test, not assumed) - not caused by anything else
+# changing. Root cause not fully pinned down (keycloak-config-cli docs/
+# issues didn't give a clear answer), so treat it as a standing fact
+# about this tool rather than a one-off bug.
+#
+# Until/unless that's root-caused: after EVERY run of this Job, re-sync
+# every client secret FROM Keycloak back to Vault (not the other way
+# around) for ALL clients with an explicit `secret:` field in
+# realm-config.yaml (oauth2-proxy, vault, argocd) - regenerate via
+# Keycloak's own admin API, write the result to Vault, force an ESO
+# resync, restart whichever pod consumes it. Don't assume "I only
+# touched one client" means the others are safe.
 apiVersion: batch/v1
 kind: Job
 metadata:
