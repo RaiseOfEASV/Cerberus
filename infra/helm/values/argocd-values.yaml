@@ -29,6 +29,21 @@ server:
     type: ClusterIP
   extraArgs:
     - --insecure # TLS terminates at Traefik/oauth2-proxy once Epic 8 fronts this - revisit if that assumption changes
+  # ArgoCD's own native OIDC login (configs.cm.oidc.config below) makes
+  # its own outbound call to Keycloak's discovery endpoint - without
+  # this, that call fails with a real "x509: certificate signed by
+  # unknown authority", since Traefik's cert there comes from
+  # cert-manager's internal CA (infra/k8s/argocd/ca-configmap.yaml),
+  # which isn't in the container's default trust store. Same fix
+  # already needed for oauth2-proxy and Vault's own OIDC auth method.
+  volumes:
+    - name: cerberus-internal-ca
+      configMap: { name: cerberus-internal-ca }
+  volumeMounts:
+    - name: cerberus-internal-ca
+      mountPath: /etc/ssl/certs/cerberus-internal-ca.crt
+      subPath: ca.crt
+      readOnly: true
   # limits.cpu was missing here and on every resources block below (chart
   # defaults ship ALL of these as `resources: {}` - checked directly
   # against the chart rather than guessing) - the same gap Kyverno's
