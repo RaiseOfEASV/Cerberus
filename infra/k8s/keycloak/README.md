@@ -19,14 +19,18 @@ browser session, not just config review.
 
 **The gate deliberately does NOT auto-redirect to Keycloak login.** Visiting
 `https://vault.admin.cerberus.internal/` or `https://argocd.admin.cerberus.internal/`
-unauthenticated gets a bare, opaque `401 Unauthorized` - no `Location` header,
-no indication Keycloak exists at all. This was built the other way first (a
-real `302` via Traefik's `errors` middleware + `statusRewrites`), then
-reverted on purpose: redirecting confirms to anyone who can merely reach the
-hostname (on the VPN, not yet authenticated) that it's live and exactly which
-Keycloak realm fronts it. **To actually log in, go to `/oauth2/start`
-directly** (e.g. `https://vault.admin.cerberus.internal/oauth2/start`) -
-bookmark that, not the bare hostname.
+unauthenticated gets a real `401 Unauthorized` with oauth2-proxy's own styled
+sign-in page as the body (a "Sign in with Keycloak OIDC" button) - no
+`Location` header, nothing navigates until that button is actually clicked.
+This was tried two other ways first: a real `302` via Traefik's `errors`
+middleware + `statusRewrites` (reverted - an instant redirect confirms to
+anyone who can merely reach the hostname, authenticated or not, that it's
+live and exactly which Keycloak realm fronts it), and a completely bare `401`
+with no body at all (reverted too - no way for a legitimate user to know how
+to log in). Querying `/oauth2/sign_in` instead of `/oauth2/start` in
+`infra/k8s/oauth2-proxy/forwardauth-middleware.yaml`'s `oauth2-proxy-errors`
+middleware is what gets this real page without the disclosure a redirect
+would cause.
 
 ## Order of operations
 
