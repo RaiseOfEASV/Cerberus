@@ -26,6 +26,29 @@ realm: cerberus-admin
 enabled: true
 sslRequired: external
 
+# oauth2-proxy's --oidc-groups-claim=groups makes it request a "groups"
+# OAuth scope in the auth request (confirmed live: the real redirect to
+# Keycloak had "scope=openid+email+profile+groups") - Keycloak validates
+# every requested scope against a real, known client scope and rejects
+# the WHOLE request with "invalid_scope" if one doesn't exist, which is
+# exactly what happened before this existed (a client-level
+# protocolMapper alone isn't enough - that puts the claim in the token
+# once a request is already accepted, it doesn't make "groups" a valid
+# scope to request in the first place).
+clientScopes:
+  - name: groups
+    protocol: openid-connect
+    protocolMappers:
+      - name: groups
+        protocol: openid-connect
+        protocolMapper: oidc-group-membership-mapper
+        config:
+          claim.name: groups
+          full.path: "false"
+          id.token.claim: "true"
+          access.token.claim: "true"
+          userinfo.token.claim: "true"
+
 clients:
   - clientId: oauth2-proxy
     enabled: true
@@ -41,25 +64,29 @@ clients:
     webOrigins: ["+"]
     standardFlowEnabled: true
     directAccessGrantsEnabled: false
-    # Without this, the "admins" group below gates nothing - group
-    # membership isn't in the ID token by default, so oauth2-proxy's
+    # Without the "groups" client scope (above) being a DEFAULT scope
+    # here, the "admins" group below still gates nothing - group
+    # membership wouldn't be a valid, requestable scope, so oauth2-proxy's
     # --allowed-group would have no claim to check against and every
     # successfully authenticated Keycloak user would pass through
-    # regardless of group. full.path: "false" matters too: with it true
-    # the claim value is "/admins", which has to match oauth2-proxy's
-    # --allowed-group exactly - set to "false" so the claim is the bare
-    # group name instead, consistent with the oauth2-proxy-values.yaml
-    # flag below.
-    protocolMappers:
-      - name: groups
-        protocol: openid-connect
-        protocolMapper: oidc-group-membership-mapper
-        config:
-          claim.name: groups
-          full.path: "false"
-          id.token.claim: "true"
-          access.token.claim: "true"
-          userinfo.token.claim: "true"
+    # regardless of group. full.path: "false" (on the scope's mapper
+    # above) matters too: with it true the claim value is "/admins",
+    # which has to match oauth2-proxy's --allowed-group exactly - set to
+    # "false" so the claim is the bare group name instead, consistent
+    # with the oauth2-proxy-values.yaml flag below.
+    # keycloak-config-cli treats this list as the FULL desired state, not
+    # an addition to whatever Keycloak auto-assigned on client creation -
+    # the realm's other built-in default scopes are listed explicitly
+    # here too, so adding "groups" doesn't silently strip "email"/
+    # "profile" and trade one invalid_scope error for another.
+    defaultClientScopes:
+      - profile
+      - email
+      - roles
+      - web-origins
+      - acr
+      - basic
+      - groups
 
 groups:
   - name: admins
