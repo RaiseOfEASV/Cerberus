@@ -1,0 +1,26 @@
+# Same internal CA cert as infra/k8s/oauth2-proxy/ca-configmap.yaml,
+# duplicated here because ConfigMaps are namespace-scoped - ArgoCD's own
+# native OIDC login (argocd-values.yaml's configs.cm.oidc.config) makes
+# its own outbound call to Keycloak's discovery endpoint and hit the
+# same "x509: certificate signed by unknown authority" oauth2-proxy and
+# Vault both hit first. Just the public cert, no private key - safe to
+# commit. See that file's header for the rotation procedure if this CA
+# is ever reissued.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cerberus-internal-ca
+  namespace: argocd
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBgjCCASigAwIBAgIUMcyyAJR8FXTZCEE1TvI48dZwNgMwCgYIKoZIzj0EAwIw
+    HzEdMBsGA1UEAxMUY2VyYmVydXMtaW50ZXJuYWwtY2EwHhcNMjYxMDI1MTg0MzIz
+    WhcNMzYxMDIyMTg0MzIzWjAfMR0wGwYDVQQDExRjZXJiZXJ1cy1pbnRlcm5hbC1j
+    YTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMe2m55ezGW1qp2f1GyKs35T/ol0
+    W9BAeTXS5e0IfzQPK/il6q/k0nYdsnTCKJe4euq4M6DBwrj6kkONygJcPfujQjBA
+    MA4GA1UdDwEB/wQEAwICpDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQsdlKu
+    Hlf/TTxzWOHd5btjy4G8YzAKBggqhkjOPQQDAgNIADBFAiEAi4BEan5cEo+BKQ8S
+    i71TH7UT2Qo3dEXWjhUeSLn02WwCIFZqCju8QFQvOLVOAHlZvM1v9Bnu9l1Yx5RG
+    NCrfLW34
+    -----END CERTIFICATE-----
