@@ -1,6 +1,5 @@
 # Copy to terraform.tfvars (gitignored, never commit it) and fill in your
-# real current public IP. Detected as 91.101.59.222/32 when this root was
-# written - that may already be stale by the time you read this, and if
-# your ISP gives you a dynamic IP, you'll need to update this and
-# `terraform apply` again whenever it changes.
-admin_source_ip = "203.0.113.1/32"
+# real current public IP(s). A list, not a single value - add one entry
+# per location you actually SSH in from (e.g. two homes), and update
+# whichever one changes when your ISP rotates it.
+admin_source_ips = ["203.0.113.1/32"]
