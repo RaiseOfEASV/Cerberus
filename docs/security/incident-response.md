@@ -55,6 +55,11 @@ If the incident involves Vault being sealed, unreachable, or needing recovery, s
 that document exists specifically so this isn't designed from scratch under
 pressure.
 
+If the incident involves Keycloak or oauth2-proxy being down and nobody being
+able to log into Vault's or ArgoCD's UI as a result (ArgoCD's local admin
+account is disabled on purpose - there's no password fallback sitting next to
+the Keycloak one), see [`sso-break-glass.md`](sso-break-glass.md).
+
 If the incident involves restoring from a backup, see
 [`restore-drills.md`](restore-drills.md) for the mechanics of each backup type - and
 if this is the first time actually doing it for real rather than as a drill, that's

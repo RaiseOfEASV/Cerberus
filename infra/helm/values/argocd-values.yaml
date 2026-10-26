@@ -73,6 +73,13 @@ configs:
       clientID: argocd
       clientSecret: $argocd-secret:oidc.keycloak.clientSecret
       requestedScopes: ["openid", "profile", "email", "groups"]
+    # Keycloak is meant to be the ONLY way in, not an alternative sitting
+    # next to the local admin/password login - without this, that local
+    # account is still a full, parallel, non-Keycloak path into ArgoCD
+    # regardless of how locked-down the OIDC side is. Break-glass if
+    # Keycloak/oauth2-proxy ever breaks is direct cluster access (kubectl),
+    # not this account - see docs/security/sso-break-glass.md.
+    admin.enabled: "false"
   rbac:
     # Without this, a Keycloak login gets you authenticated into ArgoCD
     # but with NO permissions at all (ArgoCD's RBAC defaults deny
