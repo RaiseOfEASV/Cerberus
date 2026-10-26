@@ -28,6 +28,23 @@ spec:
         - name: oauth2-proxy
           namespace: oauth2-proxy
           port: 80
+    # ArgoCD's OWN native OIDC login (argocd-values.yaml's configs.cm.
+    # oidc.config - separate from the oauth2-proxy gate, same "two
+    # different layers" distinction as Vault's /v1 carve-out) redirects
+    # back here after Keycloak login. By the time this fires the user
+    # already has an oauth2-proxy session (they had to pass the gate to
+    # reach ArgoCD's login page and click "Log in via Keycloak" in the
+    # first place), so this is lower-risk than Vault's case - carved out
+    # anyway on the same principle: an OIDC callback exchanging a code
+    # on ITS OWN auth flow shouldn't be gated by an unrelated session
+    # check, to avoid the exact nested-redirect failure mode confirmed
+    # for real on Vault/oauth2-proxy earlier.
+    - match: "Host(`argocd.admin.cerberus.internal`) && PathPrefix(`/auth/callback`)"
+      kind: Rule
+      priority: 100
+      services:
+        - name: argocd-server
+          port: 80
     - match: "Host(`argocd.admin.cerberus.internal`)"
       kind: Rule
       priority: 10

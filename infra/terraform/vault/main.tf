@@ -41,6 +41,56 @@ resource "vault_auth_backend" "kubernetes" {
   type = "kubernetes"
 }
 
+# --- Native SSO: Keycloak login directly into Vault itself ---
+# Different from oauth2-proxy's ForwardAuth gate (infra/k8s/oauth2-proxy/) -
+# that only decides "is this request allowed through to Traefik's backend
+# at all," Vault itself has no idea who you are once past it. This lets
+# a user actually log into VAULT (UI or `vault login -method=oidc`) with
+# their Keycloak identity and get a real Vault token.
+#
+# Only the MOUNT is managed here - `vault write auth/oidc/config` (which
+# needs the Keycloak client's secret) is a manual step, same "secret
+# values never through Terraform" pattern as everything else in this
+# file. See docs/security/vault-unseal-procedure.md's sibling doc, or
+# just: generate the secret, store it in Vault via the CLI, configure
+# this auth method's client_secret via the CLI too - never as a
+# Terraform argument, which would put it in state.
+#
+# That manual `vault write` also needs `oidc_discovery_ca_pem` pointed
+# at the internal CA (infra/k8s/oauth2-proxy/ca-configmap.yaml has the
+# current cert) - confirmed the hard way: without it, Vault's own HTTP
+# client doesn't trust cert-manager's internal CA when validating the
+# discovery URL's TLS cert (a separate concern from Vault's own listener
+# cert), and the write fails with a generic "error checking oidc
+# discovery URL" that doesn't distinguish this from a network problem.
+resource "vault_auth_backend" "oidc" {
+  type = "oidc"
+  path = "oidc"
+}
+
+# role_type/user_claim/bound_audiences/redirect URIs are all non-secret -
+# safe to manage here. bound_claims is the actual gate: without it, ANY
+# successfully authenticated cerberus-admin realm user (not just "admins"
+# group members) would get a Vault token with the admin policy - Vault's
+# OWN OIDC role has no idea about Keycloak's "admins" group unless told.
+resource "vault_jwt_auth_backend_role" "oidc_default" {
+  backend         = vault_auth_backend.oidc.path
+  role_name       = "default"
+  role_type       = "oidc"
+  token_policies  = [vault_policy.admin.name]
+  user_claim      = "sub"
+  oidc_scopes     = ["groups"] # explicit, not relying on "groups" being a Keycloak default scope the plugin's own auth_url request (which only ever asks for "openid") would pick up anyway - bound_claims below needs this claim actually present
+  bound_audiences = ["vault"]
+  allowed_redirect_uris = [
+    "https://vault.admin.cerberus.internal/ui/vault/auth/oidc/oidc/callback",
+    "https://vault.admin.cerberus.internal/v1/auth/oidc/oidc/callback",
+    "http://localhost:8250/oidc/callback",
+  ]
+  bound_claims      = { groups = "admins" }
+  bound_claims_type = "glob"
+  token_ttl         = 3600
+}
+
 resource "vault_kubernetes_auth_backend_config" "k8s" {
   backend         = vault_auth_backend.kubernetes.path
   kubernetes_host = var.kubernetes_host
@@ -82,6 +132,9 @@ resource "vault_policy" "admin" {
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
     }
     path "auth/kubernetes/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    path "auth/oidc/*" {
       capabilities = ["create", "read", "update", "delete", "list"]
     }
     path "sys/policies/acl" {
@@ -150,6 +203,9 @@ resource "vault_policy" "eso_read" {
       capabilities = ["read"]
     }
     path "secret/data/oauth2-proxy/*" {
+      capabilities = ["read"]
+    }
+    path "secret/data/oidc/*" {
       capabilities = ["read"]
     }
     path "secret/data/backup/*" {

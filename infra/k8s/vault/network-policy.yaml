@@ -76,6 +76,41 @@ spec:
       ports:
         - { protocol: TCP, port: 6443 }
 ---
+# Vault's own `oidc` auth method (native SSO, infra/terraform/vault/
+# main.tf's vault_auth_backend.oidc) validates its oidc_discovery_url by
+# actually fetching it - confirmed the hard way: `vault write
+# auth/oidc/config` failed outright with "error checking oidc discovery
+# URL" until this existed. Keycloak is only reachable at its real,
+# external-style hostname (infra/k8s/coredns/custom-hosts.yaml resolves
+# it internally too, same as oauth2-proxy's own equivalent need) via
+# Traefik on 443.
+#
+# No port restriction, beyond even the usual port-only pattern
+# documented in infra/k8s/keycloak/network-policy.yaml: a port:443-scoped
+# version of this rule tested fine via a temporary blanket-allow control
+# test, then STILL failed for vault-0's own already-running pod with
+# "connection refused" even after applying the real (port-only) rule and
+# waiting - only a fully-open rule worked, same kube-router unreliability
+# now confirmed a third time (keycloak ingress, oauth2-proxy egress, now
+# this), seemingly correlated with the policy being added/changed for a
+# pod that was already running rather than freshly created. vault-0
+# itself was deliberately NOT restarted to test this further - a restart
+# reseals Vault, a human-only step per docs/security/
+# vault-unseal-procedure.md. Tracked in the local backlog.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-oidc-discovery-egress
+  namespace: vault
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      component: server
+  policyTypes: [Egress]
+  egress:
+    - {}
+---
 # Epic 9: the vault-backup CronJob's pod lives in THIS namespace, so it's
 # also subject to the default-deny egress above - needs its own explicit
 # allows to reach Vault's own API (snapshot step) and the external backup

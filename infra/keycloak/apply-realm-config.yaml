@@ -44,6 +44,10 @@ spec:
               # sync of the same Vault path, see
               # infra/k8s/eso/external-secret-oauth2-proxy-client-for-keycloak.yaml.
               valueFrom: { secretKeyRef: { name: oauth2-proxy-client-secret, key: client-secret } }
+            - name: CLIENT_SECRET_VAULT
+              valueFrom: { secretKeyRef: { name: vault-oidc-client-secret, key: client-secret } }
+            - name: CLIENT_SECRET_ARGOCD
+              valueFrom: { secretKeyRef: { name: argocd-oidc-client-secret, key: client-secret } }
             - { name: IMPORT_FILES_LOCATIONS, value: "/config/realm-config.yaml" }
           volumeMounts:
             - { name: config, mountPath: /config }
