@@ -19,15 +19,19 @@ spec:
 # /oauth2/auth (above) is the forward-auth CHECK endpoint - by design it
 # returns a bare 401 on no session, with no redirect of its own (confirmed
 # directly: a real unauthenticated request got back a 401 with no
-# Location header at all). This catches that 401 and queries oauth2-
-# proxy's real sign-in flow (/oauth2/start), which does produce a 302 to
-# Keycloak - but Traefik's errors middleware, without statusRewrites,
-# preserves the ORIGINAL triggering status (401) while substituting the
-# error-service's body/headers. A real browser doesn't auto-navigate a
-# 401+Location (confirmed hitting this live - the user got a raw "<a
-# href=...>Found</a>" link, not a redirect), so statusRewrites below
-# forces the client-facing status to a real 302, which Traefik v3.5+
-# supports on this exact middleware for exactly this case.
+# Location header at all).
+#
+# DELIBERATELY NOT an auto-redirect - this was built that way once
+# (querying /oauth2/start with statusRewrites forcing a real 302), then
+# reverted: an auto-redirect to Keycloak confirms to anyone who can
+# merely reach the hostname, authenticated or not, that it's live and
+# exactly which Keycloak realm fronts it. Querying /oauth2/sign_in
+# instead gives a real, styled page with a "Sign in with Keycloak OIDC"
+# button the user has to click - same-origin, no information in a
+# Location header, status stays a genuine 401 (no statusRewrites) since
+# the body is real content for a human to act on, not an empty redirect
+# target. Clicking the button still goes to /oauth2/start, same flow as
+# always, just not automatic.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -36,9 +40,7 @@ metadata:
 spec:
   errors:
     status: ["401-403"]
-    statusRewrites:
-      "401-403": 302
-    query: "/oauth2/start?rd={url}"
+    query: "/oauth2/sign_in?rd={url}"
     service:
       name: oauth2-proxy
       port: 80
