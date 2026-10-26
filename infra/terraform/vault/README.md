@@ -70,6 +70,14 @@ default for its *outbound* calls, a separate concern from Vault's own listener
 cert). The `admins` Keycloak group is what actually gates this - enforced via
 `bound_claims` on the role, not by Keycloak alone.
 
+`vault_auth_backend.kubernetes`'s and `.oidc`'s `tune` blocks (`hidden` /
+`unauth`) only control what Vault's own login UI features - a human landing
+on Vault's login screen (which happens AFTER already passing the oauth2-proxy
+gate, a separate step - see `infra/k8s/keycloak/README.md`) sees OIDC as the
+default option instead of a generic method picker. Doesn't touch API/CLI
+auth at all; `token` login still works exactly as before regardless of
+either setting.
+
 **Recurring hazard, not a one-off**: re-running `infra/keycloak/apply-realm-config.yaml`
 for ANY reason resets the `oauth2-proxy`/`vault`/`argocd` clients' secrets in
 Keycloak, even ones that didn't change - see that Job manifest's own header. If

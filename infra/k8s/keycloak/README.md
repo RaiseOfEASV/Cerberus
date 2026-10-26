@@ -32,6 +32,21 @@ to log in). Querying `/oauth2/sign_in` instead of `/oauth2/start` in
 middleware is what gets this real page without the disclosure a redirect
 would cause.
 
+**The gate and native SSO are two separate, sequential logins, not one.**
+Passing the oauth2-proxy gate (clicking its "Sign in with Keycloak OIDC"
+button) only gets you *past the gate* - Vault/ArgoCD have no idea that
+happened and still show their own login screen afterward. For ArgoCD this is
+a non-issue (local admin is disabled, so its login page only ever shows the
+Keycloak option - one more click, nothing to choose between). For Vault,
+which also has `kubernetes` and `token` auth methods mounted, this could
+land on a confusing generic login form - fixed by tuning `kubernetes` to
+`listing_visibility: hidden` and `oidc` to `listing_visibility: unauth`
+(`infra/terraform/vault/main.tf`), so Vault's UI features OIDC as the
+default option instead of requiring a manual method switch. `token` login
+still exists regardless (can't be hidden, and shouldn't be - see
+`docs/security/sso-break-glass.md`). Confirmed in a real browser: Vault now
+shows OIDC pre-selected after the gate, both logins work end to end.
+
 ## Order of operations
 
 1. Epic 4's cluster, Epic 6's Vault/ESO, Epic 8's cert-manager + headscale.
