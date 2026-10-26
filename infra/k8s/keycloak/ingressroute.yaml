@@ -1,0 +1,29 @@
+# Keycloak's own admin console has its own built-in login, so (unlike
+# vault/argocd) it genuinely never needs oauth2-proxy in front of
+# itself - VPN + Keycloak's own auth is the full, final state here, not
+# an interim one.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`keycloak.admin.cerberus.internal`)"
+      kind: Rule
+      services:
+        - name: keycloak-http
+          port: 80
+  tls:
+    secretName: keycloak-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-admin-tls
+  namespace: keycloak
+spec:
+  secretName: keycloak-admin-tls
+  dnsNames: ["keycloak.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
