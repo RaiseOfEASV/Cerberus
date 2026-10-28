@@ -1,0 +1,26 @@
+# Layers one specific allow on top of Kyverno's auto-generated
+# default-deny-all for this namespace (same pattern as vault/arc-runners)
+# - ingress from traefik-public only, on the Service's own port. No
+# egress rule at all: this placeholder serves static content with no
+# upstream calls, so it needs none.
+#
+# Scoped by podSelector/namespaceSelector, not a fully-open rule - unlike
+# several other namespaces in this cluster (vault, keycloak,
+# oauth2-proxy), this hasn't yet hit the kube-router peer-selector
+# unreliability documented in BACKLOG.local.md/infra/k8s/keycloak/
+# network-policy.yaml. If ingress mysteriously fails despite Traefik
+# logs showing a successful route, that known cluster-wide issue is the
+# first thing to check - not a mistake in this file.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-public-ingress
+  namespace: cerberoast
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik-public

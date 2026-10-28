@@ -1,0 +1,10 @@
+# A normal workload namespace, NOT excluded from Kyverno's
+# enforce-namespace-baseline.yaml - gets restricted PSA + a default-
+# deny-all NetworkPolicy automatically, same as vault/arc-runners. The
+# only allow layered on top is ingress from traefik-public
+# (network-policy.yaml in this directory) - this placeholder needs no
+# egress at all (static content, no upstream calls).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cerberoast

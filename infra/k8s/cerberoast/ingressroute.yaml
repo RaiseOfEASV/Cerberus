@@ -1,0 +1,33 @@
+# The `traefik-instance: public` label is what makes traefik-public's
+# scoped labelSelector (infra/helm/values/traefik-public-values.yaml)
+# pick this up at all - without it, this IngressRoute is invisible to
+# that instance (though still harmlessly visible to the admin instance,
+# which has no labelSelector - see that values file's comment on why
+# that's not a security issue).
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cerberoast
+  namespace: cerberoast
+  labels:
+    traefik-instance: public
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`cerberoast.site`) || Host(`www.cerberoast.site`)"
+      kind: Rule
+      services:
+        - name: cerberoast-placeholder
+          port: 80
+  tls:
+    secretName: cerberoast-site-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cerberoast-site-tls
+  namespace: cerberoast
+spec:
+  secretName: cerberoast-site-tls
+  dnsNames: ["cerberoast.site", "www.cerberoast.site"]
+  issuerRef: { name: letsencrypt-public, kind: ClusterIssuer }

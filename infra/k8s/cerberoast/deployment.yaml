@@ -1,0 +1,58 @@
+# nginxinc/nginx-unprivileged, not the official nginx image - listens on
+# 8080 and runs as a non-root UID out of the box, which the official
+# image doesn't support without extra config (binding port 80 needs
+# CAP_NET_BIND_SERVICE/root, same restriction inside a container as
+# outside one). Pinned minor tag (disallow-latest-tag), non-root +
+# read-only rootfs + resource limits (require-non-root/
+# require-readonly-rootfs/require-resource-limits) - nginx needs a few
+# writable paths even read-only, mounted as emptyDirs below.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerberoast-placeholder
+  namespace: cerberoast
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: cerberoast-placeholder }
+  template:
+    metadata:
+      labels: { app: cerberoast-placeholder }
+    spec:
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: html, mountPath: /usr/share/nginx/html }
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: run, mountPath: /var/run }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: html
+          configMap: { name: cerberoast-placeholder-html }
+        - { name: cache, emptyDir: {} }
+        - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cerberoast-placeholder
+  namespace: cerberoast
+spec:
+  selector: { app: cerberoast-placeholder }
+  ports:
+    - port: 80
+      targetPort: 8080
