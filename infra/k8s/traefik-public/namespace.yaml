@@ -1,0 +1,9 @@
+# Just the Namespace - deliberately excluded from Kyverno's
+# enforce-namespace-baseline.yaml (see that file's comment), same
+# reasoning as the admin `traefik` namespace: this is a second, isolated
+# Traefik instance, not an app workload, and needs broad ingress/egress
+# a default-deny-all NetworkPolicy would break.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: traefik-public

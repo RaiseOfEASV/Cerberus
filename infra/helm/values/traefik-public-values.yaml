@@ -1,0 +1,48 @@
+# Values for a SECOND, isolated `traefik` chart release ("traefik-public"),
+# completely separate from infra/helm/values/traefik-values.yaml's admin
+# instance. Exists only to front cerberoast.site and future public apps -
+# the admin instance (Vault/ArgoCD/Keycloak, VPN-only) is never touched by
+# this file or this release.
+#
+# The isolation that matters is providers.kubernetesCRD.labelSelector
+# below: without it, this instance would ALSO pick up and serve the
+# admin IngressRoutes (vault/argocd Host rules) on ITS public-facing
+# Service - the exact regression the whole point of a second instance is
+# meant to avoid. Every public-app IngressRoute must carry the label
+# `traefik-instance: public`; nothing admin-related ever will, so the
+# isolation is opt-in for the new side, zero risk to the existing one.
+# (The reverse isn't scoped - the admin instance's own labelSelector is
+# untouched, so it will also harmlessly try to serve public IngressRoutes
+# too, but only on its own private VIP, never reachable from the
+# internet. Cosmetic duplication, not a security issue - left alone to
+# avoid touching the already-stable admin Traefik config at all.)
+
+service:
+  type: LoadBalancer
+  annotations:
+    metallb.universe.tf/address-pool: cerberus-public-pool
+
+ports:
+  web:
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    http:
+      tls:
+        enabled: true
+
+providers:
+  kubernetesIngress:
+    enabled: false
+  kubernetesCRD:
+    enabled: true
+    labelSelector: "traefik-instance=public"
+    allowCrossNamespace: true
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { cpu: 200m, memory: 256Mi }
