@@ -24,6 +24,13 @@
 # falco (eBPF driver needs capabilities beyond restricted). elastic,
 # dependency-track, and vault do NOT need an exception - noted explicitly
 # so a future reader doesn't assume the omission is an oversight.
+#
+# traefik-public (public-domain backlog item) added for the exact same
+# reason as traefik above - it's a second, isolated Traefik instance, not
+# an app namespace. The placeholder/future public-app namespace(s) it
+# fronts (e.g. cerberoast) are NOT excluded - those get the normal
+# restricted PSA + default-deny-all treatment like any other workload
+# namespace, same as vault/arc-runners layering specific allows on top.
 
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -40,7 +47,7 @@ spec:
         any:
           - resources:
               names:
-                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco, traefik-public]
       mutate:
         patchStrategicMerge:
           metadata:
@@ -64,7 +71,7 @@ spec:
         any:
           - resources:
               names:
-                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco]
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco, traefik-public]
       generate:
         apiVersion: networking.k8s.io/v1
         kind: NetworkPolicy
