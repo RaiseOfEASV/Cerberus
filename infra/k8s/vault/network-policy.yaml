@@ -111,6 +111,41 @@ spec:
   egress:
     - {}
 ---
+# Confirmed missing the hard way: the egress rule below lets the backup
+# pod call OUT to vault-0, but default-deny-all also blocks INGRESS on
+# vault-0 unless something explicitly allows it, and
+# allow-ingress-from-eso-and-arc only covers the external-secrets/
+# arc-runners/traefik NAMESPACES - not a same-namespace pod. A live test
+# (manually triggered Job, not just a dry read of this file) failed with
+# a real "connection refused" calling auth/kubernetes/login from the
+# snapshot init container.
+#
+# Port-only, not source-scoped - tried the scoped version first (from:
+# podSelector: matchLabels vault-backup) and it STILL failed with the
+# identical "connection refused" against vault-0's already-running pod.
+# Same kube-router podSelector-peer unreliability already confirmed 3
+# other times in this project (keycloak ingress, oauth2-proxy egress,
+# vault's own oidc-discovery egress below) - now a 4th instance. Tracked
+# in the local backlog as a cluster-wide, still-unfixed gap; every
+# scoped NetworkPolicy rule in this cluster should be treated as
+# unverified-reliable until that root cause is found. Deliberately kept
+# to port 8200 only (not a bare `ingress: [{}]`, which would also open
+# every OTHER port on vault-0, including 8201's raft/replication
+# traffic) - same "port-only, not fully open" restraint already used
+# for keycloak/oauth2-proxy's equivalent workarounds.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-vault-backup
+  namespace: vault
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: vault, component: server }
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { protocol: TCP, port: 8200 }
+---
 # Epic 9: the vault-backup CronJob's pod lives in THIS namespace, so it's
 # also subject to the default-deny egress above - needs its own explicit
 # allows to reach Vault's own API (snapshot step) and the external backup
@@ -122,7 +157,7 @@ metadata:
   namespace: vault
 spec:
   podSelector:
-    matchLabels: { app.kubernetes.io/name: vault-backup } # NOTE: verify this matches whatever label the CronJob's pod template actually carries - not yet checked against a live Job
+    matchLabels: { app.kubernetes.io/name: vault-backup } # Confirmed against a live Job - matches the CronJob's pod template label exactly.
   policyTypes: [Egress]
   egress:
     - to:
@@ -130,11 +165,28 @@ spec:
       ports:
         - { protocol: TCP, port: 8200 }
     - to:
-        # Coarse by necessity, same gap as infra/k8s/arc/network-policy.yaml's
-        # allow-internet-egress - vanilla NetworkPolicy can't match by
-        # hostname, so this is scoped by port, not by the backup host's
-        # identity. Narrow this once a real network boundary (VPN subnet)
-        # for the backup MinIO host is known.
-        - ipBlock: { cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16] }
+        # The backup MinIO host is the bootstrap VM, reached at its real
+        # PRIVATE VNet address (10.0.1.4 - same host as terraform-state's
+        # Postgres, see infra/terraform/modules/k8s-cluster/azure-k3s/
+        # main.tf's subnet comment) - NOT over the public internet at
+        # all, since both VMs share one VNet. Confirmed the hard way: the
+        # ORIGINAL rule here excluded all private ranges (10.0.0.0/8
+        # among them) on the mistaken assumption this host was reached
+        # publicly, which meant it could never actually have worked -
+        # a live upload attempt failed with "connection refused" to
+        # 10.0.1.4:9000 even after every other fix in this file landed.
+        - ipBlock: { cidr: 10.0.1.4/32 }
       ports:
         - { protocol: TCP, port: 9000 }
+    - to:
+        # 443: the fetch-mc init container downloads the mc binary from
+        # GitHub release assets (backup-cronjob.yaml) - confirmed missing
+        # the hard way, a live test failed with curl exit 7 ("couldn't
+        # connect") until this existed. Coarse by necessity, same gap as
+        # infra/k8s/arc/network-policy.yaml's allow-internet-egress -
+        # vanilla NetworkPolicy can't match by hostname (github.com's IPs
+        # aren't static/listable the way the backup host's single known
+        # private IP is above).
+        - ipBlock: { cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16] }
+      ports:
+        - { protocol: TCP, port: 443 }
