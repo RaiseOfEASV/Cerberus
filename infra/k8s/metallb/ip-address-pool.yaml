@@ -26,3 +26,32 @@ metadata:
 spec:
   ipAddressPools:
     - cerberus-pool
+---
+# Second, separate pool for the public-facing Traefik instance
+# (infra/helm/values/traefik-public-values.yaml) - 10.0.2.51, its own
+# secondary IP configuration with its own dedicated Azure public IP (see
+# the NIC resource's comment on metallb-public-pool). autoAssign: false
+# is deliberate: with two pools both autoAssign:true, a future LoadBalancer
+# Service created without an explicit pool annotation could nondeterministically
+# land on either one - this pool is only ever handed out to a Service that
+# explicitly requests it by name, so the existing admin pool's behavior
+# (today's only LoadBalancer Service, cerberus-pool, still autoAssign:true)
+# stays exactly as it was.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: cerberus-public-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.0.2.51/32
+  autoAssign: false
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: cerberus-public-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - cerberus-public-pool
