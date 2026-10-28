@@ -229,6 +229,9 @@ resource "vault_policy" "eso_read" {
     path "secret/data/alertmanager/*" {
       capabilities = ["read"]
     }
+    path "secret/data/cloudflare/*" {
+      capabilities = ["read"]
+    }
   EOT
 }
 
