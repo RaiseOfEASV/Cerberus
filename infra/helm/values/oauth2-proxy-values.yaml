@@ -65,6 +65,18 @@ extraArgs:
   oidc-groups-claim: groups
   allowed-group: admins
   code-challenge-method: S256 # PKCE - defends the auth code exchange against interception, Keycloak's client supports it
+  # Without these two, oauth2-proxy's defaults are cookie-expire=168h
+  # (7 DAYS) and cookie-refresh=0 (disabled) - a cookie from one login
+  # keeps granting access for a week with zero revalidation against
+  # Keycloak, even after that Keycloak session ends/logs out/gets
+  # removed from "admins". Confirmed the hard way: a stale-but-unexpired
+  # cookie still passed the gate in a non-incognito browser. cookie-
+  # refresh ties the proxy's local cookie to the ACTUAL live upstream
+  # session - every 5m it uses the stored refresh token to re-check with
+  # Keycloak; if that session is gone, the refresh fails and the user is
+  # forced back to a real login well before the 4h hard cap.
+  cookie-expire: "4h"
+  cookie-refresh: "5m"
   upstream: "static://202" # this instance never proxies the actual response body - Traefik ForwardAuth only asks "is this request authorized," then forwards to the real backend itself
   set-xauthrequest: true
   pass-authorization-header: true
