@@ -8,7 +8,9 @@
 # the dedicated backup MinIO (infra/backups/). Split this way so the
 # upload step doesn't need Vault credentials at all, and the snapshot step
 # doesn't need MinIO credentials at all - least privilege per container,
-# not just per Job.
+# not just per Job. A THIRD init container (fetch-mc) fetches the `mc`
+# binary ahead of the upload step, so `upload` itself never needs network
+# egress beyond the backup host.
 #
 # Uses vault-server-tls's own `ca.crt` key (issued in this same namespace
 # by infra/k8s/vault/certificate.yaml) rather than reaching into the
@@ -16,6 +18,31 @@
 # volume mount can't cross namespaces, but cert-manager already copies
 # the CA bundle into every Certificate it issues, so this namespace
 # already has a copy.
+#
+# Deployed for real, 2026-10-28 - confirmed via a live, manually-triggered
+# Job, not just a dry config review. Two real bugs found and fixed doing
+# that:
+# - infra/k8s/vault/network-policy.yaml was missing BOTH a same-namespace
+#   ingress allow on vault-0 (only external-secrets/arc-runners/traefik
+#   were ever allowed in) and an egress allow for fetch-mc's HTTPS
+#   download - default-deny-all silently blocked both, confirmed via two
+#   separate live Job failures ("connection refused" on auth/kubernetes/
+#   login, then curl exit 7 fetching mc).
+# - dl.min.io no longer serves the `mc` binary AT ALL - MinIO fully
+#   archived the open-source MinIO Server/Client/KES projects (confirmed
+#   directly: the URL now returns a real HTTP 410 Gone with an explicit
+#   "archived and no longer maintained" notice, not a transient outage).
+#   Switched to a pinned GitHub release asset instead (archived repos on
+#   GitHub keep serving already-published release assets, just never get
+#   new ones) with a sha256 check against MinIO's own published checksum
+#   file - since this pin can now never be bumped through normal "new
+#   release" Renovate-style updates, verify integrity at fetch time
+#   rather than trusting the URL alone. Real residual risk, not hidden:
+#   this is now frozen software with no upstream fixes ever again: if
+#   GitHub ever removes these release assets too, this breaks with no
+#   newer version to fall back to. Revisit the deferred Garage/SeaweedFS
+#   alternative (infra/backups/docker-compose.yml's own header) sooner
+#   rather than later given this.
 #
 # NOT YET DEPLOYABLE: needs Epic 4's cluster, Vault deployed+unsealed+
 # configured (Epic 6), and infra/backups/ deployed (this epic).
@@ -36,9 +63,16 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels: { app.kubernetes.io/name: vault-backup } # matched by network-policy.yaml's allow-backup-egress/allow-ingress-from-vault-backup - confirmed against a live Job, don't rename without updating both
         spec:
           serviceAccountName: vault-backup
           restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            fsGroup: 100
+            seccompProfile: { type: RuntimeDefault }
           initContainers:
             - name: snapshot
               image: hashicorp/vault:1.17
@@ -53,32 +87,78 @@ spec:
                   VAULT_TOKEN="$(vault write -field=token auth/kubernetes/login role=vault-backup jwt="${jwt}")"
                   export VAULT_TOKEN
                   vault operator raft snapshot save /backup/vault-snapshot.snap
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 200m, memory: 128Mi }
               volumeMounts:
                 - { name: backup, mountPath: /backup }
                 - { name: vault-tls, mountPath: /vault-tls, readOnly: true }
-          containers:
-            - name: upload
-              image: alpine:3.20
+                - { name: tmp, mountPath: /tmp } # Vault's own entrypoint writes here - readOnlyRootFilesystem needs it
+                - { name: vault-home, mountPath: /home/vault }
+            - name: fetch-mc
+              image: curlimages/curl:8.11.1
               command:
                 - sh
                 - -c
                 - |
                   set -eu
-                  apk add --no-cache curl >/dev/null
-                  curl -sO https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc
-                  export MC_HOST_backup="https://${BACKUP_MINIO_ACCESS_KEY}:${BACKUP_MINIO_SECRET_KEY}@${BACKUP_MINIO_ENDPOINT}"
+                  # dl.min.io no longer serves this at all - MinIO fully
+                  # archived mc/server/KES (confirmed: a real HTTP 410
+                  # Gone, not a transient issue). Pinned GitHub release
+                  # asset instead, verified by sha256 since this pin can
+                  # never be bumped the normal way again.
+                  curl -sLo /mc-bin/mc "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z"
+                  echo "01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891  /mc-bin/mc" | sha256sum -c -
+                  chmod +x /mc-bin/mc
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 25m, memory: 32Mi }
+                limits: { cpu: 100m, memory: 64Mi }
+              volumeMounts:
+                - { name: mc-bin, mountPath: /mc-bin }
+          containers:
+            - name: upload
+              image: curlimages/curl:8.11.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  # http, not https - the backup MinIO has no TLS cert configured (see velero-values.yaml's same fix)
+                  export MC_HOST_backup="http://${BACKUP_MINIO_ACCESS_KEY}:${BACKUP_MINIO_SECRET_KEY}@${BACKUP_MINIO_ENDPOINT}"
                   ts="$(date -u +%Y%m%dT%H%M%SZ)"
-                  ./mc cp /backup/vault-snapshot.snap "backup/cerberus-backups/vault/vault-${ts}.snap"
+                  /mc-bin/mc cp /backup/vault-snapshot.snap "backup/cerberus-backups/vault/vault-${ts}.snap"
               env:
+                - name: MC_CONFIG_DIR
+                  value: /tmp/mc-config
                 - name: BACKUP_MINIO_ACCESS_KEY
                   valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: access-key } }
                 - name: BACKUP_MINIO_SECRET_KEY
                   valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: secret-key } }
                 - name: BACKUP_MINIO_ENDPOINT
                   valueFrom: { secretKeyRef: { name: vault-backup-minio-credentials, key: endpoint } }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 200m, memory: 128Mi }
               volumeMounts:
                 - { name: backup, mountPath: /backup }
+                - { name: tmp, mountPath: /tmp }
+                - { name: mc-bin, mountPath: /mc-bin }
           volumes:
             - { name: backup, emptyDir: {} }
+            - { name: tmp, emptyDir: {} }
+            - { name: vault-home, emptyDir: {} }
+            - { name: mc-bin, emptyDir: {} }
             - name: vault-tls
               secret: { secretName: vault-server-tls }
