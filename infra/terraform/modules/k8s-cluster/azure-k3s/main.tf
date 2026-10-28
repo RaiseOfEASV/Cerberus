@@ -59,17 +59,46 @@ resource "azurerm_subnet" "cluster" {
 #
 # The public IP itself stays: it's this VM's outbound internet path, which
 # pod egress depends on (see pod-egress-snat-fix below).
+#
+# ONE real inbound rule now exists: 80/443 for the public-facing site
+# (cerberoast.site), scoped to destination_address_prefix =
+# var.metallb_public_pool_ip ONLY - a different address from both this
+# VM's primary IP and the admin MetalLB VIP (var.metallb_pool_ip). Every
+# admin hostname stays exactly as unreachable from the internet as
+# before; this rule cannot match traffic destined for them, regardless of
+# Host header, because it's scoped by destination IP, not by anything
+# Traefik-level. If this ever needs widening, widen the destination
+# address, never source_address_prefix - that's deliberately "*"
+# (Internet) already, same as any public website.
 resource "azurerm_network_security_group" "cluster" {
   name                = "cerberus-cluster-nsg"
   resource_group_name = data.azurerm_resource_group.main.name
   location            = var.location
 
-  # Explicitly empty - NOT the same as omitting it. security_rule is an
-  # optional+computed attribute in azurerm 3.x: with no blocks at all,
-  # Terraform stops managing the rules and leaves whatever exists in Azure
-  # (a plan after just deleting the blocks showed "No changes" - the old
-  # SSH/API rules would have silently stayed open).
-  security_rule = []
+  security_rule {
+    name                       = "AllowPublicWebInbound"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "*"
+    destination_address_prefix = var.metallb_public_pool_ip
+  }
+}
+
+# Second public IP, entirely separate from the VM's original one (which
+# stays outbound-only, SNAT for pod egress - see pod-egress-snat-fix).
+# This one exists only to be 1:1 NAT'd to metallb_public_pool_ip below,
+# giving the public-facing Traefik instance its own real internet address
+# distinct from anything admin-related.
+resource "azurerm_public_ip" "cluster_public" {
+  name                = "cerberus-cluster-public-app-pip"
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
 }
 
 resource "azurerm_public_ip" "cluster" {
@@ -109,7 +138,37 @@ resource "azurerm_network_interface" "cluster" {
     private_ip_address_allocation = "Static"
     private_ip_address            = var.metallb_pool_ip
   }
+
+  # Same reasoning as metallb-pool above, for the public-facing Traefik
+  # instance's own address. public_ip_address_id is what's different
+  # here - this is what gives THIS specific private IP a real 1:1 NAT to
+  # the internet, independent of the VM's primary outbound-only public
+  # IP. Azure delivers inbound traffic for cluster_public's address to
+  # this private IP; MetalLB's L2Advertisement (infra/k8s/metallb/
+  # ip-address-pool.yaml) then claims it the same way it already claims
+  # metallb-pool above.
+  ip_configuration {
+    name                          = "metallb-public-pool"
+    subnet_id                     = azurerm_subnet.cluster.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = var.metallb_public_pool_ip
+    public_ip_address_id          = azurerm_public_ip.cluster_public.id
+  }
 }
+
+# A new ip_configuration added to a NIC Azure's already provisioned does
+# NOT get live-reconfigured into the guest OS automatically on this image
+# - confirmed the hard way: restarting walinuxagent did nothing, the
+# address only appeared after a persistent netplan drop-in was added
+# by hand (/etc/netplan/60-metallb-public-pool.yaml on the VM itself -
+# not managed by Terraform/cloud-init, since this module has no
+# provisioner for post-boot network changes). metallb-pool's address
+# (10.0.2.50) never hit this problem only because it already existed in
+# the NIC's IP configs BEFORE the VM's first boot, so cloud-init's own
+# netplan generation picked it up correctly at that time. If this module
+# ever gains a THIRD post-boot IP addition, the same manual netplan
+# drop-in step is needed again - there's no reboot-free Terraform/
+# cloud-init mechanism for this today.
 
 resource "azurerm_network_interface_security_group_association" "cluster" {
   network_interface_id      = azurerm_network_interface.cluster.id

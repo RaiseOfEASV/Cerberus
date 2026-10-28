@@ -53,3 +53,8 @@ variable "metallb_pool_ip" {
   type    = string
   default = "10.0.2.50"
 }
+
+variable "metallb_public_pool_ip" {
+  type    = string
+  default = "10.0.2.51"
+}

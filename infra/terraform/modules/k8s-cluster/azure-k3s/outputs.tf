@@ -8,3 +8,8 @@ output "cluster_endpoint" {
   description = "API server URL"
   value       = "https://${local.node_ip}:6443"
 }
+
+output "cluster_public_ip" {
+  description = "The second, dedicated public IP for the public-facing Traefik instance (cerberoast.site and future public apps) - NOT the VM's original outbound-only public IP. Point the site's DNS A record here."
+  value       = azurerm_public_ip.cluster_public.ip_address
+}

@@ -67,3 +67,9 @@ variable "metallb_pool_ip" {
   type        = string
   default     = "10.0.2.50"
 }
+
+variable "metallb_public_pool_ip" {
+  description = "A SECOND, separate private IP + IP configuration from metallb_pool_ip above - used only by the public-facing Traefik instance (infra/helm/values/traefik-public-values.yaml), never the admin one. Deliberately not reused: giving the public site its own IP configuration (backed by its own azurerm_public_ip, not the VM's existing outbound-only one) is what lets the NSG rule allowing public 80/443 be scoped to ONLY this address - the admin VIP (metallb_pool_ip) and the VM's primary address stay unreachable from the internet exactly as before. Must be a free address inside the cluster subnet (10.0.2.0/24)."
+  type        = string
+  default     = "10.0.2.51"
+}

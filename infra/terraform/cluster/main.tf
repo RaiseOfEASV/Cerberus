@@ -29,13 +29,14 @@ module "cluster" {
   kubernetes_version = var.kubernetes_version
   node_count         = var.node_count
 
-  location             = var.location
-  resource_group_name  = var.resource_group_name
-  vm_size              = var.vm_size
-  admin_username       = var.admin_username
-  ssh_public_key_path  = var.ssh_public_key_path
-  ssh_private_key_path = var.ssh_private_key_path
-  metallb_pool_ip      = var.metallb_pool_ip
+  location               = var.location
+  resource_group_name    = var.resource_group_name
+  vm_size                = var.vm_size
+  admin_username         = var.admin_username
+  ssh_public_key_path    = var.ssh_public_key_path
+  ssh_private_key_path   = var.ssh_private_key_path
+  metallb_pool_ip        = var.metallb_pool_ip
+  metallb_public_pool_ip = var.metallb_public_pool_ip
 }
 
 output "kubeconfig" {
@@ -45,4 +46,8 @@ output "kubeconfig" {
 
 output "cluster_endpoint" {
   value = module.cluster.cluster_endpoint
+}
+
+output "cluster_public_ip" {
+  value = module.cluster.cluster_public_ip
 }
