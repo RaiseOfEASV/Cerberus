@@ -13,9 +13,24 @@ name: Deploy
 # protected branches only); a bare `prod` would silently auto-create a new,
 # unprotected environment and bypass that reviewer.
 #
-# dev isn't an option here: dev's first tag is set by hand, and dev
-# auto-syncs. prod's Applications are manual-sync in ArgoCD, so after this
-# workflow lands a prod bump, sync quote-*-prod deliberately.
+# master is protected (infra/terraform/github main_protection: PR + review +
+# signed commits, no bypass), so this workflow never pushes to it. It
+# creates the bump commit on a new deploy/* branch through the GitHub API -
+# commits made that way by GITHUB_TOKEN are signed by GitHub and show as
+# Verified - and opens a pull request. A teammate reviews and merges it;
+# ArgoCD picks up the change from master. For prod that is two gates: the
+# `production` environment approval (before this job runs) and the PR review.
+#
+# Needs the repo setting "Allow GitHub Actions to create and approve pull
+# requests" (Settings > Actions > General > Workflow permissions).
+#
+# PRs opened with GITHUB_TOKEN don't trigger other workflows, so pr-validate
+# doesn't run on them. Fine while required-status-checks is evaluate-only;
+# flipping it to active needs a GitHub App token here instead.
+#
+# dev isn't an option here: dev's tag is changed by a normal PR, and dev
+# auto-syncs. prod's Applications are manual-sync in ArgoCD, so after the
+# prod bump PR merges, sync quote-*-prod deliberately.
 
 on:
   workflow_dispatch:
@@ -35,10 +50,10 @@ on:
         options: [staging, prod]
 
 permissions:
-  contents: write
+  contents: write # create the deploy/* branch and its commit
+  pull-requests: write # open the PR
 
-# Every run commits to master; serialize them so two promotions dispatched
-# back to back (e.g. quote-api then quote-web) can't race on `git push`.
+# Serialize runs so promotions dispatched back to back are created in order.
 concurrency:
   group: deploy-gitops
   cancel-in-progress: false
@@ -55,9 +70,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment == 'prod' && 'production' || inputs.environment }}
     steps:
+      - name: Only promote from master
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/master" ]; then
+            echo "::error::run this workflow from master (got ${GITHUB_REF})" >&2; exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Bump image tag and digest in the GitOps config for this environment
+        id: bump
         # yq (mikefarah v4) and docker buildx are preinstalled on
         # ubuntu-latest runners. Images are public, so no registry login.
         run: |
@@ -86,25 +108,59 @@ jobs:
           export DIGEST
           yq -i '.image.tag = strenv(VERSION) | .image.digest = strenv(DIGEST)' "$target"
           echo "Set ${APP} to ${VERSION}@${DIGEST} in ${target}"
+          {
+            echo "target=${target}"
+            echo "digest=${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
         env:
           APP: ${{ inputs.app }}
           VERSION: ${{ inputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
 
-      - name: Commit and push the GitOps config change
+      - name: Open a pull request with the change
         run: |
-          git config user.name "cerberus-ci"
-          git config user.email "ci@cerberus.invalid"
-          git add infra/helm/ infra/k8s/environments/
-          if git diff --cached --quiet; then
-            echo "nothing to commit"
+          if git diff --quiet -- "$TARGET"; then
+            echo "${TARGET} already pins ${VERSION}@${DIGEST} - nothing to deploy."
             exit 0
           fi
-          git commit -m "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}"
-          # master may have moved since checkout; replay this one-file change.
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push
+          # Branch from exactly the commit this job checked out and edited,
+          # so the PR diff is only this bump (a conflict shows on the PR if
+          # master changed the same lines meanwhile).
+          base_sha=$(git rev-parse HEAD)
+          branch="deploy/${APP}-${ENVIRONMENT}-${VERSION:0:12}-${GITHUB_RUN_ID}"
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/heads/${branch}" -f sha="${base_sha}" >/dev/null
+          # Contents API commit: authored by github-actions[bot] and signed
+          # by GitHub (Verified), which main_protection's required_signatures
+          # accepts.
+          blob_sha=$(git rev-parse "HEAD:${TARGET}")
+          message=$(printf '%s\n\n%s\n%s\n' \
+            "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}" \
+            "Co-authored-by: Andrii Savchenko <109040480+andriiVIt@users.noreply.github.com>" \
+            "Co-authored-by: Ionut Andrei Grosu <80783004+grosuionutandrei@users.noreply.github.com>")
+          gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${TARGET}" \
+            -f message="${message}" \
+            -f content="$(base64 -w0 "$TARGET")" \
+            -f sha="${blob_sha}" \
+            -f branch="${branch}" >/dev/null
+          after_merge="ArgoCD auto-syncs ${ENVIRONMENT} after merge."
+          if [ "$ENVIRONMENT" = "prod" ]; then
+            after_merge="prod is manual-sync: after merge, sync \`${APP}-prod\` in ArgoCD."
+          fi
+          gh pr create --base master --head "$branch" \
+            --title "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}" \
+            --body "$(printf '%s\n' \
+              "Promotes **${APP}** to **${ENVIRONMENT}**:" \
+              "" \
+              "- tag \`${VERSION}\`" \
+              "- digest \`${DIGEST}\`" \
+              "" \
+              "Opened by deploy.yml run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} (triggered by @${GITHUB_ACTOR})." \
+              "${after_merge}")"
         env:
+          GH_TOKEN: ${{ github.token }}
           APP: ${{ inputs.app }}
           VERSION: ${{ inputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
+          TARGET: ${{ steps.bump.outputs.target }}
+          DIGEST: ${{ steps.bump.outputs.digest }}
