@@ -20,7 +20,9 @@ reviewed PR:
   (`gh workflow run deploy.yml -f app=<app> -f version=<tag> -f environment=<staging|prod>`).
   It resolves the digest, commits the bump on a `deploy/*` branch (signed by
   GitHub) and opens a PR. prod first waits for the `production` environment
-  approval. A teammate merges the PR; staging then auto-syncs, prod needs a
+  approval. The PR is merged (by a reviewing teammate, or by an admin via
+  the ruleset bypass - so one admin *can* promote to prod alone; see
+  deploy.yml's header); staging then auto-syncs, prod needs a
   manual `argocd app sync <app>-prod`.
 
 ## Syncing prod

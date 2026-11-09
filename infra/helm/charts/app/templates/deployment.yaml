@@ -4,6 +4,16 @@
 {{- $digest := .Values.image.digest | default "" | toString -}}
 {{- if and $digest (not (regexMatch "^sha256:[a-f0-9]{64}$" $digest)) }}{{ fail "image.digest must look like sha256:<64 hex chars>" }}{{ end -}}
 {{- $image := printf "%s:%s" $repo $tag -}}
+{{- /* Kyverno baseline (infra/k8s/kyverno/policies) checked at render time, so a
+       bad values file fails in PR CI instead of at admission during sync. */ -}}
+{{- if lt (int .Values.podSecurityContext.runAsUser) 1 }}{{ fail "podSecurityContext.runAsUser must be a non-root UID (> 0) - Kyverno require-non-root" }}{{ end -}}
+{{- $res := .Values.resources | default dict -}}
+{{- range $kind := list "requests" "limits" }}
+{{- $r := get $res $kind | default dict -}}
+{{- range $k := list "cpu" "memory" }}
+{{- if not (get $r $k) }}{{ fail (printf "resources.%s.%s is required - Kyverno require-resource-limits" $kind $k) }}{{ end -}}
+{{- end }}
+{{- end -}}
 {{- if $digest }}{{ $image = printf "%s@%s" $image $digest }}{{ end -}}
 apiVersion: apps/v1
 kind: Deployment

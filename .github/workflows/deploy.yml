@@ -10,16 +10,24 @@ name: Deploy
 # The `environment` input uses the repo's real directory/namespace names
 # (staging, prod). The GitHub Environment gating the job maps `prod` to
 # `production` (infra/terraform/github/environments.tf - required reviewer,
-# protected branches only); a bare `prod` would silently auto-create a new,
+# deployments from master only); a bare `prod` would silently auto-create a new,
 # unprotected environment and bypass that reviewer.
 #
 # master is protected (infra/terraform/github main_protection: PR + review +
-# signed commits, no bypass), so this workflow never pushes to it. It
-# creates the bump commit on a new deploy/* branch through the GitHub API -
-# commits made that way by GITHUB_TOKEN are signed by GitHub and show as
-# Verified - and opens a pull request. A teammate reviews and merges it;
-# ArgoCD picks up the change from master. For prod that is two gates: the
-# `production` environment approval (before this job runs) and the PR review.
+# signed commits; nobody can push directly), so this workflow never pushes to
+# it. It creates the bump commit on a new deploy/* branch through the GitHub
+# API - commits made that way by GITHUB_TOKEN are signed by GitHub and show
+# as Verified - and opens a pull request; once it merges, ArgoCD picks the
+# change up from master. For prod there are two gates: the `production`
+# environment approval (before this job runs) and the PR merge.
+#
+# They are NOT two-person control: the PR's author is github-actions[bot],
+# so the person who dispatched the run may approve it as a code owner, repo
+# admins may merge without review (ruleset bypass), and the environment has a
+# single reviewer. One admin can promote to prod alone - a deliberate choice
+# for a three-person team. For real two-person control: add reviewers to
+# var.production_reviewers, set prevent_self_review on the environment, and
+# drop the admin bypass.
 #
 # Needs the repo setting "Allow GitHub Actions to create and approve pull
 # requests" (Settings > Actions > General > Workflow permissions).

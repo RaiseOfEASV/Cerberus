@@ -33,9 +33,10 @@ resource "github_repository_environment" "production" {
     users = [for u in data.github_user.production_reviewers : u.id]
   }
 
-  # Named branches, not "protected branches only": master has no classic
-  # branch protection (the main_protection ruleset isn't applied), so a
-  # protected-branches policy would refuse every deploy from master.
+  # Named branches, not "protected branches only": that policy only counts
+  # *classic* branch protection, which master doesn't have (it's protected
+  # by the main_protection ruleset instead), so it would refuse every deploy
+  # from master.
   deployment_branch_policy {
     protected_branches     = false
     custom_branch_policies = true

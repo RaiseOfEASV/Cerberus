@@ -34,6 +34,11 @@ image has to make them possible:
 - **No environment-specific values baked in.** The same image digest is
   promoted dev → staging → prod; read config from environment variables at
   start-up (quote-web writes `env-config.js` from `API_URL` in its entrypoint).
+- **Static frontends: cache headers matter.** Serve `index.html` with
+  `no-cache`, hashed assets as `immutable`, and a missing asset as a real 404
+  (never the SPA fallback) - otherwise returning visitors get a blank page
+  after a deploy. Copy `apps/quote-web/docker/nginx.conf`; its behaviour is
+  tested by `apps/quote-web/docker/image-test.sh`.
 
 ## Deploying a new app
 
