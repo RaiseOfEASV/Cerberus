@@ -16,9 +16,9 @@ writablePaths:
   - /var/cache/nginx
   - /run/quote-web
 env:
-  # TODO: a browser can't resolve *.svc.cluster.local - for manual testing,
-  # port-forward quote-api and override this (e.g. http://localhost:18080).
+  # Same-origin API behind the admin preview hostname
+  # (infra/k8s/environments/dev/admin-preview.yaml): /api/* -> quote-api.
   - name: API_URL
-    value: "http://quote-api.dev.svc.cluster.local"
+    value: "https://quote-dev.admin.cerberus.internal/api"
 ingress:
   enabled: false

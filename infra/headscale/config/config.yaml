@@ -68,6 +68,12 @@ dns:
     - name: "keycloak.admin.cerberus.internal"
       type: "A"
       value: "10.0.2.50"
+    - name: "quote-dev.admin.cerberus.internal"
+      type: "A"
+      value: "10.0.2.50"
+    - name: "quote-staging.admin.cerberus.internal"
+      type: "A"
+      value: "10.0.2.50"
 
 # headscale 0.23.0 moved this under policy.path (flat acl_policy_path is
 # a hard FATAL now, not just a deprecation warning - confirmed by hitting

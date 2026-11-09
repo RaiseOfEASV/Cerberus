@@ -61,6 +61,13 @@ clients:
       - "https://wazuh.admin.cerberus.internal/oauth2/callback"
       - "https://kibana.admin.cerberus.internal/oauth2/callback"
       - "https://dependency-track.admin.cerberus.internal/oauth2/callback"
+      # Team previews of the dev/staging quote apps
+      # (infra/k8s/environments/{dev,staging}/admin-preview.yaml). Added
+      # live via the Keycloak admin console, NOT by re-running the
+      # realm-config Job (it resets every client's secret - see
+      # infra/k8s/keycloak/README.md).
+      - "https://quote-dev.admin.cerberus.internal/oauth2/callback"
+      - "https://quote-staging.admin.cerberus.internal/oauth2/callback"
     webOrigins: ["+"]
     standardFlowEnabled: true
     directAccessGrantsEnabled: false
