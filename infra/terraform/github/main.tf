@@ -49,6 +49,18 @@ resource "github_repository_ruleset" "main_protection" {
   target      = "branch"
   enforcement = "active"
 
+  # Repo admins may merge a PR without the required review/checks - a
+  # small team's escape hatch, chosen deliberately (2026-11-09). Mode
+  # "pull_request" means the bypass only applies when merging a PR: direct
+  # pushes and force-pushes to master stay blocked for everyone, so every
+  # change still lands as a PR (history, CI, GitHub-signed merge commit).
+  # Bypassed merges are recorded in the repo's rule insights.
+  bypass_actors {
+    actor_id    = 5 # built-in repository role: Admin
+    actor_type  = "RepositoryRole"
+    bypass_mode = "pull_request"
+  }
+
   conditions {
     ref_name {
       # ~DEFAULT_BRANCH tracks whatever the default branch actually is

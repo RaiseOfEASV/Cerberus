@@ -9,11 +9,12 @@
 # config, which would put it in state. Secret values are set directly via
 # `gh secret set --env production ...` or the repo UI, never here.
 
-data "github_user" "default_reviewer" {
-  # Same single-owner placeholder as CODEOWNERS - replace with a real team
-  # once one exists; a lone reviewer gating production doesn't scale past
-  # one person any better here than it does there.
-  username = var.github_owner
+data "github_user" "production_reviewers" {
+  # Real user accounts - an organization (var.github_owner) can't be an
+  # environment reviewer. A lone reviewer doesn't scale past one person;
+  # swap for a team (reviewers.teams) once one exists.
+  for_each = toset(var.production_reviewers)
+  username = each.value
 }
 
 resource "github_repository_environment" "staging" {
@@ -26,12 +27,23 @@ resource "github_repository_environment" "production" {
   repository  = var.github_repo
   environment = "production"
 
+  # deploy.yml maps its `prod` input to this environment; the job waits
+  # here until a reviewer approves it.
   reviewers {
-    users = [data.github_user.default_reviewer.id]
+    users = [for u in data.github_user.production_reviewers : u.id]
   }
 
+  # Named branches, not "protected branches only": master has no classic
+  # branch protection (the main_protection ruleset isn't applied), so a
+  # protected-branches policy would refuse every deploy from master.
   deployment_branch_policy {
-    protected_branches     = true
-    custom_branch_policies = false
+    protected_branches     = false
+    custom_branch_policies = true
   }
+}
+
+resource "github_repository_environment_deployment_policy" "production_master" {
+  repository     = var.github_repo
+  environment    = github_repository_environment.production.environment
+  branch_pattern = "master"
 }

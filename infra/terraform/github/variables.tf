@@ -15,3 +15,14 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "production_reviewers" {
+  description = "GitHub usernames (people, not orgs) who must approve deployments to the production environment"
+  type        = list(string)
+  default     = ["Ju5tAmir"]
+
+  validation {
+    condition     = length(var.production_reviewers) > 0
+    error_message = "production needs at least one reviewer, or deploy.yml's prod gate is meaningless."
+  }
+}
