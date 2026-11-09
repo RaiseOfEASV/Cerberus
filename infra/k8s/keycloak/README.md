@@ -119,6 +119,30 @@ result into Vault at that client's path, force an ESO resync, restart
 whichever pod consumes it (oauth2-proxy's own pod / `vault write
 auth/oidc/config` again / `argocd-server`).
 
+## Adding another gated hostname
+
+Every `*.admin.cerberus.internal` UI behind the oauth2-proxy gate needs the
+same four pieces (the dev/staging quote previews,
+`infra/k8s/environments/{dev,staging}/admin-preview.yaml`, are the newest
+example):
+
+1. **IngressRoute** on the admin Traefik: a `PathPrefix(/oauth2)` route to the
+   `oauth2-proxy` service (priority 100, ungated), and the app route(s) with
+   the `oauth2-proxy-errors` + `oauth2-proxy-forwardauth` middlewares (in that
+   order), plus a `Certificate` from the `cerberus-internal-ca` ClusterIssuer.
+2. **NetworkPolicy** in the app's namespace allowing ingress from the
+   `traefik` namespace (Kyverno's default-deny blocks it otherwise).
+3. **Redirect URI** `https://<host>/oauth2/callback` on the `oauth2-proxy`
+   client - add it in the **Keycloak admin console** and record it in
+   `infra/keycloak/realm-config.yaml`. Don't re-run the realm-config Job for
+   this (see the hazard above).
+4. **Name resolution** on admin devices: a hosts-file entry
+   `10.0.2.50 <host>` (MagicDNS isn't usable yet - `infra/headscale/README.md`),
+   plus the record in headscale's `extra_records` for later.
+
+oauth2-proxy itself needs no change: `cookie-domain`/`whitelist-domain` already
+cover `.admin.cerberus.internal`.
+
 ## Not yet done
 
 - Grafana/Wazuh/Kibana/Dependency-Track aren't deployed yet - once they are,
