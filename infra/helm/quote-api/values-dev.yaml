@@ -4,11 +4,9 @@
 image:
   repository: ghcr.io/raiseofeasv/quote-api
   # Bumped per promotion: by hand for dev, by deploy.yml for staging/prod.
-  tag: "bootstrap-placeholder"
-
+  tag: "7318a2aca309703bc09c0ba52008d350536347c2"
 env:
   - name: ALLOWED_ORIGIN
     value: "*"
-
 ingress:
   enabled: false

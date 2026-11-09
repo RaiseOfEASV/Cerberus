@@ -3,8 +3,7 @@
 image:
   repository: ghcr.io/raiseofeasv/quote-web
   # Bumped per promotion: by hand for dev, by deploy.yml for staging/prod.
-  tag: "bootstrap-placeholder"
-
+  tag: "7318a2aca309703bc09c0ba52008d350536347c2"
 # nginx-unprivileged runs as UID 101 and needs these writable even with a
 # read-only root filesystem (pid in /tmp, cache, generated env-config.js).
 podSecurityContext:
@@ -14,12 +13,10 @@ writablePaths:
   - /tmp
   - /var/cache/nginx
   - /run/quote-web
-
 env:
   # TODO: a browser can't resolve *.svc.cluster.local - for manual testing,
   # port-forward quote-api and override this (e.g. http://localhost:18080).
   - name: API_URL
     value: "http://quote-api.dev.svc.cluster.local"
-
 ingress:
   enabled: false
