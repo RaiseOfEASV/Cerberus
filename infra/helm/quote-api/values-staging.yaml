@@ -5,8 +5,8 @@ image:
   repository: ghcr.io/raiseofeasv/quote-api
   # tag + digest bumped per promotion: by hand for dev, by deploy.yml for
   # staging/prod.
-  tag: "bootstrap-placeholder"
-  digest: ""
+  tag: "7318a2aca309703bc09c0ba52008d350536347c2"
+  digest: "sha256:3c61afc2ce5deb3d6b831f455ecaa1a90583d6461b11fb32bb5d21c515b08ed2"
 env:
   - name: ALLOWED_ORIGIN
     value: "*"
