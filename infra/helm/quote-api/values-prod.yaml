@@ -4,13 +4,12 @@
 # the whole site), so the chart's own IngressRoute stays off here.
 image:
   repository: ghcr.io/raiseofeasv/quote-api
-  # Bumped by deploy.yml (environment=prod).
+  # tag + digest bumped by deploy.yml (environment=prod).
   tag: "bootstrap-placeholder"
-
+  digest: ""
 env:
   # quote-web is served on both hostnames; the matching Origin is echoed.
   - name: ALLOWED_ORIGIN
     value: "https://cerberoast.site,https://www.cerberoast.site"
-
 ingress:
   enabled: false

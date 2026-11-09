@@ -37,6 +37,16 @@ on:
 permissions:
   contents: write
 
+# Every run commits to master; serialize them so two promotions dispatched
+# back to back (e.g. quote-api then quote-web) can't race on `git push`.
+concurrency:
+  group: deploy-gitops
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: raiseofeasv
+
 jobs:
   update-gitops-config:
     name: update-gitops-config
@@ -47,8 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bump image tag in the GitOps config for this environment
-        # yq (mikefarah v4) is preinstalled on ubuntu-latest runners.
+      - name: Bump image tag and digest in the GitOps config for this environment
+        # yq (mikefarah v4) and docker buildx are preinstalled on
+        # ubuntu-latest runners. Images are public, so no registry login.
         run: |
           # Inputs are free text - reject anything that isn't a plain
           # app name / image tag before it reaches a path or a values file.
@@ -63,8 +74,18 @@ jobs:
             echo "::error::${target} doesn't exist - ${APP} isn't wired into ${ENVIRONMENT} (see infra/k8s/environments/${ENVIRONMENT}/)." >&2
             exit 1
           fi
-          yq -i '.image.tag = strenv(VERSION)' "$target"
-          echo "Set ${APP} image tag to ${VERSION} in ${target}"
+          # Pin the tag to its manifest digest - the same digest Kyverno's
+          # verify-image-signatures resolves at admission - so git matches
+          # what runs and the deploy references an immutable image. Fails if
+          # the tag doesn't exist (e.g. never built by build.yml).
+          ref="${REGISTRY}/${OWNER}/${APP}:${VERSION}"
+          DIGEST=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r .digest)
+          if ! printf '%s' "$DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
+            echo "::error::couldn't resolve a digest for ${ref}" >&2; exit 1
+          fi
+          export DIGEST
+          yq -i '.image.tag = strenv(VERSION) | .image.digest = strenv(DIGEST)' "$target"
+          echo "Set ${APP} to ${VERSION}@${DIGEST} in ${target}"
         env:
           APP: ${{ inputs.app }}
           VERSION: ${{ inputs.version }}
@@ -80,6 +101,8 @@ jobs:
             exit 0
           fi
           git commit -m "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}"
+          # master may have moved since checkout; replay this one-file change.
+          git pull --rebase origin "${GITHUB_REF_NAME}"
           git push
         env:
           APP: ${{ inputs.app }}

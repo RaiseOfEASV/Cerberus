@@ -5,6 +5,12 @@
 image:
   repository: ""   # required, e.g. ghcr.io/raiseofeasv/quote-api
   tag: ""          # required - never "latest" (Kyverno disallow-latest-tag)
+  # Manifest digest (sha256:...) of that tag. Set by deploy.yml alongside the
+  # tag. Kyverno's verify-image-signatures pins images to their digest at
+  # admission anyway; rendering it here keeps git identical to what runs
+  # (otherwise ArgoCD shows a permanent diff) and makes every deploy
+  # reference an immutable image.
+  digest: ""
 
 replicaCount: 1
 containerPort: 8080

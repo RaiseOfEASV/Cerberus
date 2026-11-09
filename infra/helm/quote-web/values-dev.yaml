@@ -2,8 +2,10 @@
 # Application in infra/k8s/environments/dev/). ClusterIP only.
 image:
   repository: ghcr.io/raiseofeasv/quote-web
-  # Bumped per promotion: by hand for dev, by deploy.yml for staging/prod.
+  # tag + digest bumped per promotion: by hand for dev, by deploy.yml for
+  # staging/prod.
   tag: "7318a2aca309703bc09c0ba52008d350536347c2"
+  digest: sha256:189e3a5abf325e4eda360ddf433cd74c0995a0e9e2c9da33e234de68801795d7
 # nginx-unprivileged runs as UID 101 and needs these writable even with a
 # read-only root filesystem (pid in /tmp, cache, generated env-config.js).
 podSecurityContext:

@@ -1,6 +1,10 @@
 {{- $repo := required "image.repository is required" .Values.image.repository -}}
 {{- $tag := required "image.tag is required" .Values.image.tag | toString -}}
 {{- if eq $tag "latest" }}{{ fail "image.tag must not be \"latest\" (Kyverno disallow-latest-tag)" }}{{ end -}}
+{{- $digest := .Values.image.digest | default "" | toString -}}
+{{- if and $digest (not (regexMatch "^sha256:[a-f0-9]{64}$" $digest)) }}{{ fail "image.digest must look like sha256:<64 hex chars>" }}{{ end -}}
+{{- $image := printf "%s:%s" $repo $tag -}}
+{{- if $digest }}{{ $image = printf "%s@%s" $image $digest }}{{ end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: app
-          image: "{{ $repo }}:{{ $tag }}"
+          image: "{{ $image }}"
           ports:
             - name: http
               containerPort: {{ .Values.containerPort }}

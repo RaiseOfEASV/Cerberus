@@ -62,6 +62,10 @@ jobs:
       - uses: extractions/setup-just@v2
       - name: just lint-all
         run: just lint-all
+      - name: Generic Helm chart - lint and render tests
+        run: |
+          helm lint infra/helm/charts/app
+          infra/helm/charts/app/tests/render-test.sh
 
   sast:
     name: sast

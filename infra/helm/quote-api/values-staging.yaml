@@ -3,12 +3,12 @@
 # exposure; any origin allowed (cluster-internal, port-forward testing).
 image:
   repository: ghcr.io/raiseofeasv/quote-api
-  # Bumped per promotion: by hand for dev, by deploy.yml for staging/prod.
+  # tag + digest bumped per promotion: by hand for dev, by deploy.yml for
+  # staging/prod.
   tag: "bootstrap-placeholder"
-
+  digest: ""
 env:
   - name: ALLOWED_ORIGIN
     value: "*"
-
 ingress:
   enabled: false
