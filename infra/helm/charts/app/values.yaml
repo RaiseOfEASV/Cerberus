@@ -1,0 +1,42 @@
+# Generic Cerberus app chart. Kyverno's baseline (non-root, read-only rootfs,
+# cpu+memory requests/limits, no :latest, signed ghcr.io/raiseofeasv images)
+# is baked into the templates; per-app values only fill in what varies.
+
+image:
+  repository: ""   # required, e.g. ghcr.io/raiseofeasv/quote-api
+  tag: ""          # required - never "latest" (Kyverno disallow-latest-tag)
+
+replicaCount: 1
+containerPort: 8080
+
+# Numeric UID the container runs as. Required by Kubernetes to verify
+# runAsNonRoot when the image declares a named user (distroless "nonroot").
+# 65532 = distroless nonroot; nginx-unprivileged uses 101.
+podSecurityContext:
+  runAsUser: 65532
+  runAsGroup: 65532
+
+# The root filesystem is always read-only. List paths that genuinely need to
+# be writable; each gets its own emptyDir.
+writablePaths: []
+
+probes:
+  path: /healthz
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# List of {name, value}.
+env: []
+
+# Public exposure via traefik-public (IngressRoute labeled
+# traefik-instance: public). dev/staging leave this off.
+ingress:
+  enabled: false
+  hosts: []
+  tlsSecretName: ""
