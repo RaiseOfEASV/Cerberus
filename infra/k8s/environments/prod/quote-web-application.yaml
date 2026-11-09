@@ -1,0 +1,26 @@
+# Prod deploys into the existing `cerberoast` namespace (not `prod`), where
+# the cerberoast-site-tls Certificate, the IngressRoute and the
+# traefik-public NetworkPolicy already live. No automated sync: prod changes
+# land via deploy.yml's reviewer-gated `production` environment and are
+# synced by hand (argocd app sync quote-web-prod), same policy as root-prod.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: quote-web-prod
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      path: infra/helm/charts/app
+      helm:
+        releaseName: quote-web
+        valueFiles:
+          - $values/infra/helm/quote-web/values-prod.yaml
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cerberoast

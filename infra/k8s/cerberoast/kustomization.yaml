@@ -1,0 +1,10 @@
+# Shared, non-chart resources for cerberoast.site. Pulled into ArgoCD via
+# infra/k8s/environments/prod/kustomization.yaml (root-prod). The app
+# workloads themselves come from the quote-api-prod/quote-web-prod
+# Applications (infra/helm/charts/app).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - network-policy.yaml
+  - ingressroute.yaml
