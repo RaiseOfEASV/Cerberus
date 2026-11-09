@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - quote-api-application.yaml
   - quote-web-application.yaml
+  - admin-preview.yaml

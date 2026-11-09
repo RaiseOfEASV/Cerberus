@@ -1,0 +1,89 @@
+# Browser access to the dev quote apps for the team, on the ADMIN side only:
+# internal Traefik (VIP 10.0.2.50, reachable over the headscale VPN), an
+# internal-CA certificate, and the same Keycloak/oauth2-proxy gate as Vault
+# and ArgoCD. Never served by traefik-public (no traefik-instance label).
+#
+# One hostname, same origin: / -> quote-web, /api/* -> quote-api (prefix
+# stripped). The browser then sends the oauth2-proxy session cookie with the
+# app's API calls automatically and no CORS is involved - a separate API
+# hostname would be cross-origin and the gate would reject the fetch.
+#
+# Outside git (one-time, see infra/k8s/environments/README.md): Keycloak's
+# oauth2-proxy client needs https://quote-dev.admin.cerberus.internal/oauth2/callback as a redirect URI,
+# and headscale needs a DNS record for quote-dev.admin.cerberus.internal -> 10.0.2.50.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api-prefix
+  namespace: dev
+spec:
+  stripPrefix:
+    prefixes: ["/api"]
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: quote-preview
+  namespace: dev
+spec:
+  entryPoints: [websecure]
+  routes:
+    # oauth2-proxy's own endpoints (sign-in, callback) - must bypass the gate.
+    - match: "Host(`quote-dev.admin.cerberus.internal`) && PathPrefix(`/oauth2`)"
+      kind: Rule
+      priority: 100
+      services:
+        - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 80
+    - match: "Host(`quote-dev.admin.cerberus.internal`) && PathPrefix(`/api`)"
+      kind: Rule
+      priority: 50
+      middlewares:
+        - { name: oauth2-proxy-errors, namespace: oauth2-proxy }
+        - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
+        - { name: strip-api-prefix }
+      services:
+        - name: quote-api
+          port: 80
+    - match: "Host(`quote-dev.admin.cerberus.internal`)"
+      kind: Rule
+      priority: 10
+      middlewares:
+        - { name: oauth2-proxy-errors, namespace: oauth2-proxy }
+        - { name: oauth2-proxy-forwardauth, namespace: oauth2-proxy }
+      services:
+        - name: quote-web
+          port: 80
+  tls:
+    secretName: quote-dev-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: quote-dev-admin-tls
+  namespace: dev
+spec:
+  secretName: quote-dev-admin-tls
+  dnsNames: ["quote-dev.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+# Layered on Kyverno's auto-generated default-deny-all: ingress from the
+# admin Traefik only, on the apps' container port. If this ever fails
+# while Traefik logs a successful route, suspect the documented kube-router
+# peer-selector unreliability (BACKLOG) before this file.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-admin-traefik-ingress
+  namespace: dev
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { port: 8080, protocol: TCP }
