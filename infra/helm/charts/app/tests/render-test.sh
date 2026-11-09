@@ -18,4 +18,9 @@ expect "tag plus digest"   "ghcr.io/raiseofeasv/x:v1@$D"   "$(img --set image.ta
 rejects "malformed digest" --set image.tag=v1 --set image.digest=sha256:nothex
 rejects "latest tag"       --set image.tag=latest
 rejects "missing tag"
+# Kyverno baseline guards: fail at render time (PR CI), not at admission (sync).
+rejects "runAsUser 0"          --set image.tag=v1 --set podSecurityContext.runAsUser=0
+rejects "no cpu limit"         --set image.tag=v1 --set resources.limits.cpu=null
+rejects "no memory request"    --set image.tag=v1 --set resources.requests.memory=null
+rejects "no resources at all"  --set image.tag=v1 --set resources=null
 exit $fail

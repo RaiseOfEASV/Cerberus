@@ -62,10 +62,19 @@ jobs:
       - uses: extractions/setup-just@v2
       - name: just lint-all
         run: just lint-all
-      - name: Generic Helm chart - lint and render tests
+      # Unit tests of every app (quote-api: Go incl. CORS/preflight and
+      # empty-list cases; quote-web: Vitest incl. the error state).
+      - name: just test-all
+        run: just test-all
+      - name: Generic Helm chart - lint, render tests, every real values file
         run: |
           helm lint infra/helm/charts/app
           infra/helm/charts/app/tests/render-test.sh
+          infra/helm/render-all.sh
+      # Builds the image and checks nginx caching/404/security headers and
+      # the runtime API_URL injection, run read-only like in the cluster.
+      - name: quote-web image test
+        run: apps/quote-web/docker/image-test.sh
 
   sast:
     name: sast
