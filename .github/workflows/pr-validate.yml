@@ -131,8 +131,6 @@ jobs:
         uses: GitGuardian/ggshield-action@v1
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        with:
-          # The action's entrypoint already runs `ggshield secret scan`;
-          # args is only the subcommand (passing "secret scan ci" fails
-          # with "No such command 'secret'").
-          args: ci
+        # No `args`: the action's entrypoint already runs
+        # `ggshield secret scan -v <args> ci` - args is only for extra
+        # options, so passing a subcommand there breaks the scan.
