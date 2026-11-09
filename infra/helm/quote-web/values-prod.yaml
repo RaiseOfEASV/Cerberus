@@ -4,8 +4,8 @@
 image:
   repository: ghcr.io/raiseofeasv/quote-web
   # tag + digest bumped by deploy.yml (environment=prod).
-  tag: "bootstrap-placeholder"
-  digest: ""
+  tag: "7318a2aca309703bc09c0ba52008d350536347c2"
+  digest: "sha256:189e3a5abf325e4eda360ddf433cd74c0995a0e9e2c9da33e234de68801795d7"
 podSecurityContext:
   runAsUser: 101
   runAsGroup: 101
