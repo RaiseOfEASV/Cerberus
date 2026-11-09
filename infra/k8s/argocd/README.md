@@ -34,8 +34,9 @@ in-cluster credentials. See `infra/k8s/environments/README.md` for the full flow
 `root-prod` and its children (`quote-api-prod`, `quote-web-prod`) have no
 automated sync on purpose. A prod change already passes the `production` GitHub
 Environment approval and a PR review; auto-sync on top would make the final step
-implicit. Sync prod deliberately: `argocd app sync root-prod`, then the changed
-app (e.g. `argocd app sync quote-web-prod`).
+implicit. Sync prod deliberately - which app to sync, the no-CLI way, and the
+zero-downtime order for routing changes are in
+`infra/k8s/environments/README.md` ("Syncing prod").
 
 ## What's deployed through it (2026-11-09)
 

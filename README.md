@@ -6,7 +6,7 @@ they run on.
 
 Built baseline-first: the platform came before application code. The first
 real app, **quote-api + quote-web**, runs on it since 2026-11-09 and serves
-[cerberoast.site](https://cerberoast.site) (going live with the prod cutover).
+[cerberoast.site](https://cerberoast.site) (API at `api.cerberoast.site`).
 See [`docs/security/threat-model.md`](docs/security/threat-model.md) for the
 living threat model.
 
@@ -20,7 +20,7 @@ living threat model.
 | Backups: backup MinIO host, Vault raft-snapshot CronJob | running |
 | CI: `pr-validate`, `build`, `base-images` on GitHub-hosted runners | running, green |
 | `master` protection (PR, review, signed commits) + `production` environment | applied |
-| quote-api / quote-web | dev + staging live; prod cutover pending |
+| quote-api / quote-web | live in dev, staging and **prod** (cerberoast.site, api.cerberoast.site) |
 | ARC self-hosted runners, Nexus, observability/SIEM stack, Velero, kube-bench, golden VM image | written as code, not deployed |
 
 ## Layout
