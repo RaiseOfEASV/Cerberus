@@ -1,0 +1,16 @@
+# quote-api, prod - deploys into the existing `cerberoast` namespace.
+# Public routing for api.cerberoast.site lives in
+# infra/k8s/cerberoast/ingressroute.yaml (one IngressRoute + Certificate for
+# the whole site), so the chart's own IngressRoute stays off here.
+image:
+  repository: ghcr.io/raiseofeasv/quote-api
+  # Bumped by deploy.yml (environment=prod).
+  tag: "bootstrap-placeholder"
+
+env:
+  # quote-web is served on both hostnames; the matching Origin is echoed.
+  - name: ALLOWED_ORIGIN
+    value: "https://cerberoast.site,https://www.cerberoast.site"
+
+ingress:
+  enabled: false
