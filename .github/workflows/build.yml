@@ -64,6 +64,9 @@ jobs:
     if: needs.discover.outputs.apps != '[]'
     runs-on: ubuntu-latest
     strategy:
+      # Independent images - one failing (e.g. a CRITICAL CVE) must not
+      # cancel the others' builds.
+      fail-fast: false
       matrix:
         app: ${{ fromJson(needs.discover.outputs.apps) }}
     steps:

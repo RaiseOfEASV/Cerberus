@@ -35,6 +35,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      # Independent images - one failing (e.g. a CRITICAL CVE) must not
+      # cancel the others' builds.
+      fail-fast: false
       matrix:
         image: [go, node]
     steps:
