@@ -11,7 +11,7 @@ name: Base Images
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "docker/base/**"
       - ".github/workflows/base-images.yml"

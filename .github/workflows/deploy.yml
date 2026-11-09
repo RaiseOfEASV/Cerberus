@@ -1,22 +1,21 @@
 name: Deploy
 
 # Never runs kubectl/helm against a cluster directly - CI holds no cluster
-# credentials, period. This only edits the GitOps config path
-# (infra/k8s/environments/<env>/) that ArgoCD (Epic 4) watches and
-# reconciles from; ArgoCD does the actual apply, from inside the cluster,
-# under its own credentials.
+# credentials, period. This only edits the GitOps config that ArgoCD
+# watches - the per-app, per-environment Helm values file
+# (infra/helm/<app>/values-<env>.yaml, consumed by the Applications in
+# infra/k8s/environments/<env>/) - and ArgoCD does the actual apply, from
+# inside the cluster, under its own credentials.
 #
-# `environment: ${{ inputs.environment }}` below is what makes this
-# controllable via GitHub Environments: configure `staging` with no
-# required reviewers (fast iteration) and `production` with a required
-# reviewer, in repo Settings > Environments. Not yet done - also a
-# candidate for infra/terraform/github once that's worth the Terraform
-# `github_repository_environment` resource.
+# The `environment` input uses the repo's real directory/namespace names
+# (staging, prod). The GitHub Environment gating the job maps `prod` to
+# `production` (infra/terraform/github/environments.tf - required reviewer,
+# protected branches only); a bare `prod` would silently auto-create a new,
+# unprotected environment and bypass that reviewer.
 #
-# NOT YET RUNNABLE: infra/k8s/environments/<env>/<app>/ doesn't have a real
-# kustomization or Helm values structure yet - that's Epic 4's job. The tag
-# bump step below is deliberately left as a stub that errors clearly rather
-# than guessing at a manifest shape that doesn't exist.
+# dev isn't an option here: dev's first tag is set by hand, and dev
+# auto-syncs. prod's Applications are manual-sync in ArgoCD, so after this
+# workflow lands a prod bump, sync quote-*-prod deliberately.
 
 on:
   workflow_dispatch:
@@ -33,7 +32,7 @@ on:
         description: Target environment
         required: true
         type: choice
-        options: [staging, production]
+        options: [staging, prod]
 
 permissions:
   contents: write
@@ -41,24 +40,31 @@ permissions:
 jobs:
   update-gitops-config:
     name: update-gitops-config
-    runs-on: arc-runner-set
-    environment: ${{ inputs.environment }}
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed.
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment == 'prod' && 'production' || inputs.environment }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Bump image tag in the GitOps config for this environment
+        # yq (mikefarah v4) is preinstalled on ubuntu-latest runners.
         run: |
-          target="infra/k8s/environments/${ENVIRONMENT}/${APP}"
-          if [ ! -d "$target" ]; then
-            echo "::error::${target} doesn't exist yet - nothing to deploy. Epic 4 defines the ArgoCD Application/kustomization structure these directories need before this step can do anything real." >&2
+          # Inputs are free text - reject anything that isn't a plain
+          # app name / image tag before it reaches a path or a values file.
+          if ! printf '%s' "$APP" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
+            echo "::error::invalid app name: ${APP}" >&2; exit 1
+          fi
+          if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' || [ "$VERSION" = "latest" ]; then
+            echo "::error::invalid image tag: ${VERSION}" >&2; exit 1
+          fi
+          target="infra/helm/${APP}/values-${ENVIRONMENT}.yaml"
+          if [ ! -f "$target" ]; then
+            echo "::error::${target} doesn't exist - ${APP} isn't wired into ${ENVIRONMENT} (see infra/k8s/environments/${ENVIRONMENT}/)." >&2
             exit 1
           fi
-          # TODO(epic-4): once ${target} has a real kustomization or Helm
-          # values file, replace this with the actual image-tag bump
-          # (e.g. `kustomize edit set image` or `yq` against values.yaml).
-          # Left unimplemented rather than guessed, since the manifest
-          # structure doesn't exist yet to edit correctly.
-          echo "Would set image tag ${VERSION} for ${APP} in ${ENVIRONMENT}"
+          yq -i '.image.tag = strenv(VERSION)' "$target"
+          echo "Set ${APP} image tag to ${VERSION} in ${target}"
         env:
           APP: ${{ inputs.app }}
           VERSION: ${{ inputs.version }}
@@ -68,7 +74,7 @@ jobs:
         run: |
           git config user.name "cerberus-ci"
           git config user.email "ci@cerberus.invalid"
-          git add infra/k8s/environments/
+          git add infra/helm/ infra/k8s/environments/
           if git diff --cached --quiet; then
             echo "nothing to commit"
             exit 0

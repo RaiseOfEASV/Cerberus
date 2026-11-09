@@ -33,7 +33,7 @@ name: PR Validate
 
 on:
   pull_request:
-    branches: [main, "release/**"]
+    branches: [master, "release/**"]
 
 permissions:
   contents: read
@@ -46,15 +46,26 @@ concurrency:
 jobs:
   lint:
     name: lint
-    runs-on: arc-runner-set
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Toolchains for every apps/*/Justfile (Go + Node today). Versions
+      # follow the apps' own go.mod / Dockerfile build stages.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/quote-api/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: extractions/setup-just@v2
       - name: just lint-all
         run: just lint-all
 
   sast:
     name: sast
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -76,7 +87,7 @@ jobs:
 
   sca:
     name: sca
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -105,7 +116,7 @@ jobs:
 
   secret-scan:
     name: secret-scan
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
