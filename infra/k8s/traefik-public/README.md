@@ -82,17 +82,21 @@ module ever needs a third post-boot IP, this manual step is needed again.
    then `kubectl apply -f ../eso/external-secret-cloudflare-api-token.yaml` -
    needs `infra/terraform/vault/`'s `eso-read` policy to already include
    `secret/data/cloudflare/*` (added alongside this feature).
-8. `kubectl apply -f ../cerberoast/` (namespace, network-policy, the
-   placeholder ConfigMap/Deployment/Service, IngressRoute+Certificate) - a
-   trivial "coming soon" page proving DNS -> TLS -> NSG -> Traefik all work
-   end to end. Swap the Deployment/ConfigMap for a real app later; nothing
-   else here needs to change for that.
+8. `infra/k8s/cerberoast/` (namespace, network-policy, IngressRoute +
+   Certificate) - originally hand-applied with a "coming soon" placeholder
+   to prove DNS -> TLS -> NSG -> Traefik end to end. Since the first real
+   app it is ArgoCD-managed (`root-prod`, via its `kustomization.yaml`), the
+   placeholder is gone, and the IngressRoute routes `cerberoast.site`/`www`
+   to `quote-web` and `api.cerberoast.site` to `quote-api` (one Let's
+   Encrypt certificate covers all three names). The workloads come from the
+   `quote-*-prod` ArgoCD Applications.
 
 ## What's deliberately NOT done here
 
 - `dev`/`staging` app environments stay VPN-only, same as the admin tools -
-  only `prod` (or, for now, this placeholder) gets a public hostname. See
-  `BACKLOG.local.md`'s public-domain entry for the original reasoning.
+  only `prod` gets a public hostname. The team reaches dev/staging at
+  `quote-{dev,staging}.admin.cerberus.internal` on the *admin* Traefik
+  (see `infra/k8s/environments/README.md`), never through this instance.
 - The admin Traefik instance's own `providers.kubernetesCRD` is untouched -
   it has no `labelSelector`, so it will also harmlessly attempt to serve
   `cerberoast`'s IngressRoute, but only on its own private VIP, never

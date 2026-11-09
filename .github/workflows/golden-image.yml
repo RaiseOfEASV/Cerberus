@@ -20,7 +20,7 @@ name: Golden Image
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "infra/packer/**"
       - ".github/workflows/golden-image.yml"

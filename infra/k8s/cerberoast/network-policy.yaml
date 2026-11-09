@@ -1,8 +1,8 @@
 # Layers one specific allow on top of Kyverno's auto-generated
 # default-deny-all for this namespace (same pattern as vault/arc-runners)
-# - ingress from traefik-public only, on the Service's own port. No
-# egress rule at all: this placeholder serves static content with no
-# upstream calls, so it needs none.
+# - ingress from traefik-public only. No egress rule at all: quote-web
+# serves a static SPA and quote-api answers from memory - neither makes
+# upstream calls (the browser calls api.cerberoast.site, not quote-web).
 #
 # Scoped by podSelector/namespaceSelector, not a fully-open rule - unlike
 # several other namespaces in this cluster (vault, keycloak,

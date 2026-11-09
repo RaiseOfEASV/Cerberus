@@ -2,8 +2,10 @@
 # enforce-namespace-baseline.yaml - gets restricted PSA + a default-
 # deny-all NetworkPolicy automatically, same as vault/arc-runners. The
 # only allow layered on top is ingress from traefik-public
-# (network-policy.yaml in this directory) - this placeholder needs no
-# egress at all (static content, no upstream calls).
+# (network-policy.yaml in this directory) - quote-web (static SPA) and
+# quote-api (in-memory quotes) need no egress at all. Managed by ArgoCD
+# (root-prod, via kustomization.yaml here); annotated Prune=false,Delete=false
+# there so a root-prod prune can't take the namespace with it.
 apiVersion: v1
 kind: Namespace
 metadata:

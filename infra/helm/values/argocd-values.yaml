@@ -1,6 +1,6 @@
 # Values for the `argo-cd` chart (argoproj.github.io/argo-helm). ArgoCD is
-# the GitOps controller - .github/workflows/deploy.yml (Epic 3) only ever
-# edits infra/k8s/environments/<env>/, never runs kubectl/helm itself;
+# the GitOps controller - .github/workflows/deploy.yml only ever opens a PR
+# bumping infra/helm/<app>/values-<env>.yaml, never runs kubectl/helm itself;
 # ArgoCD (running in-cluster, under its own ServiceAccount/RBAC) is what
 # actually reconciles that config onto the cluster. CI never holds cluster
 # credentials - this is the piece that makes that true.

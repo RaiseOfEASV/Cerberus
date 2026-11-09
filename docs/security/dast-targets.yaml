@@ -1,9 +1,11 @@
 # Convention: one entry per app that has a real, running staging
 # endpoint. .github/workflows/dast.yml reads this file to decide what to
-# scan - empty for now because no real app exists yet (this whole project
-# has been the pre-app-code security baseline). Add an entry here the
-# same PR that gives an app its first real staging deployment, not as an
-# afterthought.
+# scan. Still empty although quote-api/quote-web run in staging since
+# 2026-11-09: DAST is an explicit non-goal of that first app (see
+# docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md) because
+# the ARC runner pool that can reach staging doesn't exist yet. Add
+# entries here once it does (staging is also reachable for people at
+# https://quote-staging.admin.cerberus.internal, behind the admin login).
 #
 # app: the apps/<name> directory this corresponds to.
 # staging_url: the app's staging endpoint, reachable from the ARC runner
