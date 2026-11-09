@@ -1,27 +1,29 @@
 # CODEOWNERS
 #
-# Replace @RaiseOfEASV below with an actual security/platform team handle
-# (e.g. @RaiseOfEASV/security) once the org has one - a single-owner rule
-# doesn't scale past one person and defeats the point of required review.
+# Owners are the three team members by username. @RaiseOfEASV (the org)
+# was here before, but an organization can't own code - only users and
+# teams can. main_protection requires one code-owner approval that isn't
+# the PR author's, so any of the other two approves. Swap for a team handle
+# (e.g. @RaiseOfEASV/platform) if the org creates one.
 
 # Default owner for anything not matched below
-*                           @RaiseOfEASV
+*                           @Ju5tAmir @andriiVIt @grosuionutandrei
 
 # Highest-leverage supply-chain paths - changes here can alter what CI runs,
 # what gets admitted into the cluster, or what every image is built from.
 # These always require security-team review, regardless of who owns the
 # rest of the changed files in the same PR.
-/.github/workflows/        @RaiseOfEASV
-/.github/actions/          @RaiseOfEASV
-/infra/terraform/          @RaiseOfEASV
-/infra/terraform-state/    @RaiseOfEASV
-/infra/helm/               @RaiseOfEASV
-/docker/base/              @RaiseOfEASV
-/infra/k8s/                @RaiseOfEASV
-/infra/packer/             @RaiseOfEASV
-/infra/wazuh/              @RaiseOfEASV
-/infra/headscale/          @RaiseOfEASV
-/infra/keycloak/           @RaiseOfEASV
-/infra/backups/            @RaiseOfEASV
-renovate.json               @RaiseOfEASV
-trivy.yaml                   @RaiseOfEASV
+/.github/workflows/        @Ju5tAmir @andriiVIt @grosuionutandrei
+/.github/actions/          @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/terraform/          @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/terraform-state/    @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/helm/               @Ju5tAmir @andriiVIt @grosuionutandrei
+/docker/base/              @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/k8s/                @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/packer/             @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/wazuh/              @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/headscale/          @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/keycloak/           @Ju5tAmir @andriiVIt @grosuionutandrei
+/infra/backups/            @Ju5tAmir @andriiVIt @grosuionutandrei
+renovate.json               @Ju5tAmir @andriiVIt @grosuionutandrei
+trivy.yaml                   @Ju5tAmir @andriiVIt @grosuionutandrei

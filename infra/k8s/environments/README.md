@@ -11,8 +11,17 @@ Each directory is synced by one ArgoCD app-of-apps Application from
 
 Each app is a multi-source child Application: the generic chart
 `infra/helm/charts/app` plus `infra/helm/<app>/values-<env>.yaml`. Image tag
-and digest in those values files are what promotion changes - by hand for
-dev, via `.github/workflows/deploy.yml` for staging/prod.
+and digest in those values files are what promotion changes. `master` is
+protected (PR + review + signed commits), so every change lands through a
+reviewed PR:
+
+- **dev**: edit `values-dev.yaml` (tag + digest) in a normal PR.
+- **staging/prod**: run `.github/workflows/deploy.yml`
+  (`gh workflow run deploy.yml -f app=<app> -f version=<tag> -f environment=<staging|prod>`).
+  It resolves the digest, commits the bump on a `deploy/*` branch (signed by
+  GitHub) and opens a PR. prod first waits for the `production` environment
+  approval. A teammate merges the PR; staging then auto-syncs, prod needs a
+  manual `argocd app sync <app>-prod`.
 
 ## Team previews of dev/staging (admin side)
 
