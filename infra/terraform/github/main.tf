@@ -1,22 +1,21 @@
 # GitHub Rulesets as code - the Epic 1 gap flagged in BACKLOG.local.md.
 #
-# NOT YET APPLIED. terraform apply requires a GitHub token with admin rights
-# on RaiseOfEASV/Cerberus (fine-grained PAT, repo administration: write) -
-# nowhere secure to source that from until Vault exists (Epic 6), so for now
-# pass it by hand via TF_VAR_github_token and don't commit any tfstate
-# (already gitignored). State backend is local for now - revisit once Epic 4
-# picks an encrypted/locked remote backend; don't treat local state here as
-# the final answer.
+# APPLIED 2026-11-09 (everything in this root). terraform apply needs a
+# GitHub token with admin rights on RaiseOfEASV/Cerberus (fine-grained PAT,
+# Administration: read and write), passed via TF_VAR_github_token. State lives
+# in the pg backend (schema "github") - see README.md for how to reach it.
 #
-# Split into two rulesets deliberately:
-#   - main_protection: safe to apply today, no dependency on anything that
-#     doesn't exist yet.
-#   - required_checks: enforcement = "evaluate", NOT "active" - it logs what
-#     would be blocked without actually blocking merges. Flip to "active"
-#     only after Epic 3 ships pr-validate.yml and its job names below are
-#     confirmed to match and report successfully at least once. Applying
-#     this as "active" before Epic 3 exists would make every PR unmergeable
-#     forever, since the required check could never succeed.
+# Two rulesets:
+#   - main_protection: ACTIVE. PR + 1 approval + code-owner review + signed
+#     commits + linear history, no force-push/deletion. Repo admins can
+#     bypass when merging a PR (bypass_mode = "pull_request"); nobody can
+#     push to master directly.
+#   - required_checks: enforcement = "evaluate" - logs, doesn't block. The
+#     checks (lint/sast/sca/secret-scan) run and pass on every PR since
+#     2026-11-09, so flipping to "active" is now possible - but deploy.yml's
+#     bump PRs are opened with GITHUB_TOKEN, which doesn't trigger
+#     pr-validate, so they'd never get the checks. Switch deploy.yml to a
+#     GitHub App token first.
 
 terraform {
   required_providers {

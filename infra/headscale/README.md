@@ -62,10 +62,14 @@ gets their own headscale user (`headscale users create <name>`), not `cerberus`.
   authenticates the control channel, but a client's first contact trusts whatever
   server key it gets (TOFU). Fix: a real TLS cert on this host.
 - **MagicDNS isn't usable yet.** `config/config.yaml` sets no upstream nameservers, so
-  a client with `--accept-dns` would lose normal DNS. Clients use `--accept-dns=false`
-  and IPs until that's configured.
-- **Public SSH/API ports are still open** on both VMs' NSGs (admin-IP-restricted).
-  Now that the VPN path works, they can be closed - a deliberate, separate step.
+  a client with `--accept-dns` would lose normal DNS. Clients use `--accept-dns=false`,
+  so admin hostnames are resolved through each device's hosts file instead:
+  `10.0.2.50 keycloak.admin.cerberus.internal vault.admin.cerberus.internal argocd.admin.cerberus.internal quote-dev.admin.cerberus.internal quote-staging.admin.cerberus.internal`
+  (the `extra_records` in `config/config.yaml` list the same names for when MagicDNS works).
+- **NSG exposure:** the cluster VM's NSG has no inbound rules from the internet except
+  80/443 on its dedicated public IP for cerberoast.site (traefik-public). The bootstrap
+  VM keeps SSH open to `admin_source_ips` only (break-glass path that doesn't depend on
+  the VPN) plus headscale's 8080 and WireGuard 41641, which must be public.
 - DERP relay uses Tailscale's own public fleet (not self-hosted). Only matters when a
   direct connection can't be made - the admin laptop -> router path is direct
   (UDP 41641 is open on the bootstrap NSG).

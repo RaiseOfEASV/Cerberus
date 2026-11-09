@@ -1,8 +1,9 @@
 # ArgoCD (app-of-apps)
 
-GitOps controller. `.github/workflows/deploy.yml` (Epic 3) never runs kubectl/helm -
-it only commits an image-tag change to `infra/k8s/environments/<env>/`; ArgoCD
-reconciles that onto the cluster from here, under its own in-cluster credentials.
+GitOps controller. `.github/workflows/deploy.yml` never runs kubectl/helm - it
+opens a PR bumping an image tag + digest in `infra/helm/<app>/values-<env>.yaml`;
+once merged, ArgoCD reconciles that onto the cluster from here, under its own
+in-cluster credentials. See `infra/k8s/environments/README.md` for the full flow.
 
 ## Order of operations (after Epic 4's cluster exists)
 
@@ -30,15 +31,30 @@ reconciles that onto the cluster from here, under its own in-cluster credentials
 
 ## Why prod doesn't auto-sync
 
-`root-prod`'s `syncPolicy.automated` is `null` on purpose. `deploy.yml`'s `production`
-GitHub Environment already requires a reviewer before it'll commit a change into
-`infra/k8s/environments/prod/` - letting ArgoCD auto-sync on top of that would make
-the reviewer gate cosmetic (the moment the commit lands, it ships regardless). Sync
-prod deliberately: `argocd app sync root-prod`.
+`root-prod` and its children (`quote-api-prod`, `quote-web-prod`) have no
+automated sync on purpose. A prod change already passes the `production` GitHub
+Environment approval and a PR review; auto-sync on top would make the final step
+implicit. Sync prod deliberately: `argocd app sync root-prod`, then the changed
+app (e.g. `argocd app sync quote-web-prod`).
 
-## Not yet useful
+## What's deployed through it (2026-11-09)
 
-`infra/k8s/environments/{dev,staging,prod}/` only has a `.gitkeep` in each - no
-kustomization, no app manifests. These Applications will report "no resources found"
-until that changes. Not a bug, just sequencing - same pattern as Epic 2/3's
-not-yet-runnable pieces.
+| Root app | Children | Sync |
+|---|---|---|
+| `root-dev` | `quote-api-dev`, `quote-web-dev` (+ admin preview ingress) | automated |
+| `root-staging` | `quote-api-staging`, `quote-web-staging` (+ admin preview ingress) | automated |
+| `root-prod` | `quote-api-prod`, `quote-web-prod`, and `infra/k8s/cerberoast/` | manual |
+
+Children are multi-source: the generic chart `infra/helm/charts/app` plus a
+`ref: values` source; `$values` resolves to the repo root, so value files are
+referenced by full path (`$values/infra/helm/<app>/values-<env>.yaml`).
+
+## Known gotchas
+
+- **Kyverno pins images to a digest at admission** (`verify-image-signatures`).
+  Values files therefore carry `image.digest` alongside `image.tag`, so git
+  matches what runs; without it the Deployment shows OutOfSync forever.
+- **A sync stuck retrying an old revision** (e.g. one Kyverno rejected) blocks
+  newer automated syncs until it gives up. Terminate it
+  (`argocd app terminate-op <app>`, or patch
+  `status.operationState.phase=Terminating`) and the next sync picks up HEAD.

@@ -13,7 +13,8 @@
 # that CNI supports FQDN egress rules, replace allow-internet-egress with
 # the FQDN-scoped equivalent. Don't treat this file as the final answer.
 #
-# NOT YET APPLIED: no cluster to apply it to (Epic 4), and the Nexus/Vault
+# NOT YET APPLIED: the ARC runner pool isn't deployed (CI runs on
+# GitHub-hosted ubuntu-latest for now), and the Nexus/Vault
 # namespaceSelector values below assume those land in namespaces literally
 # named `nexus` and `vault` - adjust if Epic 2/Epic 6 land them elsewhere.
 

@@ -1,47 +1,55 @@
-# GitHub Rulesets as code
+# GitHub Rulesets and Environments as code
 
-Closes the Epic 1 gap: branch protection managed via Terraform instead of
-clicking through repo settings.
+Branch protection and deployment environments managed via Terraform instead
+of clicking through repo settings. **Everything here is applied** (2026-11-09).
 
-## Before applying
+## Current state
 
-1. Create a fine-grained PAT scoped to just this repo, with
-   **Administration: write** permission.
-2. `export TF_VAR_github_token=<the token>` (don't put it in a `.tfvars`
-   file that could get committed - it's gitignored, but don't tempt fate).
-3. `terraform init && terraform plan` from this directory.
+| Resource | State |
+|---|---|
+| `main_protection` ruleset | **active** on the default branch and `release/**`: PR required, 1 approval, code-owner review, signed commits, linear history, no force-push/deletion. Bypass: repo **Admin** role, PR merges only |
+| `required_checks` ruleset | `evaluate` (logs only) - see below |
+| `staging` environment | no reviewers |
+| `production` environment | required reviewer(s) = `var.production_reviewers` (default `Ju5tAmir`); deployments only from `master` |
 
-## What applies safely today
+What this means day to day is in `CONTRIBUTING.md` (signed commits, PRs,
+merging, promotions).
 
-`github_repository_ruleset.main_protection` - PR required, no force-push or
-branch deletion, signed commits required, CODEOWNERS review required,
-linear history required. None of this depends on anything that doesn't
-exist yet. Safe to `terraform apply` now.
+## Applying changes
 
-## What's intentionally NOT active yet
+1. Fine-grained PAT, resource owner **RaiseOfEASV**, only this repo,
+   **Administration: Read and write** (the org may need to approve it; a
+   classic PAT with `repo` also works). `export TF_VAR_github_token=<token>`.
+2. Tunnel to the state backend and export its connection string - see
+   `infra/terraform/cluster/README.md` ("Reaching the backend"):
+   `export PG_CONN_STR=postgres://terraform:${TF_STATE_PG_PASSWORD}@localhost:5432/terraform_state?sslmode=disable`
+3. `terraform init && terraform plan` - read the plan; changes to
+   `main_protection` affect everyone's ability to merge.
 
-`github_repository_ruleset.required_checks` is written but set to
-`enforcement = "evaluate"`, not `"active"`. It references status-check
-context names (`lint`, `sast`, `sca`, `secret-scan`) that don't exist until
-Epic 3 ships `.github/workflows/pr-validate.yml`. "evaluate" mode logs what
-*would* be blocked without actually blocking merges - safe to apply as-is.
+Not managed here: the org/repo Actions setting "Allow GitHub Actions to create
+and approve pull requests" (enabled by hand - deploy.yml needs it).
 
-**Do not flip it to `"active"` until:**
-1. Epic 3's `pr-validate.yml` exists and its job names match the
-   `required_check` contexts here exactly (fix whichever side is wrong -
-   don't just assume these placeholders are correct).
-2. At least one real PR has shown those checks reporting success.
+## required_checks - not active yet
 
-Flipping it to `"active"` before both of those are true will make every PR
-permanently unmergeable, since a required check that can never run can
-never succeed.
+`github_repository_ruleset.required_checks` is applied with
+`enforcement = "evaluate"`: it logs which merges *would* be blocked, but blocks
+nothing. Its contexts (`lint`, `sast`, `sca`, `secret-scan`) match
+`pr-validate.yml`'s job names, and all four have run and passed on every PR
+since 2026-11-09 - so the original preconditions are met.
 
-## GitHub Environments (added in Epic 6)
+**Before flipping it to `"active"`**, fix one thing: `deploy.yml` opens its
+bump PRs with `GITHUB_TOKEN`, and PRs opened that way don't trigger other
+workflows - those PRs would never get the four checks and could only be merged
+via the admin bypass. Have `deploy.yml` use a GitHub App token first, then
+flip it.
+
+## GitHub Environments
 
 `environments.tf` creates the `staging` and `production` GitHub Environments that
-`.github/workflows/deploy.yml` (Epic 3) targets via `environment: ${{ inputs.environment }}`.
-Only `production` requires a reviewer and restricts deploys to protected branches -
-`staging` stays unrestricted for fast iteration. Deliberately does NOT manage any
+`.github/workflows/deploy.yml` targets (its `prod` input maps to `production`).
+Only `production` requires a reviewer and only allows deployments from `master`
+(by name - `master` has no classic branch protection, so a "protected branches
+only" policy would refuse every deploy). `staging` stays unrestricted. Deliberately does NOT manage any
 environment *secret values* - those go in directly via `gh secret set --env production ...`
 or the repo UI, never through Terraform (the value would land in state).
 
