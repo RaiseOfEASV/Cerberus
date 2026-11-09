@@ -43,3 +43,19 @@ misconfigurations:
     paths:
       - infra/k8s/wazuh-agent/daemonset.yaml
     statement: Wazuh agent mounts host /etc read-only for file integrity monitoring.
+
+  # TIME-BOXED, not accepted risk: Dependency-Track (Epic 7) isn't deployed
+  # and its manifests still lack securityContext / read-only rootfs / cpu
+  # limits - Kyverno would reject them as-is too. Epic 7 must harden them
+  # before deploying. These entries expire on 2027-02-09, after which CI
+  # fails again until the manifests are fixed.
+  - id: KSV-0014
+    paths:
+      - infra/k8s/dependency-track/deployment.yaml
+    expired_at: 2027-02-09
+    statement: Epic 7 TODO - read-only rootfs + emptyDirs for DT containers.
+  - id: KSV-0118
+    paths:
+      - infra/k8s/dependency-track/deployment.yaml
+    expired_at: 2027-02-09
+    statement: Epic 7 TODO - non-root securityContext for DT workloads.
