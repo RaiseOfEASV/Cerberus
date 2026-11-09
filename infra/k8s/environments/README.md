@@ -23,6 +23,37 @@ reviewed PR:
   approval. A teammate merges the PR; staging then auto-syncs, prod needs a
   manual `argocd app sync <app>-prod`.
 
+## Syncing prod
+
+Prod Applications never sync on their own. After a prod bump PR merges:
+
+- **Image change only** (the usual case): sync the changed app -
+  `argocd app sync quote-web-prod`.
+- **Changes under `infra/k8s/environments/prod/` or `infra/k8s/cerberoast/`**
+  (new app, routing, certificate): sync `root-prod`.
+
+Without the `argocd` CLI the same is done by setting the Application's
+`operation` (what the CLI does under the hood):
+
+```bash
+K="--kubeconfig infra/terraform/cluster/kubeconfig.yaml"
+kubectl $K -n argocd patch application quote-web-prod --type merge \
+  -p '{"operation":{"initiatedBy":{"username":"<you>"},"sync":{"revision":"master"}}}'
+```
+
+**When a change adds an app *and* routes traffic to it**, sync in this order so
+the site never points at something that isn't running (this is how the first
+cutover was done):
+
+1. root-prod, only the new Application(s) - add
+   `"resources":[{"group":"argoproj.io","kind":"Application","name":"<app>-prod","namespace":"argocd"}]`
+   to the `sync` object above;
+2. the new `<app>-prod` Application(s); wait until the pods are Ready;
+3. root-prod in full (IngressRoute, Certificate, namespace, NetworkPolicy).
+
+`infra/k8s/cerberoast`'s namespace is annotated `Prune=false,Delete=false`, so
+no root-prod sync can delete it (or the Let's Encrypt certificate in it).
+
 ## Team previews of dev/staging (admin side)
 
 `dev/admin-preview.yaml` and `staging/admin-preview.yaml` expose the quote
