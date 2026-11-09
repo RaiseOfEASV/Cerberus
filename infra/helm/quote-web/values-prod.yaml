@@ -3,9 +3,9 @@
 # infra/k8s/cerberoast/ingressroute.yaml, so the chart's IngressRoute is off.
 image:
   repository: ghcr.io/raiseofeasv/quote-web
-  # Bumped by deploy.yml (environment=prod).
+  # tag + digest bumped by deploy.yml (environment=prod).
   tag: "bootstrap-placeholder"
-
+  digest: ""
 podSecurityContext:
   runAsUser: 101
   runAsGroup: 101
@@ -13,10 +13,8 @@ writablePaths:
   - /tmp
   - /var/cache/nginx
   - /run/quote-web
-
 env:
   - name: API_URL
     value: "https://api.cerberoast.site"
-
 ingress:
   enabled: false
