@@ -1,6 +1,6 @@
 # Build stage: plain public toolchain image. docker/base/README.md's
 # central-base rule only applies to the final runtime stage below.
-FROM golang:1.26-alpine AS build
+FROM golang:1.27-alpine AS build
 WORKDIR /src
 # go.sum* - optional; quote-api has no third-party deps (stdlib only) today.
 COPY go.mod go.sum* ./
