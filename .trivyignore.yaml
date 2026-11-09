@@ -1,0 +1,45 @@
+# Accepted-risk register for Trivy (pr-validate.yml `sca`), loaded via
+# trivy.yaml's `ignorefile`. Each entry is scoped to the exact file(s) and
+# rule, with the reason it is deliberate - not a blanket suppression. Adding
+# an entry here is a security decision: review it like code.
+
+misconfigurations:
+  - id: AZU-0047
+    paths:
+      - infra/terraform/bootstrap/main.tf
+    statement: >-
+      headscale's control API (8080) and the subnet router's WireGuard port
+      (41641) must be reachable from anywhere - the VPN can't be reachable
+      only through itself. SSH on this host is scoped to admin_source_ips.
+  - id: AZU-0047
+    paths:
+      - infra/terraform/modules/k8s-cluster/azure-k3s/main.tf
+    statement: >-
+      80/443 open only to the dedicated public IP (metallb_public_pool_ip)
+      served by the isolated traefik-public instance for cerberoast.site.
+      The admin VIP and primary IP stay closed.
+  - id: KSV-0010
+    paths:
+      - infra/k8s/kube-bench/cronjob.yaml
+      - infra/k8s/wazuh-agent/daemonset.yaml
+    statement: >-
+      Host inspection tools need the host PID namespace by design; their
+      namespaces are excluded from the Kyverno baseline for the same reason.
+  - id: KSV-0014
+    paths:
+      - infra/k8s/kube-bench/cronjob.yaml
+      - infra/k8s/wazuh-agent/daemonset.yaml
+    statement: Host inspection tools write scan state/agent queues locally.
+  - id: KSV-0118
+    paths:
+      - infra/k8s/kube-bench/cronjob.yaml
+      - infra/k8s/wazuh-agent/daemonset.yaml
+    statement: Host inspection tools run as root to read host files.
+  - id: KSV-0017
+    paths:
+      - infra/k8s/wazuh-agent/daemonset.yaml
+    statement: Wazuh agent needs privileged access for host FIM/log collection.
+  - id: KSV-0121
+    paths:
+      - infra/k8s/wazuh-agent/daemonset.yaml
+    statement: Wazuh agent mounts host /etc read-only for file integrity monitoring.
