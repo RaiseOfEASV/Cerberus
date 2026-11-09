@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - quote-api-application.yaml
+  - quote-web-application.yaml
+  # Adopted from hand-applied into ArgoCD management, so nothing in this
+  # shared namespace drifts between hand-applied and chart-managed objects.
+  - ../../cerberoast
+patches:
+  # Never let a prune/delete of root-prod take the live namespace (and the
+  # Let's Encrypt cert/secret inside it) with it.
+  - target:
+      kind: Namespace
+      name: cerberoast
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-options: Prune=false,Delete=false

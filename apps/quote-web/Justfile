@@ -1,0 +1,13 @@
+# npm ci only when node_modules is missing, so lint/test also work on a
+# fresh CI checkout (pr-validate.yml runs `just lint-all`).
+install:
+    [ -d node_modules ] || npm ci
+
+build: install
+    npm run build
+
+test: install
+    npx vitest run
+
+lint: install
+    npm run lint

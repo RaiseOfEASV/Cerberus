@@ -1,0 +1,14 @@
+# quote-api, staging - instantiates infra/helm/charts/app (ArgoCD multi-source
+# Application in infra/k8s/environments/staging/). ClusterIP only, no public
+# exposure; any origin allowed (cluster-internal, port-forward testing).
+image:
+  repository: ghcr.io/raiseofeasv/quote-api
+  # Bumped per promotion: by hand for dev, by deploy.yml for staging/prod.
+  tag: "bootstrap-placeholder"
+
+env:
+  - name: ALLOWED_ORIGIN
+    value: "*"
+
+ingress:
+  enabled: false

@@ -1,0 +1,24 @@
+.page {
+  max-width: 40rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.page h1 {
+  font-size: 2.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.quote {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.5;
+}
+
+.loading {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}

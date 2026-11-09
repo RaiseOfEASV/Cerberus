@@ -33,7 +33,7 @@ name: PR Validate
 
 on:
   pull_request:
-    branches: [main, "release/**"]
+    branches: [master, "release/**"]
 
 permissions:
   contents: read
@@ -46,15 +46,26 @@ concurrency:
 jobs:
   lint:
     name: lint
-    runs-on: arc-runner-set
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Toolchains for every apps/*/Justfile (Go + Node today). Versions
+      # follow the apps' own go.mod / Dockerfile build stages.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/quote-api/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: extractions/setup-just@v2
       - name: just lint-all
         run: just lint-all
 
   sast:
     name: sast
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -76,12 +87,12 @@ jobs:
 
   sca:
     name: sca
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Trivy - dependency vulnerabilities
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: vuln
@@ -90,22 +101,27 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy - IaC misconfiguration (Terraform, Helm, K8s, Dockerfiles)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           severity: CRITICAL,HIGH
           exit-code: "1"
+          trivy-config: trivy.yaml # loads .trivyignore.yaml (accepted-risk register)
 
       - name: Trivy - license scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: license
+          trivy-config: trivy.yaml
+          # Only /trivy.yaml's forbidden licenses (classified CRITICAL) fail
+          # the build - without this, any detected license (even MIT) did.
+          severity: CRITICAL
           exit-code: "1" # Epic 10: enforced against /trivy.yaml's forbidden-license list, no longer report-only
 
   secret-scan:
     name: secret-scan
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,5 +131,6 @@ jobs:
         uses: GitGuardian/ggshield-action@v1
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        with:
-          args: secret scan ci
+        # No `args`: the action's entrypoint already runs
+        # `ggshield secret scan -v <args> ci` - args is only for extra
+        # options, so passing a subcommand there breaks the scan.

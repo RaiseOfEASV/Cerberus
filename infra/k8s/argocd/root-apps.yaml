@@ -8,10 +8,12 @@
 # after ArgoCD itself is installed - app-of-apps bootstraps itself but
 # needs this one manual step to exist in the first place.
 #
-# NOT YET USEFUL: infra/k8s/environments/{dev,staging,prod}/ only has a
-# .gitkeep in each right now (no app manifests, no kustomization). ArgoCD
-# will sync these as "no resources found" until Epic 4 populates at least a
-# kustomization.yaml per environment and real apps exist to deploy.
+# Each environment directory holds a kustomization.yaml listing one child
+# Application per app (multi-source: infra/helm/charts/app + that app's
+# infra/helm/<app>/values-<env>.yaml). CreateNamespace=true because no
+# dev/staging/prod namespace.yaml exists - Kyverno's
+# enforce-namespace-baseline.yaml applies restricted PSA + default-deny to
+# whatever namespace appears, same as every other namespace.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -31,6 +33,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -50,6 +54,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -73,3 +79,5 @@ spec:
     # of that gate existing). Sync manually or via `argocd app sync root-prod`
     # as a deliberate action, not automatically on every git push.
     automated: null
+    syncOptions:
+      - CreateNamespace=true

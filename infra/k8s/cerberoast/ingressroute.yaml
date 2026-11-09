@@ -17,7 +17,12 @@ spec:
     - match: "Host(`cerberoast.site`) || Host(`www.cerberoast.site`)"
       kind: Rule
       services:
-        - name: cerberoast-placeholder
+        - name: quote-web
+          port: 80
+    - match: "Host(`api.cerberoast.site`)"
+      kind: Rule
+      services:
+        - name: quote-api
           port: 80
   tls:
     secretName: cerberoast-site-tls
@@ -29,5 +34,5 @@ metadata:
   namespace: cerberoast
 spec:
   secretName: cerberoast-site-tls
-  dnsNames: ["cerberoast.site", "www.cerberoast.site"]
+  dnsNames: ["cerberoast.site", "www.cerberoast.site", "api.cerberoast.site"]
   issuerRef: { name: letsencrypt-public, kind: ClusterIssuer }

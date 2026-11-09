@@ -15,21 +15,19 @@ name: Build
 # already exists and is already signed; it never rebuilds. Keeps "what got
 # built" and "what got released" as separate, auditable steps.
 #
-# NOT YET RUNNABLE: there are no apps/*/Dockerfile yet (this is the
-# pre-app-code security baseline). The discover job will simply find
-# nothing and `build` will be skipped until the first app exists - that's
-# intended, not broken.
+# Apps' runtime stages build FROM ghcr.io/raiseofeasv/base-* (docker/base/),
+# so base-images.yml must have published those at least once first.
 #
 # DEPENDENCY_TRACK_URL/DEPENDENCY_TRACK_API_KEY (Epic 7) are GitHub Actions
 # secrets, not Vault/ESO-managed - CI secrets vs. in-cluster runtime
 # secrets are deliberately two different trust boundaries in this project,
 # see infra/k8s/dependency-track/README.md. Both are unset until that
-# epic's Dependency-Track instance actually exists; the upload step below
-# will fail loudly until then, not silently no-op.
+# epic's Dependency-Track instance actually exists; until then the upload
+# step below skips with a ::warning:: annotation (not silently).
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "apps/**"
   workflow_dispatch: {}
@@ -46,7 +44,9 @@ env:
 jobs:
   discover:
     name: discover
-    runs-on: arc-runner-set
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
+    runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.find.outputs.apps }}
     steps:
@@ -62,7 +62,7 @@ jobs:
     name: build
     needs: discover
     if: needs.discover.outputs.apps != '[]'
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         app: ${{ fromJson(needs.discover.outputs.apps) }}
@@ -100,7 +100,15 @@ jobs:
           path: sbom-${{ matrix.app }}.cdx.json
 
       - name: Upload SBOM to Dependency-Track (Epic 7)
+        # Dependency-Track (Epic 7) isn't deployed yet: skip with a visible
+        # warning while its secrets are unset, instead of failing every
+        # build before the image is ever pushed. Once the secrets exist, an
+        # upload failure fails the build again.
         run: |
+          if [ -z "${DEPENDENCY_TRACK_URL}" ] || [ -z "${DEPENDENCY_TRACK_API_KEY}" ]; then
+            echo "::warning::DEPENDENCY_TRACK_URL/_API_KEY unset - SBOM not uploaded to Dependency-Track (Epic 7 not deployed). SBOM is still kept as a workflow artifact."
+            exit 0
+          fi
           curl -sf -X POST "${DEPENDENCY_TRACK_URL}/api/v1/bom" \
             -H "X-Api-Key: ${DEPENDENCY_TRACK_API_KEY}" \
             -H "Content-Type: multipart/form-data" \
@@ -113,7 +121,7 @@ jobs:
           DEPENDENCY_TRACK_API_KEY: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
 
       - name: Scan (Trivy) - fail on critical before anything gets pushed
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.app }}:${{ github.sha }}
           severity: CRITICAL

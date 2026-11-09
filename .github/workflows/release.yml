@@ -14,8 +14,7 @@ name: Release
 # rework. Revisit once real apps exist and this actually matters; tracked
 # in BACKLOG.local.md rather than guessed at now.
 #
-# NOT YET RUNNABLE: no apps/*/Dockerfile exist yet, so discover finds
-# nothing. Also assumes the tag is pushed on a commit already on main that
+# Assumes the tag is pushed on a commit already on main that
 # build.yml has already built - tagging an arbitrary commit that was never
 # built will fail the cosign verify step below, which is intentional.
 
@@ -36,7 +35,9 @@ env:
 jobs:
   discover:
     name: discover
-    runs-on: arc-runner-set
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
+    runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.find.outputs.apps }}
     steps:
@@ -52,7 +53,7 @@ jobs:
     name: release
     needs: discover
     if: needs.discover.outputs.apps != '[]'
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         app: ${{ fromJson(needs.discover.outputs.apps) }}
@@ -88,7 +89,7 @@ jobs:
   github-release:
     name: github-release
     needs: release
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
