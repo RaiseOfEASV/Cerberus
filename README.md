@@ -45,6 +45,30 @@ Requirements coverage, cryptography and LLM use are documented in
 | Admin access | headscale VPN, with Keycloak and oauth2-proxy in front of every admin interface |
 | Backups | MinIO, with Vault snapshots and database dumps on a schedule |
 
+## Architecture
+
+```mermaid
+flowchart LR
+    user([User or reporter]) --> cf[Cloudflare]
+    cf --> tpub[Traefik public]
+
+    subgraph cluster [k3s cluster on Azure]
+        tpub --> web[vuln-web]
+        tpub --> api[vuln-api]
+        tpub --> kc[Keycloak public]
+        api --> db[(PostgreSQL)]
+        api --> vault[Vault Transit]
+        api --> kc
+        argo[ArgoCD] -. deploys .-> web
+        argo -. deploys .-> api
+        tadm[Traefik admin] --> admin[Vault, ArgoCD, admin Keycloak]
+    end
+
+    adminuser([Administrator]) --> vpn[headscale VPN] --> tadm
+    gh[GitHub Actions] -- signed images --> ghcr[(GHCR)]
+    ghcr --> argo
+```
+
 ## Repository layout
 
 ```
