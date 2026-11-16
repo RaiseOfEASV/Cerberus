@@ -414,3 +414,10 @@ func (s *Store) Assign(ctx context.Context, a Actor, id int64, assigneeSub, assi
 	}
 	return s.GetFinding(ctx, id)
 }
+
+// FindingIDByRef resolves a "VM-…" reference.
+func (s *Store) FindingIDByRef(ctx context.Context, ref string) (int64, error) {
+	var id int64
+	err := s.pool.QueryRow(ctx, `SELECT id FROM findings WHERE ref = $1`, ref).Scan(&id)
+	return id, notFound(err)
+}
