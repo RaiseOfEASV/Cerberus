@@ -1,5 +1,5 @@
 # VulnMan realm for prod. Applied by keycloak-config-cli
-# (infra/keycloak-public/apply-realm-config.yaml); ${VAR} values come from
+# (infra/keycloak-public/apply-realm-config.yaml); $(env:VAR) values come from
 # its environment (Vault via ESO) - never write a real secret here.
 realm: vulnman
 enabled: true
@@ -42,7 +42,7 @@ clients:
     name: VulnMan
     enabled: true
     publicClient: false
-    secret: "${VULN_PROD_OIDC_SECRET}"
+    secret: "$(env:VULN_PROD_OIDC_SECRET)"
     standardFlowEnabled: true
     implicitFlowEnabled: false
     directAccessGrantsEnabled: false
@@ -52,13 +52,15 @@ clients:
     attributes:
       pkce.code.challenge.method: S256
       post.logout.redirect.uris: "https://cerberoast.site/"
-    defaultClientScopes: [openid, profile, email, roles]
+    # Keycloak >= 25: 'basic' puts sub into tokens; config-cli treats this
+    # list as the full desired state (see infra/keycloak/realm-config.yaml).
+    defaultClientScopes: [web-origins, acr, profile, roles, basic, email]
   # vuln-api's admin client (D16): service account only, may manage users
   # of THIS realm; the app code only ever touches the four roles above.
   - clientId: vuln-api-admin
     enabled: true
     publicClient: false
-    secret: "${VULN_PROD_ADMIN_SECRET}"
+    secret: "$(env:VULN_PROD_ADMIN_SECRET)"
     standardFlowEnabled: false
     directAccessGrantsEnabled: false
     serviceAccountsEnabled: true
@@ -68,4 +70,5 @@ users:
     enabled: true
     serviceAccountClientId: vuln-api-admin
     clientRoles:
-      realm-management: [view-users, query-users, manage-users]
+      # view-realm: GET /roles/{r} and /roles/{r}/users need it.
+      realm-management: [view-users, query-users, manage-users, view-realm]

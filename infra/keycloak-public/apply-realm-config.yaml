@@ -4,8 +4,9 @@
 #     --from-file=infra/keycloak-public/ --dry-run=client -o yaml | kubectl apply -f -
 #   kubectl -n keycloak-public delete job keycloak-public-apply-realms --ignore-not-found
 #   kubectl apply -f infra/keycloak-public/apply-realm-config.yaml
-# Unlike the admin Keycloak (see infra/k8s/keycloak/README.md's hazard),
-# every client secret here comes from Vault, so re-running is safe.
+# Client secrets are written as $(env:VAR) - keycloak-config-cli's
+# substitution syntax (IMPORT_VARSUBSTITUTION_ENABLED below); ${VAR} would be
+# stored literally. Values come from Vault, so re-running keeps them stable.
 apiVersion: batch/v1
 kind: Job
 metadata:
