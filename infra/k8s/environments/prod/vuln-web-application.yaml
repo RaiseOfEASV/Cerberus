@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vuln-web-prod
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      path: infra/helm/charts/app
+      helm:
+        releaseName: vuln-web
+        valueFiles:
+          - $values/infra/helm/vuln-web/values-prod.yaml
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cerberoast

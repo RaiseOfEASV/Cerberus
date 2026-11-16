@@ -1,0 +1,7 @@
+# vuln-db, prod - instantiates infra/helm/charts/postgres.
+vaultPath: vulnman/prod/db
+clientSelector:
+  app.kubernetes.io/name: vuln-api
+backup:
+  enabled: true
+  prefix: vulnman-prod

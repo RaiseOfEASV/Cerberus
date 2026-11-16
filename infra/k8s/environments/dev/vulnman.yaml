@@ -1,0 +1,112 @@
+# VulnMan, dev: secrets, CA, egress, admin preview route.
+# vuln-api's client secrets (same Vault values the realm-config Job writes
+# into Keycloak - infra/k8s/keycloak-public/README.md).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vuln-api-oidc
+  namespace: dev
+spec:
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  refreshInterval: 1h
+  target: { name: vuln-api-oidc }
+  data:
+    - { secretKey: OIDC_CLIENT_SECRET, remoteRef: { key: vulnman/dev/oidc, property: client_secret } }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vuln-api-kc-admin
+  namespace: dev
+spec:
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  refreshInterval: 1h
+  target: { name: vuln-api-kc-admin }
+  data:
+    - { secretKey: KEYCLOAK_ADMIN_CLIENT_SECRET, remoteRef: { key: vulnman/dev/kc-admin, property: client_secret } }
+---
+# Internal CA (public cert only) so vuln-api verifies Vault's TLS.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cerberus-internal-ca
+  namespace: dev
+data:
+  name: cerberus-internal-ca
+  namespace: argocd
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBgjCCASigAwIBAgIUMcyyAJR8FXTZCEE1TvI48dZwNgMwCgYIKoZIzj0EAwIw
+    HzEdMBsGA1UEAxMUY2VyYmVydXMtaW50ZXJuYWwtY2EwHhcNMjYxMDI1MTg0MzIz
+    WhcNMzYxMDIyMTg0MzIzWjAfMR0wGwYDVQQDExRjZXJiZXJ1cy1pbnRlcm5hbC1j
+    YTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMe2m55ezGW1qp2f1GyKs35T/ol0
+    W9BAeTXS5e0IfzQPK/il6q/k0nYdsnTCKJe4euq4M6DBwrj6kkONygJcPfujQjBA
+    MA4GA1UdDwEB/wQEAwICpDAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQsdlKu
+    Hlf/TTxzWOHd5btjy4G8YzAKBggqhkjOPQQDAgNIADBFAiEAi4BEan5cEo+BKQ8S
+    i71TH7UT2Qo3dEXWjhUeSLn02WwCIFZqCju8QFQvOLVOAHlZvM1v9Bnu9l1Yx5RG
+    NCrfLW34
+    -----END CERTIFICATE-----
+---
+# vuln-api's egress, on top of Kyverno's generated default-deny (Ingress
+# and Egress): DNS, its own Postgres, Vault Transit, the public Keycloak's
+# pods (back-channel: discovery, token, admin API). Nothing else - in
+# particular no internet egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vuln-api-egress
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: vuln-api }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+    - to:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: vuln-db, app.kubernetes.io/component: database } }
+      ports: [{ port: 5432, protocol: TCP }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: vault } }
+      ports: [{ port: 8200, protocol: TCP }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: keycloak-public } }
+          podSelector: { matchLabels: { app.kubernetes.io/name: keycloakx } }
+      ports: [{ port: 8080, protocol: TCP }]
+---
+# Admin-side (VPN-only) access to dev: internal Traefik, internal-CA cert.
+# No oauth2-proxy gate - VulnMan has its own login. Same origin: /api and
+# /auth -> vuln-api, everything else -> vuln-web. Outside git: a hosts-file
+# (or headscale DNS) entry vulns-dev.admin.cerberus.internal -> 10.0.2.50 on admin devices.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vulnman-preview
+  namespace: dev
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`vulns-dev.admin.cerberus.internal`) && (PathPrefix(`/api`) || PathPrefix(`/auth`))"
+      kind: Rule
+      priority: 100
+      services:
+        - { name: vuln-api, port: 80 }
+    - match: "Host(`vulns-dev.admin.cerberus.internal`)"
+      kind: Rule
+      services:
+        - { name: vuln-web, port: 80 }
+  tls:
+    secretName: vulnman-dev-admin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vulnman-dev-admin-tls
+  namespace: dev
+spec:
+  secretName: vulnman-dev-admin-tls
+  dnsNames: ["vulns-dev.admin.cerberus.internal"]
+  issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
