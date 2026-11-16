@@ -60,7 +60,20 @@ func fresh(t *testing.T) (app, owner *pgxpool.Pool) {
 	}
 	defer su.Close()
 	rolesOnce.Do(func() {
-		_, rolesErr = su.Exec(ctx, `DO $$ BEGIN
+		// `go test ./...` runs packages as parallel processes against the same
+		// server; sync.Once only covers this process, so serialize the
+		// cluster-wide CREATE ROLE with an advisory lock on one connection.
+		conn, err := su.Acquire(ctx)
+		if err != nil {
+			rolesErr = err
+			return
+		}
+		defer conn.Release()
+		if _, rolesErr = conn.Exec(ctx, `SELECT pg_advisory_lock(424242)`); rolesErr != nil {
+			return
+		}
+		defer func() { _, _ = conn.Exec(ctx, `SELECT pg_advisory_unlock(424242)`) }()
+		_, rolesErr = conn.Exec(ctx, `DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vulnman_owner') THEN CREATE ROLE vulnman_owner LOGIN PASSWORD '`+ownerPassword+`'; END IF;
 			IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vulnman_app') THEN CREATE ROLE vulnman_app LOGIN PASSWORD '`+appPassword+`'; END IF;
 		END $$`)
