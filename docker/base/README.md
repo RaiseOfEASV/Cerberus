@@ -5,9 +5,9 @@ instead of pulling an upstream base directly. One place to fix a CVE or bump
 a runtime version instead of touching every app.
 
 - `go/Dockerfile` → `ghcr.io/raiseofeasv/base-go` (distroless `static-debian12`) -
-  used by `apps/quote-api`
+  used by `apps/vuln-api`
 - `node/Dockerfile` → `ghcr.io/raiseofeasv/base-node` (distroless
-  `nodejs26-debian13`, Node 26 LTS) - no consumer yet (`apps/quote-web` is a
+  `nodejs26-debian13`, Node 26 LTS) - no consumer yet (`apps/vuln-web` is a
   static SPA served by nginx, so it doesn't need a Node runtime)
 
 Both are published and **public** on GHCR (first published 2026-11-09). The
@@ -29,7 +29,7 @@ and run as a non-root user already.
   whenever a new digest is published upstream.
 - App Dockerfiles must pin the tag they consume from GHCR by digest too -
   Renovate tracks that the same way, one ecosystem, one mechanism.
-  **Not done yet:** `apps/quote-api` uses `base-go:latest` (no digest existed
+  **Not done yet:** `apps/vuln-api` uses `base-go:latest` (no digest existed
   when it was written) - pin it.
 - Trivy's gate fails on any *fixed* CRITICAL. When an upstream distroless tag
   lags behind a Debian fix (as `nodejs22-debian12` did with CVE-2026-31789),

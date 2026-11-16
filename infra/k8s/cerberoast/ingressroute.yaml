@@ -1,9 +1,20 @@
-# The `traefik-instance: public` label is what makes traefik-public's
-# scoped labelSelector (infra/helm/values/traefik-public-values.yaml)
-# pick this up at all - without it, this IngressRoute is invisible to
-# that instance (though still harmlessly visible to the admin instance,
-# which has no labelSelector - see that values file's comment on why
-# that's not a security issue).
+# cerberoast.site = VulnMan (plan docs/superpowers/plans/2026-11-16-vulnman.md,
+# D1). One origin: /api and /auth -> vuln-api (no prefix strip), everything
+# else -> vuln-web. www redirects to the apex, because the session cookie
+# and the OIDC callback are bound to PUBLIC_BASE_URL=https://cerberoast.site.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: www-to-apex
+  namespace: cerberoast
+  labels:
+    traefik-instance: public
+spec:
+  redirectRegex:
+    regex: "^https://www\\.cerberoast\\.site/(.*)"
+    replacement: "https://cerberoast.site/${1}"
+    permanent: true
+---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -14,15 +25,24 @@ metadata:
 spec:
   entryPoints: [websecure]
   routes:
-    - match: "Host(`cerberoast.site`) || Host(`www.cerberoast.site`)"
+    - match: "Host(`www.cerberoast.site`)"
       kind: Rule
+      priority: 200
+      middlewares:
+        - name: www-to-apex
       services:
-        - name: quote-web
+        - name: vuln-web
           port: 80
-    - match: "Host(`api.cerberoast.site`)"
+    - match: "Host(`cerberoast.site`) && (PathPrefix(`/api`) || PathPrefix(`/auth`))"
+      kind: Rule
+      priority: 100
+      services:
+        - name: vuln-api
+          port: 80
+    - match: "Host(`cerberoast.site`)"
       kind: Rule
       services:
-        - name: quote-api
+        - name: vuln-web
           port: 80
   tls:
     secretName: cerberoast-site-tls
@@ -34,5 +54,5 @@ metadata:
   namespace: cerberoast
 spec:
   secretName: cerberoast-site-tls
-  dnsNames: ["cerberoast.site", "www.cerberoast.site", "api.cerberoast.site"]
+  dnsNames: ["cerberoast.site", "www.cerberoast.site"]
   issuerRef: { name: letsencrypt-public, kind: ClusterIssuer }

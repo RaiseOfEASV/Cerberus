@@ -38,7 +38,7 @@ name: Deploy
 #
 # dev isn't an option here: dev's tag is changed by a normal PR, and dev
 # auto-syncs. prod's Applications are manual-sync in ArgoCD, so after the
-# prod bump PR merges, sync quote-*-prod deliberately.
+# prod bump PR merges, sync vuln-*-prod deliberately.
 
 on:
   workflow_dispatch:

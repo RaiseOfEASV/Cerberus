@@ -30,7 +30,7 @@ reviewed PR:
 Prod Applications never sync on their own. After a prod bump PR merges:
 
 - **Image change only** (the usual case): sync the changed app -
-  `argocd app sync quote-web-prod`.
+  `argocd app sync vuln-web-prod`.
 - **Changes under `infra/k8s/environments/prod/` or `infra/k8s/cerberoast/`**
   (new app, routing, certificate): sync `root-prod`.
 
@@ -39,7 +39,7 @@ Without the `argocd` CLI the same is done by setting the Application's
 
 ```bash
 K="--kubeconfig infra/terraform/cluster/kubeconfig.yaml"
-kubectl $K -n argocd patch application quote-web-prod --type merge \
+kubectl $K -n argocd patch application vuln-web-prod --type merge \
   -p '{"operation":{"initiatedBy":{"username":"<you>"},"sync":{"revision":"master"}}}'
 ```
 
@@ -58,27 +58,22 @@ no root-prod sync can delete it (or the Let's Encrypt certificate in it).
 
 ## Team previews of dev/staging (admin side)
 
-`dev/admin-preview.yaml` and `staging/admin-preview.yaml` expose the quote
-apps to the team at:
+`dev/vulnman.yaml` and `staging/vulnman.yaml` expose VulnMan to the team at:
 
-- https://quote-dev.admin.cerberus.internal
-- https://quote-staging.admin.cerberus.internal
+- https://vulns-dev.admin.cerberus.internal
+- https://vulns-staging.admin.cerberus.internal
 
-served by the internal Traefik (10.0.2.50, VPN only), behind the same
-Keycloak/oauth2-proxy login as Vault and ArgoCD (group `admins`), with an
-internal-CA certificate. `/api/*` goes to quote-api on the same origin.
+served by the internal Traefik (10.0.2.50, VPN only) with an internal-CA
+certificate. There's no oauth2-proxy gate: VulnMan has its own login (the
+`vulnman-dev` / `vulnman-staging` realms of `keycloak-public`). `/api` and
+`/auth` go to vuln-api on the same origin.
 
 One-time steps outside git:
 
-1. **Keycloak**: in the `cerberus-admin` realm, client `oauth2-proxy` →
-   Valid redirect URIs, add
-   `https://quote-dev.admin.cerberus.internal/oauth2/callback` and
-   `https://quote-staging.admin.cerberus.internal/oauth2/callback`
-   (already recorded in `infra/keycloak/realm-config.yaml`). Do this in the
-   admin console - don't re-run the realm-config Job, it resets every
-   client's secret.
-2. **Name resolution on each admin device**: VPN clients run with
-   `--accept-dns=false`, so add to the hosts file (as for the other admin
-   UIs): `10.0.2.50 quote-dev.admin.cerberus.internal quote-staging.admin.cerberus.internal`.
-   The headscale `extra_records` already list both for when MagicDNS is enabled.
-3. The device must trust the internal CA (same as for Vault/ArgoCD).
+1. **Name resolution on each admin device**: VPN clients run with
+   `--accept-dns=false`, so add to the hosts file:
+   `10.0.2.50 vulns-dev.admin.cerberus.internal vulns-staging.admin.cerberus.internal`.
+   The headscale `extra_records` list both for when MagicDNS is enabled.
+2. The device must trust the internal CA (same as for Vault/ArgoCD).
+3. Test users per role are created by hand in the realm (see
+   `infra/k8s/keycloak-public/README.md`).

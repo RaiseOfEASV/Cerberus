@@ -86,16 +86,22 @@ module ever needs a third post-boot IP, this manual step is needed again.
    Certificate) - originally hand-applied with a "coming soon" placeholder
    to prove DNS -> TLS -> NSG -> Traefik end to end. Since the first real
    app it is ArgoCD-managed (`root-prod`, via its `kustomization.yaml`), the
-   placeholder is gone, and the IngressRoute routes `cerberoast.site`/`www`
-   to `quote-web` and `api.cerberoast.site` to `quote-api` (one Let's
-   Encrypt certificate covers all three names). The workloads come from the
-   `quote-*-prod` ArgoCD Applications.
+   placeholder is gone. Since 2026-11-16 it serves VulnMan: `cerberoast.site`
+   `/api` and `/auth` go to `vuln-api`, everything else to `vuln-web`, and
+   `www` redirects to the apex (one Let's Encrypt certificate for both
+   names). The workloads come from the `vuln-*-prod` ArgoCD Applications.
+   `auth.cerberoast.site` (VulnMan's Keycloak) is routed from
+   `infra/k8s/keycloak-public/`.
+9. Cloudflare proxies these names, so this instance runs with
+   `externalTrafficPolicy: Local` and trusts X-Forwarded-For only from
+   Cloudflare's ranges (`forwardedHeaders.trustedIPs`) - vuln-api's rate
+   limit on the public report form depends on the real client address.
 
 ## What's deliberately NOT done here
 
 - `dev`/`staging` app environments stay VPN-only, same as the admin tools -
   only `prod` gets a public hostname. The team reaches dev/staging at
-  `quote-{dev,staging}.admin.cerberus.internal` on the *admin* Traefik
+  `vulns-{dev,staging}.admin.cerberus.internal` on the *admin* Traefik
   (see `infra/k8s/environments/README.md`), never through this instance.
 - The admin Traefik instance's own `providers.kubernetesCRD` is untouched -
   it has no `labelSelector`, so it will also harmlessly attempt to serve

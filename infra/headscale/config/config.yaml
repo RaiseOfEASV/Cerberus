@@ -68,10 +68,10 @@ dns:
     - name: "keycloak.admin.cerberus.internal"
       type: "A"
       value: "10.0.2.50"
-    - name: "quote-dev.admin.cerberus.internal"
+    - name: "vulns-dev.admin.cerberus.internal"
       type: "A"
       value: "10.0.2.50"
-    - name: "quote-staging.admin.cerberus.internal"
+    - name: "vulns-staging.admin.cerberus.internal"
       type: "A"
       value: "10.0.2.50"
 
