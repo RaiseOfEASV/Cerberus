@@ -37,3 +37,9 @@ th { font-size: .85rem; color: var(--muted); }
 .visually-hidden { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 pre.wrap { white-space: pre-wrap; word-break: break-word; }
 .public { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+.chart h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.chart .bar, .bar-opened { fill: var(--accent); background: var(--accent); }
+.bar-closed { fill: var(--ok); background: var(--ok); }
+.chart .sev-Critical { fill: var(--crit); } .chart .sev-High { fill: var(--high); } .chart .sev-Medium { fill: var(--med); } .chart .sev-Low { fill: var(--low); }
+.chart-values { font-size: .85rem; color: var(--muted); columns: 2; margin: .5rem 0 0; padding-left: 1rem; }
+.key { display: inline-block; width: .8rem; height: .8rem; vertical-align: middle; }
