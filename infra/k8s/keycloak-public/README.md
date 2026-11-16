@@ -10,6 +10,10 @@ Only `/realms/vulnman`, `/realms/vulnman-dev`, `/realms/vulnman-staging` and
 `/resources/` are routed publicly (`ingressroute.yaml`). The admin console is
 reached with `kubectl -n keycloak-public port-forward svc/keycloak-public-http 8080:80`.
 
+Runs with a read-only root filesystem and no Kyverno exception: an init
+container seeds `/opt/keycloak/lib/quarkus` into an emptyDir, which Keycloak's
+boot-time build then writes to (see `keycloak-public-values.yaml`).
+
 ## Realms
 
 | Realm | App URL | MFA |
