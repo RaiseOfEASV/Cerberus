@@ -53,3 +53,5 @@ helm-lint:
         if [ -f "${chart}tests/values-test.yaml" ]; then helm lint "$chart" -f "${chart}tests/values-test.yaml"; else helm lint "$chart"; fi
         if [ -x "${chart}tests/render-test.sh" ]; then "${chart}tests/render-test.sh"; fi
     done
+    # Deployment-config regressions found in VulnMan's final review.
+    python3 tools/check-vulnman-config.py
