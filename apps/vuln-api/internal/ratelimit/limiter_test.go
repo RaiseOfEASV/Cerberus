@@ -67,3 +67,27 @@ func TestClientIP(t *testing.T) {
 		}
 	}
 }
+
+func TestClientIPBehindCloudflare(t *testing.T) {
+	trusted := []netip.Prefix{netip.MustParsePrefix("10.42.0.0/16"), netip.MustParsePrefix("173.245.48.0/20")}
+	cases := []struct {
+		name, remote, xff, want string
+	}{
+		// Traefik pod -> vuln-api; Traefik appended the Cloudflare edge, Cloudflare the client.
+		{"real client behind cloudflare", "10.42.0.9:5000", "203.0.113.9, 173.245.48.5", "203.0.113.9"},
+		// The client sent its own X-Forwarded-For: Cloudflare appends the real address after it.
+		{"spoofed entry left of the real client", "10.42.0.9:5000", "1.2.3.4, 198.51.100.7, 173.245.48.5", "198.51.100.7"},
+		// Directly to Traefik without Cloudflare: the right-most entry is the client.
+		{"no cloudflare hop", "10.42.0.9:5000", "198.51.100.8", "198.51.100.8"},
+		// Every hop trusted (internal caller): fall back to the left-most address.
+		{"all hops trusted", "10.42.0.9:5000", "10.42.0.3, 173.245.48.5", "10.42.0.3"},
+	}
+	for _, c := range cases {
+		r := httptest.NewRequest("POST", "/", nil)
+		r.RemoteAddr = c.remote
+		r.Header.Set("X-Forwarded-For", c.xff)
+		if got := ClientIP(r, trusted); got != c.want {
+			t.Errorf("%s: %q, want %q", c.name, got, c.want)
+		}
+	}
+}

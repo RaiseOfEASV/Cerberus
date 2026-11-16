@@ -61,8 +61,11 @@ func (l *Limiter) Len() int {
 }
 
 // ClientIP is the address to rate-limit on. X-Forwarded-For is only
-// believed when the direct peer is a trusted proxy (Traefik's pod range),
-// and then only its right-most entry - the one that proxy appended.
+// believed when the direct peer is a trusted proxy (Traefik's pod range).
+// It is then walked from the right, skipping every trusted hop (Traefik,
+// Cloudflare's edges), and the first untrusted address is the client - an
+// entry the client wrote itself sits further left and is never reached.
+// If every hop is trusted, the left-most address is used.
 func ClientIP(r *http.Request, trusted []netip.Prefix) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -72,20 +75,32 @@ func ClientIP(r *http.Request, trusted []netip.Prefix) string {
 	if err != nil {
 		return host
 	}
-	isTrusted := false
-	for _, p := range trusted {
-		if p.Contains(peer) {
-			isTrusted = true
-			break
-		}
-	}
-	if !isTrusted {
+	if !isTrusted(peer, trusted) {
 		return peer.String()
 	}
 	parts := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
-	last := strings.TrimSpace(parts[len(parts)-1])
-	if a, err := netip.ParseAddr(last); err == nil {
-		return a.String()
+	var leftmost netip.Addr
+	for i := len(parts) - 1; i >= 0; i-- {
+		a, err := netip.ParseAddr(strings.TrimSpace(parts[i]))
+		if err != nil {
+			break // a malformed hop ends the chain we can trust
+		}
+		if !isTrusted(a, trusted) {
+			return a.String()
+		}
+		leftmost = a
+	}
+	if leftmost.IsValid() {
+		return leftmost.String()
 	}
 	return peer.String()
+}
+
+func isTrusted(a netip.Addr, trusted []netip.Prefix) bool {
+	for _, p := range trusted {
+		if p.Contains(a.Unmap()) {
+			return true
+		}
+	}
+	return false
 }

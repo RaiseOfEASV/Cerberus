@@ -31,7 +31,9 @@ env:
   - { name: VAULT_ROLE, value: "vuln-api-prod" }
   - { name: TRANSIT_DATA_KEY, value: "vulnman-prod-data" }
   - { name: TRANSIT_REPORT_KEY, value: "vulnman-prod-report" }
-  # k3s pod CIDR: X-Forwarded-For is only believed from Traefik's pods.
-  - { name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16" }
+  # Proxies whose X-Forwarded-For entries are skipped to find the client:
+  # Traefik's pods (k3s pod CIDR) and Cloudflare's edge ranges, which sit
+  # in front of cerberoast.site (keep in sync with traefik-public-values.yaml).
+  - { name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22" }
 ingress:
   enabled: false
