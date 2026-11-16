@@ -4,7 +4,8 @@ image:
   repository: ghcr.io/raiseofeasv/vuln-api
   # tag + digest: placeholder until build.yml publishes the first signed
   # image; then bumped by deploy.yml.
-  tag: "0000000000000000000000000000000000000000"
+  tag: "cbda551aa539b352d62578ec25460bea42a89add"
+  digest: sha256:26b11450866046387a878e0a8427d07abbf968d83d1f3755234d5b47e6d8955e
 serviceAccount:
   create: true
   name: vuln-api
@@ -17,23 +18,23 @@ initContainer:
   args: ["migrate"]
   envFromSecrets: [vuln-db-owner-url]
 resources:
-  requests: { cpu: 50m, memory: 64Mi }
-  limits: { cpu: 300m, memory: 256Mi }
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {cpu: 300m, memory: 256Mi}
 env:
-  - { name: PUBLIC_BASE_URL, value: "https://cerberoast.site" }
-  - { name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman" }
-  - { name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman" }
-  - { name: OIDC_CLIENT_ID, value: vuln-api }
-  - { name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc" }
-  - { name: KEYCLOAK_REALM, value: "vulnman" }
-  - { name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin }
-  - { name: VAULT_ADDR, value: "https://vault.vault.svc:8200" }
-  - { name: VAULT_ROLE, value: "vuln-api-prod" }
-  - { name: TRANSIT_DATA_KEY, value: "vulnman-prod-data" }
-  - { name: TRANSIT_REPORT_KEY, value: "vulnman-prod-report" }
+  - {name: PUBLIC_BASE_URL, value: "https://cerberoast.site"}
+  - {name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman"}
+  - {name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman"}
+  - {name: OIDC_CLIENT_ID, value: vuln-api}
+  - {name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc"}
+  - {name: KEYCLOAK_REALM, value: "vulnman"}
+  - {name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin}
+  - {name: VAULT_ADDR, value: "https://vault.vault.svc:8200"}
+  - {name: VAULT_ROLE, value: "vuln-api-prod"}
+  - {name: TRANSIT_DATA_KEY, value: "vulnman-prod-data"}
+  - {name: TRANSIT_REPORT_KEY, value: "vulnman-prod-report"}
   # Proxies whose X-Forwarded-For entries are skipped to find the client:
   # Traefik's pods (k3s pod CIDR) and Cloudflare's edge ranges, which sit
   # in front of cerberoast.site (keep in sync with traefik-public-values.yaml).
-  - { name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22" }
+  - {name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22"}
 ingress:
   enabled: false
