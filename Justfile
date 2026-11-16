@@ -50,6 +50,6 @@ helm-lint:
     # Charts live under infra/helm/charts/ (the old infra/helm/*/ glob only
     # matched per-app values directories, so it linted nothing).
     for chart in infra/helm/charts/*/; do
-        helm lint "$chart"
+        if [ -f "${chart}tests/values-test.yaml" ]; then helm lint "$chart" -f "${chart}tests/values-test.yaml"; else helm lint "$chart"; fi
         if [ -x "${chart}tests/render-test.sh" ]; then "${chart}tests/render-test.sh"; fi
     done

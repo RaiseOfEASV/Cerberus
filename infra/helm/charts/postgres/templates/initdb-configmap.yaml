@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pg.name" . }}-initdb
+  labels: {{- include "pg.labels" . | nindent 4 }}
+data:
+  # Runs once, on an empty data directory. Passwords come from env (the
+  # credentials Secret), never from this file.
+  10-roles.sh: |
+    #!/bin/sh
+    set -eu
+    psql -v ON_ERROR_STOP=1 --username postgres --dbname postgres \
+      -v owner_pw="$OWNER_PASSWORD" -v app_pw="$APP_PASSWORD" <<'SQL'
+    CREATE ROLE vulnman_owner LOGIN PASSWORD :'owner_pw';
+    CREATE ROLE vulnman_app LOGIN PASSWORD :'app_pw';
+    CREATE DATABASE {{ .Values.database }} OWNER vulnman_owner;
+    REVOKE ALL ON DATABASE {{ .Values.database }} FROM PUBLIC;
+    REVOKE CONNECT ON DATABASE postgres FROM PUBLIC;
+    GRANT CONNECT ON DATABASE {{ .Values.database }} TO vulnman_app;
+    \connect {{ .Values.database }}
+    ALTER SCHEMA public OWNER TO vulnman_owner;
+    REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+    GRANT USAGE ON SCHEMA public TO vulnman_app;
+    SQL
