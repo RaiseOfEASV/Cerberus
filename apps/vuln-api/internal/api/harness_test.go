@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -16,8 +17,11 @@ import (
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/crypt/crypttest"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/db/testdb"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
+	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/ratelimit"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/store"
 )
+
+var jsonMarshal = json.Marshal
 
 const base = "https://vulns.test"
 
@@ -51,8 +55,9 @@ func newHarness(t *testing.T) *harness {
 		{Sub: uDev2.Sub, Name: uDev2.Name, Role: domain.RoleDeveloper},
 		{Sub: uPM.Sub, Name: uPM.Name, Role: domain.RolePM},
 	}}
-	hs.h = New(Deps{Store: hs.st, Sessions: hs.st.Sessions(), Dir: dir, Cfg: config.Config{PublicBaseURL: base},
-		Now: func() time.Time { return hs.now }})
+	cfg := config.Config{PublicBaseURL: base, TrustedProxyCIDRs: []netip.Prefix{netip.MustParsePrefix("10.42.0.0/16")}}
+	hs.h = New(Deps{Store: hs.st, Sessions: hs.st.Sessions(), Dir: dir, Cfg: cfg,
+		Limiter: ratelimit.New(5, func() time.Time { return hs.now }), Now: func() time.Time { return hs.now }})
 	for _, u := range []auth.User{uAnalyst, uDev, uDev2, uPM, uAuditor} {
 		raw, err := hs.st.Sessions().Create(context.Background(), u, time.Hour)
 		if err != nil {
