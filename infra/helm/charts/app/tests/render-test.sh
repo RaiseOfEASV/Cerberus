@@ -8,14 +8,7 @@ REPO=../../../..
 fail=0
 check() { if eval "$2"; then echo "ok   - $1"; else echo "FAIL - $1"; fail=1; fi; }
 
-# 1. Existing apps render the same objects as before the optional features existed.
-if [ -f "$REPO/infra/helm/quote-api/values-prod.yaml" ]; then
-  # Compared as parsed YAML, not text: Helm versions differ in blank lines.
-  check "quote-api prod unchanged (golden)" \
-    'python3 -c "import sys,yaml; a=[d for d in yaml.safe_load_all(open(sys.argv[1])) if d]; b=[d for d in yaml.safe_load_all(sys.stdin) if d]; sys.exit(0 if a==b else 1)" tests/quote-api-prod.golden.yaml < <(helm template quote-api . -n cerberoast -f $REPO/infra/helm/quote-api/values-prod.yaml)'
-fi
-
-# 2. Every optional feature renders as specified.
+# 1. Every optional feature renders as specified.
 helm template vuln-api . -n dev -f tests/full-values.yaml > /tmp/render-full.$$.yaml
 check "full fixture assertions" 'python3 - /tmp/render-full.$$.yaml <<"EOF"
 import sys, yaml
@@ -46,7 +39,7 @@ assert "envFrom" not in init or all(e["secretRef"]["name"] != "vuln-api-oidc" fo
 EOF'
 rm -f /tmp/render-full.$$.yaml
 
-# 3. initContainer without args is a render error with a clear message.
+# 2. initContainer without args is a render error with a clear message.
 out=$(helm template x . -f tests/full-values.yaml --set 'initContainer.args=null' 2>&1 || true)
 check "initContainer.args required" 'grep -q "initContainer.args is required" <<<"$out"'
 

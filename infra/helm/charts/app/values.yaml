@@ -3,7 +3,7 @@
 # is baked into the templates; per-app values only fill in what varies.
 
 image:
-  repository: ""   # required, e.g. ghcr.io/raiseofeasv/quote-api
+  repository: ""   # required, e.g. ghcr.io/raiseofeasv/vuln-api
   tag: ""          # required - never "latest" (Kyverno disallow-latest-tag)
   # Manifest digest (sha256:...) of that tag. Set by deploy.yml alongside the
   # tag. Kyverno's verify-image-signatures pins images to their digest at
@@ -47,7 +47,7 @@ ingress:
   hosts: []
   tlsSecretName: ""
 
-# --- Optional features (all off by default; quote-* render unchanged) ---
+# --- Optional features (all off by default) ---
 
 # Secrets loaded whole into the app container's environment (envFrom).
 envFromSecrets: []

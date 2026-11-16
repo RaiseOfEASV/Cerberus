@@ -31,7 +31,7 @@ in-cluster credentials. See `infra/k8s/environments/README.md` for the full flow
 
 ## Why prod doesn't auto-sync
 
-`root-prod` and its children (`quote-api-prod`, `quote-web-prod`) have no
+`root-prod` and its children (`vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod`) have no
 automated sync on purpose. A prod change already passes the `production` GitHub
 Environment approval and a PR review; auto-sync on top would make the final step
 implicit. Sync prod deliberately - which app to sync, the no-CLI way, and the
@@ -42,9 +42,9 @@ zero-downtime order for routing changes are in
 
 | Root app | Children | Sync |
 |---|---|---|
-| `root-dev` | `quote-api-dev`, `quote-web-dev` (+ admin preview ingress) | automated |
-| `root-staging` | `quote-api-staging`, `quote-web-staging` (+ admin preview ingress) | automated |
-| `root-prod` | `quote-api-prod`, `quote-web-prod`, and `infra/k8s/cerberoast/` | manual |
+| `root-dev` | `vuln-api-dev`, `vuln-web-dev`, `vuln-db-dev` (+ VPN preview route) | automated |
+| `root-staging` | `vuln-api-staging`, `vuln-web-staging`, `vuln-db-staging` (+ VPN preview route) | automated |
+| `root-prod` | `vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod`, and `infra/k8s/cerberoast/` | manual |
 
 Children are multi-source: the generic chart `infra/helm/charts/app` plus a
 `ref: values` source; `$values` resolves to the repo root, so value files are

@@ -2,7 +2,7 @@
 
 One directory per app. The root `Justfile`, `build.yml` and `release.yml`
 discover apps automatically - nothing in CI needs editing to add one.
-`quote-api` (Go) and `quote-web` (React) are the reference implementation
+`vuln-api` (Go) and `vuln-web` (React) are the reference implementation
 of this convention.
 
 ## What an app directory needs
@@ -33,12 +33,12 @@ image has to make them possible:
   ports and probes.
 - **No environment-specific values baked in.** The same image digest is
   promoted dev → staging → prod; read config from environment variables at
-  start-up (quote-web writes `env-config.js` from `API_URL` in its entrypoint).
+  start-up (vuln-web needs none: it is served on the same origin as its API).
 - **Static frontends: cache headers matter.** Serve `index.html` with
   `no-cache`, hashed assets as `immutable`, and a missing asset as a real 404
   (never the SPA fallback) - otherwise returning visitors get a blank page
-  after a deploy. Copy `apps/quote-web/docker/nginx.conf`; its behaviour is
-  tested by `apps/quote-web/docker/image-test.sh`.
+  after a deploy. Copy `apps/vuln-web/docker/nginx.conf`; its behaviour is
+  tested by `apps/vuln-web/docker/image-test.sh`.
 
 ## Deploying a new app
 
@@ -51,7 +51,7 @@ image has to make them possible:
    `podSecurityContext.runAsUser`, `writablePaths`).
 4. Add a child Application per environment under
    `infra/k8s/environments/<env>/` and list it in that directory's
-   `kustomization.yaml` (copy the quote-* ones).
+   `kustomization.yaml` (copy the vuln-* ones).
 5. Promote: see `infra/k8s/environments/README.md`.
 
 Local toolchains: Go 1.27, Node 26, `just`.

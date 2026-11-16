@@ -1,8 +1,7 @@
 # Layers one specific allow on top of Kyverno's auto-generated
 # default-deny-all for this namespace (same pattern as vault/arc-runners)
-# - ingress from traefik-public only. No egress rule at all: quote-web
-# serves a static SPA and quote-api answers from memory - neither makes
-# upstream calls (the browser calls api.cerberoast.site, not quote-web).
+# - ingress from traefik-public only. vuln-api's egress (DB, Vault, Keycloak) is in
+# vulnman.yaml; vuln-web and vuln-db need none.
 #
 # Scoped by podSelector/namespaceSelector, not a fully-open rule - unlike
 # several other namespaces in this cluster (vault, keycloak,

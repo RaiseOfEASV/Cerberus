@@ -28,7 +28,7 @@
 # traefik-public (public-domain backlog item) added for the exact same
 # reason as traefik above - it's a second, isolated Traefik instance, not
 # an app namespace. The public app namespace(s) it fronts (cerberoast,
-# serving quote-web/quote-api) are NOT excluded - those get the normal
+# serving vuln-web/vuln-api) are NOT excluded - those get the normal
 # restricted PSA + default-deny-all treatment like any other workload
 # namespace, same as vault/arc-runners layering specific allows on top.
 

@@ -55,15 +55,15 @@ jobs:
       # follow the apps' own go.mod / Dockerfile build stages.
       - uses: actions/setup-go@v5
         with:
-          go-version-file: apps/quote-api/go.mod
+          go-version-file: apps/vuln-api/go.mod
       - uses: actions/setup-node@v4
         with:
           node-version: "26"
       - uses: extractions/setup-just@v2
       - name: just lint-all
         run: just lint-all
-      # Unit tests of every app (quote-api: Go incl. CORS/preflight and
-      # empty-list cases; quote-web: Vitest incl. the error state).
+      # Unit tests of every app (vuln-api: Go against a throwaway Postgres
+      # in Docker; vuln-web: Vitest).
       - name: just test-all
         run: just test-all
       - name: Helm charts - lint, render tests, every real values file, config checks
@@ -74,11 +74,8 @@ jobs:
           infra/helm/charts/postgres/tests/render-test.sh
           infra/helm/render-all.sh
           python3 tools/check-vulnman-config.py
-      # Builds the image and checks nginx caching/404/security headers and
-      # the runtime API_URL injection, run read-only like in the cluster.
-      - name: quote-web image test
-        run: apps/quote-web/docker/image-test.sh
-      # Same for vuln-web: CSP, cache headers, no inline script.
+      # Builds vuln-web and checks nginx CSP, caching/404 and security
+      # headers, run read-only like in the cluster.
       - name: vuln-web image test
         run: apps/vuln-web/docker/image-test.sh
 
