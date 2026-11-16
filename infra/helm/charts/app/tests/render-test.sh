@@ -8,10 +8,11 @@ REPO=../../../..
 fail=0
 check() { if eval "$2"; then echo "ok   - $1"; else echo "FAIL - $1"; fail=1; fi; }
 
-# 1. Existing apps render byte-identical to before the optional features existed.
+# 1. Existing apps render the same objects as before the optional features existed.
 if [ -f "$REPO/infra/helm/quote-api/values-prod.yaml" ]; then
+  # Compared as parsed YAML, not text: Helm versions differ in blank lines.
   check "quote-api prod unchanged (golden)" \
-    'diff -u tests/quote-api-prod.golden.yaml <(helm template quote-api . -n cerberoast -f $REPO/infra/helm/quote-api/values-prod.yaml)'
+    'python3 -c "import sys,yaml; a=[d for d in yaml.safe_load_all(open(sys.argv[1])) if d]; b=[d for d in yaml.safe_load_all(sys.stdin) if d]; sys.exit(0 if a==b else 1)" tests/quote-api-prod.golden.yaml < <(helm template quote-api . -n cerberoast -f $REPO/infra/helm/quote-api/values-prod.yaml)'
 fi
 
 # 2. Every optional feature renders as specified.
