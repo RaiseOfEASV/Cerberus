@@ -232,6 +232,12 @@ resource "vault_policy" "eso_read" {
     path "secret/data/cloudflare/*" {
       capabilities = ["read"]
     }
+    path "secret/data/vulnman/*" {
+      capabilities = ["read"]
+    }
+    path "secret/data/keycloak-public/*" {
+      capabilities = ["read"]
+    }
   EOT
 }
 
