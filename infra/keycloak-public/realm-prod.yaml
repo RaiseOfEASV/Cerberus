@@ -1,5 +1,5 @@
 # VulnMan realm for prod. Applied by keycloak-config-cli
-# (infra/keycloak-public/apply-realm-config.yaml); $(env:VAR) values come from
+# (infra/keycloak-public/apply-realm-config.yaml); the env-substituted secrets come from
 # its environment (Vault via ESO) - never write a real secret here.
 realm: vulnman
 enabled: true
