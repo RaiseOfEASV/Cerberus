@@ -4,3 +4,7 @@ resources:
   - quote-api-application.yaml
   - quote-web-application.yaml
   - admin-preview.yaml
+  - vuln-db-application.yaml
+  - vuln-api-application.yaml
+  - vuln-web-application.yaml
+  - vulnman.yaml

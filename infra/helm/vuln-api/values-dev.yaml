@@ -2,9 +2,9 @@
 # infra/k8s/environments/dev/). Secrets arrive via envFromSecrets (ESO).
 image:
   repository: ghcr.io/raiseofeasv/vuln-api
-  # tag + digest: placeholder until build.yml publishes the first signed
-  # image; then bumped by hand for dev.
-  tag: "0000000000000000000000000000000000000000"
+  # tag + digest bumped by hand for dev (deploy.yml for staging/prod).
+  tag: "cbda551aa539b352d62578ec25460bea42a89add"
+  digest: "sha256:26b11450866046387a878e0a8427d07abbf968d83d1f3755234d5b47e6d8955e"
 serviceAccount:
   create: true
   name: vuln-api
