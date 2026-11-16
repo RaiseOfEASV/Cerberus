@@ -24,7 +24,7 @@ kind: ConfigMap
 metadata:
   name: coredns-custom
   namespace: kube-system
-# 10.43.231.238 is Traefik's current ClusterIP (`kubectl get svc traefik
+# 10.43.25.203 is Traefik's current ClusterIP (`kubectl get svc traefik
 # -n traefik`) - the hosts plugin only does static IP mappings, no
 # indirection to a Service name, so this needs updating by hand if that
 # Service is ever deleted and recreated (ClusterIP isn't pinned there).
@@ -32,9 +32,9 @@ data:
   admin-cerberus-internal.server: |
     admin.cerberus.internal:53 {
         hosts {
-            10.43.231.238 keycloak.admin.cerberus.internal
-            10.43.231.238 vault.admin.cerberus.internal
-            10.43.231.238 argocd.admin.cerberus.internal
+            10.43.25.203 keycloak.admin.cerberus.internal
+            10.43.25.203 vault.admin.cerberus.internal
+            10.43.25.203 argocd.admin.cerberus.internal
             fallthrough
         }
     }

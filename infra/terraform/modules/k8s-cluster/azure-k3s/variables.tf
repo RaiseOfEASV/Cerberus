@@ -27,9 +27,9 @@ variable "node_count" {
 # infra/terraform/bootstrap/variables.tf's pattern.
 
 variable "location" {
-  description = "Azure region. Must match the region infra/terraform/bootstrap/ used (Sweden Central at the time of writing) - that's what the referenced resource group/VNet actually live in."
+  description = "Azure region. Must match the region infra/terraform/bootstrap/ used (Belgium Central at the time of writing) - that's what the referenced resource group/VNet actually live in."
   type        = string
-  default     = "swedencentral"
+  default     = "belgiumcentral"
 }
 
 variable "resource_group_name" {
@@ -39,7 +39,7 @@ variable "resource_group_name" {
 }
 
 variable "vm_size" {
-  description = "VM size for the single k3s node. Not defaulted to the same free-tier B-series as the bootstrap VM - running k3s plus ArgoCD/Kyverno/MetalLB/Traefik/Vault/ARC runners needs more than 4GB RAM. Standard_B4ms (BS family, same 4 vCPU/16GB spec) hit a real-time capacity stockout; Standard_D4s_v5 (DSv5 family) hit a hard 0-vCPU quota on this Student subscription - this subscription only has nonzero quota on older v4-and-earlier D-series families (DSv4/DASv4/Dv4/DDv4, all limit 4 vCPUs) plus the B-series. D4s_v4 fits that quota exactly."
+  description = "VM size for the single k3s node. 4 vCPU/16GB - running k3s plus ArgoCD/Kyverno/MetalLB/Traefik/Vault/ARC runners needs more than the bootstrap VM's 4GB. Student subscriptions only have nonzero quota on older v4-and-earlier D-series families (DSv4 etc., 4 vCPUs) plus the B-series: B4ms hit a capacity stockout, D4s_v5 a 0-vCPU quota. D4s_v4 fits that quota exactly. Total regional vCPU limit is 6, so this VM + the 2-vCPU bootstrap VM use all of it. Fallback if D4s_v4 is NotAvailableForSubscription in the chosen region: Standard_B4as_v2 (Basv2, same 4 vCPU/16GB, quota 10) - but it's burstable (~40% sustained CPU baseline), so long ARC image builds can throttle the node."
   type        = string
   default     = "Standard_D4s_v4"
 }

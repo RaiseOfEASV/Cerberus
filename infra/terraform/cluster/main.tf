@@ -18,8 +18,11 @@ terraform {
   }
 }
 
+# Auth comes from `az login`; the subscription is pinned explicitly - see
+# var.subscription_id.
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id
 }
 
 module "cluster" {

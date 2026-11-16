@@ -1,0 +1,83 @@
+---
+# Source: app/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: quote-api
+  labels:
+    app.kubernetes.io/name: quote-api
+    app.kubernetes.io/instance: quote-api
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: app-0.1.0
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: quote-api
+    app.kubernetes.io/instance: quote-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+# Source: app/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quote-api
+  labels:
+    app.kubernetes.io/name: quote-api
+    app.kubernetes.io/instance: quote-api
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: app-0.1.0
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: quote-api
+      app.kubernetes.io/instance: quote-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: quote-api
+        app.kubernetes.io/instance: quote-api
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: "ghcr.io/raiseofeasv/quote-api:7318a2aca309703bc09c0ba52008d350536347c2@sha256:3c61afc2ce5deb3d6b831f455ecaa1a90583d6461b11fb32bb5d21c515b08ed2"
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: "ALLOWED_ORIGIN"
+              value: "https://cerberoast.site,https://www.cerberoast.site"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 25m
+              memory: 32Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

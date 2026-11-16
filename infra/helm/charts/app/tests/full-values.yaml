@@ -1,0 +1,15 @@
+# Fixture: every optional feature of the generic chart turned on.
+image:
+  repository: ghcr.io/raiseofeasv/vuln-api
+  tag: "0123456789abcdef0123456789abcdef01234567"
+envFromSecrets: [vuln-api-oidc, vuln-api-db-app]
+serviceAccount:
+  create: true
+  name: vuln-api
+vaultToken:
+  enabled: true
+caConfigMap: cerberus-internal-ca
+initContainer:
+  enabled: true
+  args: ["migrate"]
+  envFromSecrets: [vuln-api-db-owner]

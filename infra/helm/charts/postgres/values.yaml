@@ -1,0 +1,25 @@
+# Single-instance Postgres 16 for one app (VulnMan). Two login roles:
+# vulnman_owner (owns the database, runs migrations) and vulnman_app (what
+# the running app uses - no DDL). The postgres superuser password never
+# leaves this pod's Secret.
+image: postgres:16-alpine
+database: vulnman
+storage: 2Gi
+# Vault KV path (under secret/) with keys superuser_password,
+# owner_password, app_password - read via ESO.
+vaultPath: ""
+# Pod labels allowed to connect on 5432 (besides the backup job).
+clientSelector: {}
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { cpu: 300m, memory: 384Mi }
+backup:
+  enabled: true
+  schedule: "30 2 * * *"
+  # Objects land in cerberus-backups/<prefix>/ on the backup MinIO.
+  prefix: ""
+  # Vault KV path with access_key, secret_key, endpoint (same credentials
+  # the Vault snapshot job uses).
+  minioVaultPath: backup/minio
+  minioCIDR: 10.0.1.4/32
+  mcImage: cgr.dev/chainguard/minio-client@sha256:1260ca38acf78bf8d2833845fda6636b27388ab919b750d79f2c7167fb45ec74

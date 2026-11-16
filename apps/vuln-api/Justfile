@@ -1,0 +1,10 @@
+build:
+    go build ./...
+
+# Store/API tests need Postgres: with-test-db.sh starts a throwaway one in Docker.
+test:
+    ./scripts/with-test-db.sh go test ./... -race
+
+lint:
+    gofmt -l . | (! grep .)
+    go vet ./...

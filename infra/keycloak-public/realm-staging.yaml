@@ -1,0 +1,62 @@
+# VulnMan realm for staging. Applied by keycloak-config-cli
+# (infra/keycloak-public/apply-realm-config.yaml); $(env:VAR) values come from
+# its environment (Vault via ESO) - never write a real secret here.
+realm: vulnman-staging
+enabled: true
+displayName: VulnMan (staging)
+loginWithEmailAllowed: true
+registrationAllowed: false
+resetPasswordAllowed: false
+bruteForceProtected: true
+failureFactor: 5
+permanentLockout: false
+maxFailureWaitSeconds: 900
+passwordPolicy: "length(12) and notUsername"
+sslRequired: external
+accessTokenLifespan: 300
+ssoSessionIdleTimeout: 1800
+ssoSessionMaxLifespan: 28800
+
+roles:
+  realm:
+    - { name: analyst, description: "View, create, update and assign findings" }
+    - { name: developer, description: "View findings; update status and details of their own" }
+    - { name: pm, description: "Analyst rights plus SLA targets and user roles" }
+    - { name: auditor, description: "Read-only: findings, reports, audit trail" }
+
+clients:
+  # The app's login client (D2): confidential, code flow only, PKCE required.
+  - clientId: vuln-api
+    name: VulnMan
+    enabled: true
+    publicClient: false
+    secret: "$(env:VULN_STAGING_OIDC_SECRET)"
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+    redirectUris: ["https://vulns-staging.admin.cerberus.internal/auth/callback"]
+    webOrigins: ["+"]
+    attributes:
+      pkce.code.challenge.method: S256
+      post.logout.redirect.uris: "https://vulns-staging.admin.cerberus.internal/"
+    # Keycloak >= 25: 'basic' puts sub into tokens; config-cli treats this
+    # list as the full desired state (see infra/keycloak/realm-config.yaml).
+    defaultClientScopes: [web-origins, acr, profile, roles, basic, email]
+  # vuln-api's admin client (D16): service account only, may manage users
+  # of THIS realm; the app code only ever touches the four roles above.
+  - clientId: vuln-api-admin
+    enabled: true
+    publicClient: false
+    secret: "$(env:VULN_STAGING_ADMIN_SECRET)"
+    standardFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+
+users:
+  - username: service-account-vuln-api-admin
+    enabled: true
+    serviceAccountClientId: vuln-api-admin
+    clientRoles:
+      # view-realm: GET /roles/{r} and /roles/{r}/users need it.
+      realm-management: [view-users, query-users, manage-users, view-realm]

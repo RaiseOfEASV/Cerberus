@@ -22,15 +22,19 @@ bootstrap resource, not an oversight.
 
 ## Auth
 
-Relies on an already-authenticated `az login` session (no `subscription_id`
-set in the provider block) - correct as long as exactly one subscription is
-active. Confirm with `az account show` before running this.
+Authenticates with an already-authenticated `az login` session, but the
+target subscription is an explicit, required variable (`subscription_id` in
+`terraform.tfvars`, or `TF_VAR_subscription_id`) rather than whatever `az`
+happens to have active - that guess breaks as soon as you can see more than
+one subscription. Moving the project to a different subscription is
+`docs/runbooks/redeploy-new-subscription.md`.
 
 ## Setup
 
-1. Copy `terraform.tfvars.example` to `terraform.tfvars` and set
-   `admin_source_ip` to your current public IP (`curl -s https://ifconfig.me`),
-   in `x.x.x.x/32` form. This is gitignored - never commit your real IP.
+1. Copy `terraform.tfvars.example` to `terraform.tfvars`, set
+   `subscription_id`, and set `admin_source_ips` to your current public IP(s)
+   (`curl -s https://ifconfig.me`), in `x.x.x.x/32` form. This is gitignored -
+   never commit your real IP.
 2. SSH key: defaults to `~/.ssh/cerberus_azure.pub`, a dedicated key
    generated for this project (not a reused one).
 3. `terraform init && terraform apply`

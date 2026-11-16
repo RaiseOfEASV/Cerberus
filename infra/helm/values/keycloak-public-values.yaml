@@ -1,0 +1,43 @@
+# keycloakx 7.4.0 for the public VulnMan IdP (D3). Same structure as
+# keycloak-values.yaml; differences: public hostname, back-channel dynamic
+# (vuln-api talks to it in-cluster while tokens keep the public issuer).
+fullnameOverride: keycloak-public
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: "26.8.1"
+args: ["start"]
+database:
+  vendor: postgres
+  hostname: keycloak-public-postgres.keycloak-public.svc
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-public-db-credentials
+  existingSecretKey: postgres-password
+http:
+  relativePath: "/"
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: https://auth.cerberoast.site
+  - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+    value: "true"
+  - name: KC_PROXY_HEADERS
+    value: xforwarded
+  - name: KC_HTTP_ENABLED
+    value: "true"
+  - name: JAVA_OPTS_APPEND
+    value: -Djava.net.preferIPv4Stack=true
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-user } }
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-password } }
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities: { drop: [ALL] }
+  seccompProfile: { type: RuntimeDefault }
+resources:
+  requests: { cpu: 250m, memory: 768Mi }
+  limits: { cpu: 500m, memory: 1Gi }
+ingress:
+  enabled: false

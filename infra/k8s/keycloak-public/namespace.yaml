@@ -1,0 +1,7 @@
+# Public-facing Keycloak for VulnMan's users (D3). Separate from the admin
+# Keycloak (infra/k8s/keycloak/), which guards Vault/ArgoCD and stays
+# VPN-only: a bug or brute-force against this instance can't reach those.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak-public

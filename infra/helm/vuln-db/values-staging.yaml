@@ -1,0 +1,7 @@
+# vuln-db, staging - instantiates infra/helm/charts/postgres.
+vaultPath: vulnman/staging/db
+clientSelector:
+  app.kubernetes.io/name: vuln-api
+backup:
+  enabled: true
+  prefix: vulnman-staging

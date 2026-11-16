@@ -1,0 +1,42 @@
+{{- $name := include "pg.name" . -}}
+# The namespace's Kyverno-generated default-deny stays in force; these
+# allow exactly the app and this chart's backup job.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+spec:
+  podSelector:
+    matchLabels: {{- include "pg.selector" . | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {{- required "clientSelector is required" .Values.clientSelector | toYaml | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $name }}-backup
+      ports: [{ port: 5432, protocol: TCP }]
+{{- if .Values.backup.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}-backup-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}-backup
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "pg.selector" . | nindent 14 }}
+      ports: [{ port: 5432, protocol: TCP }]
+    - to: [{ ipBlock: { cidr: {{ .Values.backup.minioCIDR }} } }]
+      ports: [{ port: 9000, protocol: TCP }]
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+{{- end }}

@@ -21,6 +21,11 @@ service:
   type: LoadBalancer
   annotations:
     metallb.universe.tf/address-pool: cerberus-public-pool
+  # Local, not Cluster: keeps the connecting address (a Cloudflare edge)
+  # instead of SNATing it to the node, so trustedIPs below can match it.
+  # Single node, so no traffic is dropped by Local.
+  spec:
+    externalTrafficPolicy: Local
 
 ports:
   web:
@@ -34,6 +39,27 @@ ports:
     http:
       tls:
         enabled: true
+    # cerberoast.site is proxied by Cloudflare: believe its X-Forwarded-For
+    # (the real client) only from Cloudflare's published edge ranges
+    # (https://www.cloudflare.com/ips-v4). vuln-api's rate limit on the
+    # public report form depends on this.
+    forwardedHeaders:
+      trustedIPs:
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
 
 providers:
   kubernetesIngress:

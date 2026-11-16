@@ -46,3 +46,33 @@ ingress:
   enabled: false
   hosts: []
   tlsSecretName: ""
+
+# --- Optional features (all off by default; quote-* render unchanged) ---
+
+# Secrets loaded whole into the app container's environment (envFrom).
+envFromSecrets: []
+
+# Dedicated ServiceAccount. The pod still sets
+# automountServiceAccountToken: false - use vaultToken for a scoped token.
+serviceAccount:
+  create: false
+  name: ""   # defaults to the release name
+
+# Short-lived projected ServiceAccount token for Vault's Kubernetes auth,
+# mounted at <path>/token (audience-bound, rotated by the kubelet).
+vaultToken:
+  enabled: false
+  audience: vault
+  path: /var/run/secrets/vault
+
+# ConfigMap holding the internal CA (key ca.crt), mounted read-only at
+# /etc/cerberus/ca.crt - e.g. to verify Vault's TLS certificate.
+caConfigMap: ""
+
+# One initContainer running the same image (e.g. database migrations),
+# with the same securityContext and resources as the app container and
+# its own secrets - the app's envFromSecrets are NOT passed to it.
+initContainer:
+  enabled: false
+  args: []
+  envFromSecrets: []

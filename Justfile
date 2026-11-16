@@ -47,6 +47,11 @@ tf-validate:
 helm-lint:
     #!/usr/bin/env bash
     set -euo pipefail
-    for chart in infra/helm/*/; do
-        [ -f "${chart}Chart.yaml" ] && helm lint "$chart"
+    # Charts live under infra/helm/charts/ (the old infra/helm/*/ glob only
+    # matched per-app values directories, so it linted nothing).
+    for chart in infra/helm/charts/*/; do
+        if [ -f "${chart}tests/values-test.yaml" ]; then helm lint "$chart" -f "${chart}tests/values-test.yaml"; else helm lint "$chart"; fi
+        if [ -x "${chart}tests/render-test.sh" ]; then "${chart}tests/render-test.sh"; fi
     done
+    # Deployment-config regressions found in VulnMan's final review.
+    python3 tools/check-vulnman-config.py
