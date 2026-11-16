@@ -1,0 +1,31 @@
+# auth.cerberoast.site on the PUBLIC Traefik - but only the VulnMan realms'
+# endpoints and static resources. The admin console (/admin), the master
+# realm and everything else get Traefik's 404. Admin access is
+# `kubectl -n keycloak-public port-forward svc/keycloak-public-http 8080:80`.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak-public
+  namespace: keycloak-public
+  labels:
+    traefik-instance: public
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: "Host(`auth.cerberoast.site`) && (PathRegexp(`^/realms/vulnman(-dev|-staging)?/`) || PathPrefix(`/resources/`))"
+      kind: Rule
+      services:
+        - name: keycloak-public-http
+          port: 80
+  tls:
+    secretName: auth-cerberoast-site-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: auth-cerberoast-site-tls
+  namespace: keycloak-public
+spec:
+  secretName: auth-cerberoast-site-tls
+  dnsNames: ["auth.cerberoast.site"]
+  issuerRef: { name: letsencrypt-public, kind: ClusterIssuer }

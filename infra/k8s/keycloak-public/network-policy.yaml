@@ -1,0 +1,83 @@
+# Namespace gets Kyverno's generated default-deny; these are the only paths.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: keycloak-public
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Browsers (via traefik-public), vuln-api's back-channel (token, discovery,
+# admin API) and the realm-config Job reach Keycloak on 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-keycloak
+  namespace: keycloak-public
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: keycloakx }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: traefik-public } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: traefik } } # dev/staging previews over the VPN
+        - namespaceSelector:
+            matchExpressions: [{ key: kubernetes.io/metadata.name, operator: In, values: [dev, staging, cerberoast] }]
+          podSelector: { matchLabels: { app.kubernetes.io/name: vuln-api } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloak-public-config } }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-keycloak-to-postgres
+  namespace: keycloak-public
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: keycloakx }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: { matchLabels: { app: keycloak-public-postgres } }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-postgres
+  namespace: keycloak-public
+spec:
+  podSelector:
+    matchLabels: { app: keycloak-public-postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloakx } }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-config-job-egress
+  namespace: keycloak-public
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: keycloak-public-config }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloakx } }
+      ports:
+        - { protocol: TCP, port: 8080 }

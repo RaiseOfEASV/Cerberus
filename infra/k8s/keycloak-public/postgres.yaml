@@ -1,0 +1,60 @@
+# Same shape as infra/k8s/keycloak/postgres.yaml, own data and password.
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-public-postgres
+  namespace: keycloak-public
+spec:
+  selector: { app: keycloak-public-postgres }
+  ports:
+    - { port: 5432, targetPort: 5432 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: keycloak-public-postgres
+  namespace: keycloak-public
+spec:
+  serviceName: keycloak-public-postgres
+  replicas: 1
+  selector: { matchLabels: { app: keycloak-public-postgres } }
+  template:
+    metadata:
+      labels: { app: keycloak-public-postgres }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_DB, value: keycloak }
+            - { name: POSTGRES_USER, value: keycloak }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: keycloak-public-db-credentials, key: postgres-password } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ containerPort: 5432 }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: tmp, mountPath: /tmp }
+            - { name: run, mountPath: /var/run/postgresql }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 384Mi }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: run, emptyDir: {} }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 2Gi } }

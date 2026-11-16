@@ -1,0 +1,52 @@
+# Applies the three VulnMan realms with keycloak-config-cli. Re-run after
+# editing a realm file:
+#   kubectl -n keycloak-public create configmap keycloak-public-realms \
+#     --from-file=infra/keycloak-public/ --dry-run=client -o yaml | kubectl apply -f -
+#   kubectl -n keycloak-public delete job keycloak-public-apply-realms --ignore-not-found
+#   kubectl apply -f infra/keycloak-public/apply-realm-config.yaml
+# Unlike the admin Keycloak (see infra/k8s/keycloak/README.md's hazard),
+# every client secret here comes from Vault, so re-running is safe.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-public-apply-realms
+  namespace: keycloak-public
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: keycloak-public-config }
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: keycloak-config-cli
+          image: adorsys/keycloak-config-cli:6.5.1-26.5.5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          env:
+            - { name: KEYCLOAK_URL, value: "http://keycloak-public-http.keycloak-public.svc:80" }
+            - name: KEYCLOAK_USER
+              valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-user } }
+            - name: KEYCLOAK_PASSWORD
+              valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-password } }
+            - { name: IMPORT_FILES_LOCATIONS, value: "/config/realm-*.yaml" }
+            - { name: IMPORT_VARSUBSTITUTION_ENABLED, value: "true" }
+          envFrom:
+            - secretRef: { name: keycloak-public-client-secrets }
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: config
+          configMap: { name: keycloak-public-realms }
+        - { name: tmp, emptyDir: {} }
