@@ -16,14 +16,18 @@ database:
   existingSecretKey: postgres-password
 http:
   relativePath: "/"
+# The chart sets KC_PROXY_HEADERS and KC_HTTP_ENABLED itself (from proxy.*);
+# setting them in extraEnv too duplicates the env var and the install fails.
+# Traefik sends X-Forwarded-*, hence xforwarded.
+proxy:
+  enabled: true
+  mode: xforwarded
+  http:
+    enabled: true
 extraEnv: |
   - name: KC_HOSTNAME
     value: https://auth.cerberoast.site
   - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
-    value: "true"
-  - name: KC_PROXY_HEADERS
-    value: xforwarded
-  - name: KC_HTTP_ENABLED
     value: "true"
   - name: JAVA_OPTS_APPEND
     value: -Djava.net.preferIPv4Stack=true
@@ -31,9 +35,15 @@ extraEnv: |
     valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-user } }
   - name: KC_BOOTSTRAP_ADMIN_PASSWORD
     valueFrom: { secretKeyRef: { name: keycloak-public-admin-credentials, key: admin-password } }
+# Read-only root filesystem (Kyverno require-readonly-rootfs, no exception):
+# Keycloak's boot-time build writes its generated Quarkus classes into
+# /opt/keycloak/lib/quarkus and runtime state into /opt/keycloak/data, so
+# those (and /tmp) are emptyDirs. The launcher needs the image's own
+# lib/quarkus files to start its rebuild, so an init container (same image)
+# copies them into the emptyDir first.
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   capabilities: { drop: [ALL] }
   seccompProfile: { type: RuntimeDefault }
 resources:
@@ -41,3 +51,35 @@ resources:
   limits: { cpu: 500m, memory: 1Gi }
 ingress:
   enabled: false
+
+extraVolumes: |
+  - name: kc-quarkus
+    emptyDir: {}
+  - name: kc-data
+    emptyDir: {}
+  - name: kc-tmp
+    emptyDir: {}
+extraVolumeMounts: |
+  - name: kc-quarkus
+    mountPath: /opt/keycloak/lib/quarkus
+  - name: kc-data
+    mountPath: /opt/keycloak/data
+  - name: kc-tmp
+    mountPath: /tmp
+extraInitContainers: |
+  - name: seed-quarkus
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["/bin/sh", "-c", "cp -r /opt/keycloak/lib/quarkus/. /seed/"]
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities: { drop: [ALL] }
+      seccompProfile: { type: RuntimeDefault }
+    resources:
+      requests: { cpu: 50m, memory: 32Mi }
+      limits: { cpu: 200m, memory: 64Mi }
+    volumeMounts:
+      - name: kc-quarkus
+        mountPath: /seed
