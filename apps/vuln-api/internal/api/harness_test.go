@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strconv"
 	"testing"
 	"time"
 
@@ -133,3 +134,5 @@ func (hs *harness) auditRows() int {
 	_ = hs.st.Pool().QueryRow(context.Background(), `SELECT count(*) FROM audit_log`).Scan(&n)
 	return n
 }
+
+func itoa(n int64) string { return strconv.FormatInt(n, 10) }

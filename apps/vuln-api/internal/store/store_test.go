@@ -439,3 +439,17 @@ func TestAuditChainVerifiesAcrossAllActions(t *testing.T) {
 		t.Fatalf("checked %d rows, want 12", res.Checked)
 	}
 }
+
+func TestCreateDuplicateOpenFingerprintConflict(t *testing.T) {
+	e := newEnv(t)
+	nf := store.NewFinding{Title: "CVE-2026-1 in p 1", Asset: "x", Severity: domain.SevLow, Source: "trivy", Fingerprint: "fp-1", DiscoveredAt: t0}
+	if _, err := e.s.CreateFinding(ctx, analyst, nf); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.CreateFinding(ctx, analyst, nf); !errors.Is(err, store.ErrConflict) {
+		t.Fatalf("second open finding with the same fingerprint: %v", err)
+	}
+	if res, _ := e.s.VerifyAudit(ctx); !res.OK || res.Checked != 1 {
+		t.Fatalf("failed create left audit rows: %+v", res)
+	}
+}

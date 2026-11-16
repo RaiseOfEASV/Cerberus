@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	assetRe = regexp.MustCompile(`^[\w .:/@-]+$`)
-	cveRe   = regexp.MustCompile(`^CVE-\d{4}-\d{4,}$`)
+	cveRe = regexp.MustCompile(`^CVE-\d{4}-\d{4,}$`)
 )
 
 func checkTitle(s string) error {
@@ -29,7 +28,7 @@ func checkDescription(s string) error {
 }
 
 func checkAsset(s string) error {
-	if n := utf8.RuneCountInString(s); n < 1 || n > 200 || !assetRe.MatchString(s) {
+	if !domain.ValidAsset(s) {
 		return fmt.Errorf("asset must be 1-200 characters of letters, digits, space and . : / @ - _")
 	}
 	return nil

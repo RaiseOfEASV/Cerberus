@@ -2,12 +2,14 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/crypt"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
@@ -76,7 +78,20 @@ func aad(id int64, field string) []byte { return []byte(strconv.FormatInt(id, 10
 
 // CreateFinding stores a new finding (status New) with its description and
 // reporter e-mail sealed under a fresh per-finding data key (D9).
+// ErrConflict: an open finding already has this fingerprint.
 func (s *Store) CreateFinding(ctx context.Context, a Actor, nf NewFinding) (Finding, error) {
+	var f Finding
+	err := s.mutate(ctx, func(tx pgx.Tx) error {
+		var err error
+		f, err = s.createTx(ctx, tx, a, nf, nil)
+		return err
+	})
+	return f, err
+}
+
+// createTx inserts one finding and its finding.create audit row inside a
+// mutation. extra is merged into the audit details (e.g. the import source).
+func (s *Store) createTx(ctx context.Context, tx pgx.Tx, a Actor, nf NewFinding, extra map[string]any) (Finding, error) {
 	if !validSource(nf.Source) {
 		return Finding{}, invalid("unknown source %q", nf.Source)
 	}
@@ -84,56 +99,51 @@ func (s *Store) CreateFinding(ctx context.Context, a Actor, nf NewFinding) (Find
 	if err != nil {
 		return Finding{}, fmt.Errorf("data key: %w", err)
 	}
-	var f Finding
-	err = s.mutate(ctx, func(tx pgx.Tx) error {
-		var id int64
-		if err := tx.QueryRow(ctx, `SELECT nextval('findings_id_seq')`).Scan(&id); err != nil {
-			return err
-		}
-		desc, err := crypt.Seal(dek, []byte(nf.Description), aad(id, "description"))
-		if err != nil {
-			return err
-		}
-		email, err := crypt.Seal(dek, []byte(nf.ReporterEmail), aad(id, "reporter_email"))
-		if err != nil {
-			return err
-		}
-		now := s.ts()
-		for attempt := 0; ; attempt++ {
-			_, err = tx.Exec(ctx, `SAVEPOINT ins`)
-			if err != nil {
-				return err
-			}
-			_, err = tx.Exec(ctx, `INSERT INTO findings (id, ref, title, asset, severity, cvss, cve, status, source,
-				description_ct, reporter_email_ct, wrapped_dek, discovered_at, created_at, updated_at, fingerprint)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,'New',$8,$9,$10,$11,$12,$13,$13,$14)`,
-				id, NewRef(), nf.Title, nf.Asset, string(nf.Severity), nf.CVSS, nf.CVE, nf.Source, desc, email, wrapped,
-				nf.DiscoveredAt.UTC(), now, nf.Fingerprint)
-			if err == nil {
-				break
-			}
-			if !isUniqueViolation(err) || attempt >= 3 {
-				return err
-			}
-			if _, rerr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT ins`); rerr != nil {
-				return rerr
-			}
-			// fingerprint collisions are not retried - only the random ref is
-			var n int
-			_ = tx.QueryRow(ctx, `SELECT count(*) FROM findings WHERE fingerprint <> '' AND fingerprint = $1
-				AND status NOT IN ('Remediated','Accepted Risk')`, nf.Fingerprint).Scan(&n)
-			if n > 0 {
-				return ErrConflict
-			}
-		}
-		if err := scanFinding(tx.QueryRow(ctx, `SELECT `+findingCols+` FROM findings WHERE id=$1`, id), &f); err != nil {
-			return err
-		}
-		return s.appendAudit(ctx, tx, a, "finding.create", &id, map[string]any{
-			"ref": f.Ref, "title": f.Title, "asset": f.Asset, "severity": f.Severity, "source": f.Source,
-		})
-	})
+	var id int64
+	if err := tx.QueryRow(ctx, `SELECT nextval('findings_id_seq')`).Scan(&id); err != nil {
+		return Finding{}, err
+	}
+	desc, err := crypt.Seal(dek, []byte(nf.Description), aad(id, "description"))
 	if err != nil {
+		return Finding{}, err
+	}
+	email, err := crypt.Seal(dek, []byte(nf.ReporterEmail), aad(id, "reporter_email"))
+	if err != nil {
+		return Finding{}, err
+	}
+	now := s.ts()
+	for attempt := 0; ; attempt++ {
+		if _, err := tx.Exec(ctx, `SAVEPOINT ins`); err != nil {
+			return Finding{}, err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO findings (id, ref, title, asset, severity, cvss, cve, status, source,
+			description_ct, reporter_email_ct, wrapped_dek, discovered_at, created_at, updated_at, fingerprint)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,'New',$8,$9,$10,$11,$12,$13,$13,$14)`,
+			id, NewRef(), nf.Title, nf.Asset, string(nf.Severity), nf.CVSS, nf.CVE, nf.Source, desc, email, wrapped,
+			nf.DiscoveredAt.UTC(), now, nf.Fingerprint)
+		if err == nil {
+			break
+		}
+		if _, rerr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT ins`); rerr != nil {
+			return Finding{}, rerr
+		}
+		var pe *pgconn.PgError
+		if errors.As(err, &pe) && pe.Code == "23505" && pe.ConstraintName == "findings_open_fingerprint" {
+			return Finding{}, fmt.Errorf("%w: an open finding already tracks this issue", ErrConflict)
+		}
+		if !isUniqueViolation(err) || attempt >= 3 { // only a random ref collision is retried
+			return Finding{}, err
+		}
+	}
+	var f Finding
+	if err := scanFinding(tx.QueryRow(ctx, `SELECT `+findingCols+` FROM findings WHERE id=$1`, id), &f); err != nil {
+		return Finding{}, err
+	}
+	details := map[string]any{"ref": f.Ref, "title": f.Title, "asset": f.Asset, "severity": f.Severity, "source": f.Source}
+	for k, v := range extra {
+		details[k] = v
+	}
+	if err := s.appendAudit(ctx, tx, a, "finding.create", &id, details); err != nil {
 		return Finding{}, err
 	}
 	f.Description, f.ReporterEmail = nf.Description, nf.ReporterEmail

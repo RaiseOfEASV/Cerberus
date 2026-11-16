@@ -7,7 +7,9 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
+	"unicode/utf8"
 )
 
 type Role string
@@ -174,4 +176,12 @@ func IsOpen(s Status) bool { return s != StRemediated && s != StAccepted }
 // DueDate is the SLA deadline for a finding triaged at triagedAt.
 func DueDate(triagedAt time.Time, sev Severity, sla SLA) time.Time {
 	return triagedAt.Add(time.Duration(sla[sev]) * 24 * time.Hour)
+}
+
+var assetRe = regexp.MustCompile(`^[\w .:/@-]+$`)
+
+// ValidAsset: 1-200 characters of letters, digits, space and . : / @ - _ -
+// enough for image references and service names, nothing markup-like.
+func ValidAsset(s string) bool {
+	return utf8.RuneCountInString(s) >= 1 && utf8.RuneCountInString(s) <= 200 && assetRe.MatchString(s)
 }

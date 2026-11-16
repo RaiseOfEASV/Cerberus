@@ -159,3 +159,16 @@ func TestIsOpen(t *testing.T) {
 		}
 	}
 }
+
+func TestValidAsset(t *testing.T) {
+	for _, ok := range []string{"quote-api", "python:3.6-alpine", "ghcr.io/raiseofeasv/vuln-api@sha256", "edge lb", "/w/py.cdx.json", "a_b"} {
+		if !ValidAsset(ok) {
+			t.Errorf("%q rejected", ok)
+		}
+	}
+	for _, bad := range []string{"", "<script>", "a\nb", "a;b", string(make([]byte, 201))} {
+		if ValidAsset(bad) {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
