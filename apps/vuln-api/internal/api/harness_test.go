@@ -49,7 +49,8 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	hs := &harness{t: t, now: time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC), cookies: map[string]string{}}
-	hs.st = store.New(testdb.New(t), crypttest.New(), func() time.Time { return hs.now })
+	tr := crypttest.New()
+	hs.st = store.New(testdb.New(t), tr, func() time.Time { return hs.now })
 	dir := &fakeDir{users: []Assignee{
 		{Sub: uAnalyst.Sub, Name: uAnalyst.Name, Role: domain.RoleAnalyst},
 		{Sub: uDev.Sub, Name: uDev.Name, Role: domain.RoleDeveloper},
@@ -58,7 +59,7 @@ func newHarness(t *testing.T) *harness {
 	}}
 	cfg := config.Config{PublicBaseURL: base, TrustedProxyCIDRs: []netip.Prefix{netip.MustParsePrefix("10.42.0.0/16")}}
 	hs.h = New(Deps{Store: hs.st, Sessions: hs.st.Sessions(), Dir: dir, Cfg: cfg,
-		Limiter: ratelimit.New(5, func() time.Time { return hs.now }), Now: func() time.Time { return hs.now }})
+		Limiter: ratelimit.New(5, func() time.Time { return hs.now }), Transit: tr, Now: func() time.Time { return hs.now }})
 	for _, u := range []auth.User{uAnalyst, uDev, uDev2, uPM, uAuditor} {
 		raw, err := hs.st.Sessions().Create(context.Background(), u, time.Hour)
 		if err != nil {

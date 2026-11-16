@@ -10,6 +10,7 @@ import (
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/auth"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/config"
+	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/crypt"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/ratelimit"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/store"
@@ -33,6 +34,7 @@ type Deps struct {
 	OIDC     *auth.OIDC // nil in tests: /auth routes not mounted
 	Dir      Directory
 	Limiter  *ratelimit.Limiter // public report form (D12)
+	Transit  crypt.Transit      // report signing (D15)
 	Cfg      config.Config
 	Now      func() time.Time
 }

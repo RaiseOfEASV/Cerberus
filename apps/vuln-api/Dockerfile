@@ -5,7 +5,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/vuln-api ./cmd/vuln-api
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/vuln-api ./cmd/vuln-api \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/vuln-verify-report ./cmd/vuln-verify-report
 
 # Runtime stage: central distroless base (docker/base/go).
 FROM ghcr.io/raiseofeasv/base-go:latest
