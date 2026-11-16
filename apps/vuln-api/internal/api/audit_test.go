@@ -50,7 +50,7 @@ func TestFindingHistoryOrder(t *testing.T) {
 func TestAuditRecordsActorAndTime(t *testing.T) {
 	hs := newHarness(t)
 	f := hs.createFinding("Who did what")
-	hs.now = time.Date(2026, 11, 20, 8, 30, 0, 0, time.UTC)
+	hs.now = hs.now.Add(20 * time.Minute) // stays inside the harness sessions' 30-minute idle window
 	hs.do(uPM, "POST", fmt.Sprintf("/api/findings/%d/status", f.ID), map[string]any{"status": "Triaged", "note": "looks real"})
 	entries := decode[[]store.AuditEntry](t, hs.do(uAuditor, "GET", "/api/audit?actor=pm-1", nil))
 	if len(entries) != 1 {
@@ -61,7 +61,7 @@ func TestAuditRecordsActorAndTime(t *testing.T) {
 		!e.At.Equal(hs.now) || e.Details["to"] != "Triaged" || e.Details["note"] != "looks real" {
 		t.Fatalf("entry: %+v", e)
 	}
-	byTime := decode[[]store.AuditEntry](t, hs.do(uAuditor, "GET", "/api/audit?from=2026-11-20T00:00:00Z&to=2026-11-21T00:00:00Z", nil))
+	byTime := decode[[]store.AuditEntry](t, hs.do(uAuditor, "GET", "/api/audit?from=2026-11-16T10:10:00Z&to=2026-11-16T10:30:00Z", nil))
 	if len(byTime) != 1 {
 		t.Fatalf("time filter: %d", len(byTime))
 	}
