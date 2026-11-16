@@ -185,3 +185,13 @@ var assetRe = regexp.MustCompile(`^[\w .:/@-]+$`)
 func ValidAsset(s string) bool {
 	return utf8.RuneCountInString(s) >= 1 && utf8.RuneCountInString(s) <= 200 && assetRe.MatchString(s)
 }
+
+// Person is a staff user from the IdP, with their (single) app role - ""
+// when they have none yet. Sub is the Keycloak user ID (= the "sub" claim).
+type Person struct {
+	Sub      string `json:"sub"`
+	Username string `json:"username,omitempty"`
+	Name     string `json:"name"`
+	Email    string `json:"email,omitempty"`
+	Role     Role   `json:"role"`
+}

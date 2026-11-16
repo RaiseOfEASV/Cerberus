@@ -90,3 +90,22 @@ func TestDeleteBySubKillsSessions(t *testing.T) {
 		t.Fatal("deleted session still valid")
 	}
 }
+
+func TestPurgeExpiredSessions(t *testing.T) {
+	e := newEnv(t)
+	ss := e.s.Sessions()
+	_, _ = ss.Create(ctx, alice, 8*time.Hour) // never touched again: idle at t0+35m
+	live, _ := ss.Create(ctx, alice, 8*time.Hour)
+	*e.now = t0.Add(10 * time.Minute)
+	if _, ok, _ := ss.Touch(ctx, live, 30*time.Minute); !ok {
+		t.Fatal("setup: touch failed")
+	}
+	*e.now = t0.Add(35 * time.Minute)
+	n, err := ss.Purge(ctx, 30*time.Minute)
+	if err != nil || n != 1 {
+		t.Fatalf("purged %d, %v; want 1 (only the idle one)", n, err)
+	}
+	if _, ok, _ := ss.Touch(ctx, live, 30*time.Minute); !ok {
+		t.Fatal("purge removed a live session")
+	}
+}

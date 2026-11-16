@@ -44,6 +44,15 @@ type harness struct {
 	st      *store.Store
 	now     time.Time
 	cookies map[string]string
+	deps    Deps
+	users   UserAdmin
+}
+
+// rebuild re-creates the handler after a test swaps a dependency.
+func (hs *harness) rebuild() {
+	d := hs.deps
+	d.Users = hs.users
+	hs.h = New(d)
 }
 
 func newHarness(t *testing.T) *harness {
@@ -58,8 +67,9 @@ func newHarness(t *testing.T) *harness {
 		{Sub: uPM.Sub, Name: uPM.Name, Role: domain.RolePM},
 	}}
 	cfg := config.Config{PublicBaseURL: base, TrustedProxyCIDRs: []netip.Prefix{netip.MustParsePrefix("10.42.0.0/16")}}
-	hs.h = New(Deps{Store: hs.st, Sessions: hs.st.Sessions(), Dir: dir, Cfg: cfg,
-		Limiter: ratelimit.New(5, func() time.Time { return hs.now }), Transit: tr, Now: func() time.Time { return hs.now }})
+	hs.deps = Deps{Store: hs.st, Sessions: hs.st.Sessions(), Dir: dir, Cfg: cfg,
+		Limiter: ratelimit.New(5, func() time.Time { return hs.now }), Transit: tr, Now: func() time.Time { return hs.now }}
+	hs.h = New(hs.deps)
 	for _, u := range []auth.User{uAnalyst, uDev, uDev2, uPM, uAuditor} {
 		raw, err := hs.st.Sessions().Create(context.Background(), u, time.Hour)
 		if err != nil {

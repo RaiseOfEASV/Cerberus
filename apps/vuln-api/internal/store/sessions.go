@@ -70,3 +70,10 @@ func (s *Store) RecordLogin(ctx context.Context, u auth.User) error {
 		return s.appendAudit(ctx, tx, Actor{Sub: u.Sub, Name: u.Name, Role: u.Role}, "auth.login", nil, map[string]any{"name": u.Name})
 	})
 }
+
+// Purge deletes sessions past their absolute expiry or idle for idleTTL.
+func (ss *Sessions) Purge(ctx context.Context, idleTTL time.Duration) (int64, error) {
+	now := ss.s.ts()
+	tag, err := ss.s.pool.Exec(ctx, `DELETE FROM sessions WHERE expires_at <= $1 OR last_seen_at <= $2`, now, now.Add(-idleTTL))
+	return tag.RowsAffected(), err
+}

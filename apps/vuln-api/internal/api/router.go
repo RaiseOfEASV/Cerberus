@@ -17,15 +17,17 @@ import (
 )
 
 // Assignee is a user findings can be assigned to (analyst, developer, pm).
-type Assignee struct {
-	Sub  string      `json:"sub"`
-	Name string      `json:"name"`
-	Role domain.Role `json:"role"`
-}
+type Assignee = domain.Person
 
 // Directory lists staff from the IdP. kcadmin implements it.
 type Directory interface {
 	ListAssignees(ctx context.Context) ([]Assignee, error)
+}
+
+// UserAdmin manages app roles in the IdP (AUTH-04). kcadmin implements it.
+type UserAdmin interface {
+	ListUsers(ctx context.Context) ([]domain.Person, error)
+	SetRole(ctx context.Context, sub string, r domain.Role) error
 }
 
 type Deps struct {
@@ -33,6 +35,7 @@ type Deps struct {
 	Sessions auth.SessionStore
 	OIDC     *auth.OIDC // nil in tests: /auth routes not mounted
 	Dir      Directory
+	Users    UserAdmin
 	Limiter  *ratelimit.Limiter // public report form (D12)
 	Transit  crypt.Transit      // report signing (D15)
 	Cfg      config.Config
