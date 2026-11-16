@@ -1,3 +1,22 @@
+variable "subscription_id" {
+  description = <<-EOT
+    Azure subscription every resource in this root is created in. Required,
+    no default, on purpose: the provider used to fall back to whatever
+    `az login` had active, which was fine with exactly one subscription but
+    silently picks the wrong one as soon as the operator can see several
+    (e.g. a teammate's subscription added after the original Azure for
+    Students credit ran out). Set it via terraform.tfvars or
+    TF_VAR_subscription_id - see docs/runbooks/redeploy-new-subscription.md.
+    `az login` is still the auth mechanism; this only pins the target.
+  EOT
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.subscription_id))
+    error_message = "subscription_id must be a subscription GUID (az account list -o table)."
+  }
+}
+
 variable "cluster_name" {
   description = "Cluster name"
   type        = string
@@ -21,7 +40,7 @@ variable "node_count" {
 
 variable "location" {
   type    = string
-  default = "swedencentral"
+  default = "belgiumcentral"
 }
 
 variable "resource_group_name" {

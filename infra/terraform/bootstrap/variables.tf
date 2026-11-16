@@ -1,17 +1,39 @@
+variable "subscription_id" {
+  description = <<-EOT
+    Azure subscription every resource in this root is created in. Required,
+    no default, on purpose: the provider used to fall back to whatever
+    `az login` had active, which was fine with exactly one subscription but
+    silently picks the wrong one as soon as the operator can see several
+    (e.g. a teammate's subscription added after the original Azure for
+    Students credit ran out). Set it via terraform.tfvars or
+    TF_VAR_subscription_id - see docs/runbooks/redeploy-new-subscription.md.
+    `az login` is still the auth mechanism; this only pins the target.
+  EOT
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.subscription_id))
+    error_message = "subscription_id must be a subscription GUID (az account list -o table)."
+  }
+}
+
 variable "location" {
   description = <<-EOT
     Azure region. West Europe (what the cost comparison was priced
     against) and North Europe are both blocked for this subscription by
     an Azure-side policy restricting Students/free subscriptions to a
     specific allowed-region set - "RequestDisallowedByAzure" on apply.
-    Confirmed empirically (tried northeurope, swedencentral,
-    germanywestcentral, uksouth, francecentral in that order) that
-    Sweden Central is allowed. Pricing may differ slightly from the
-    West Europe figures used in the earlier cost comparison, but not
-    meaningfully for B-series/Spot sizes.
+    The original subscription allowed Sweden Central. The current one
+    (a teammate's, since 2026-11) has an "Allowed resource deployment
+    regions" policy of belgiumcentral, denmarkeast, switzerlandnorth,
+    italynorth, germanywestcentral - and of those only Belgium Central
+    offers both this VM's size and the cluster's Standard_D4s_v4
+    (the rest return NotAvailableForSubscription). The allowed list is
+    per subscription: read it from the policy assignment before moving
+    again (docs/runbooks/redeploy-new-subscription.md).
   EOT
   type        = string
-  default     = "swedencentral"
+  default     = "belgiumcentral"
 }
 
 variable "resource_group_name" {

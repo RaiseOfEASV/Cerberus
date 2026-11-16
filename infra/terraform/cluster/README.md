@@ -58,7 +58,10 @@ password was never saved anywhere, and was unrecoverable except by rotating it
 again. If you rotate it, put the new value in your own password manager
 immediately - not a local file, not this repo, not anywhere "temporary."
 
-5. `terraform plan` / `terraform apply`. The apply takes longer than the bootstrap
+5. `export TF_VAR_subscription_id=<subscription GUID>` - required, same
+   subscription the bootstrap root was applied into (this root reads that
+   root's resource group and VNet).
+6. `terraform plan` / `terraform apply`. The apply takes longer than the bootstrap
    VM's did - it waits (via a `null_resource` provisioner, polling over SSH) for
    k3s to finish installing before it can fetch the kubeconfig.
 
@@ -87,6 +90,10 @@ get installed against this cluster, in the order documented in `infra/k8s/README
 - VM size is `Standard_D4s_v4` (4 vCPU/16GB) on-demand, not Spot - chosen so the
   cluster doesn't go down mid-session from an eviction. `Standard_B4ms` hit a real
   `SkuNotAvailable` capacity stockout; `Standard_D4s_v5` hit a hard 0-vCPU quota on
-  this Student subscription (only pre-v5 D-series families have nonzero quota here).
-  Costs real money if left running continuously; this project's usage pattern is
-  session-based, not 24/7.
+  a Student subscription (only pre-v5 D-series families have nonzero quota). Region
+  is `belgiumcentral`: the current (teammate's) subscription only allows five
+  regions, and Belgium Central is the only one of those where `D4s_v4` isn't
+  `NotAvailableForSubscription`. Total regional vCPU quota is 6 - this VM plus the
+  bootstrap VM use all of it. If `D4s_v4` ever becomes unavailable, `Standard_B4as_v2`
+  is the fallback (same spec, but burstable). Costs real money if left running continuously; this
+  project's usage pattern is session-based, not 24/7.

@@ -13,11 +13,11 @@ terraform {
   # the Terraform it backs). See README.md.
 }
 
-# Relies on `az login`'s own session for auth (no subscription_id set) -
-# correct as long as exactly one subscription is active, which
-# `az account show` confirmed (Azure for Students, isDefault: true).
+# Auth still comes from `az login`'s session, but the target subscription
+# is pinned explicitly - see var.subscription_id for why.
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id
 }
 
 resource "azurerm_resource_group" "main" {

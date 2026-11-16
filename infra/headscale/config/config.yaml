@@ -6,7 +6,7 @@
 # this gets a cert (e.g. certbot directly on this VM, since it has a
 # real public IP, unlike anything behind the internal CA).
 
-server_url: http://4.223.133.113:8080
+server_url: http://74.152.69.183:8080
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 127.0.0.1:9090
 

@@ -3,3 +3,7 @@
 # per location you actually SSH in from (e.g. two homes), and update
 # whichever one changes when your ISP rotates it.
 admin_source_ips = ["203.0.113.1/32"]
+
+# Target subscription GUID (`az account list -o table`). Required - the
+# provider no longer guesses from whichever subscription `az login` has active.
+subscription_id = "00000000-0000-0000-0000-000000000000"
