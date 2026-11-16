@@ -32,9 +32,6 @@ metadata:
   name: cerberus-internal-ca
   namespace: dev
 data:
-  name: cerberus-internal-ca
-  namespace: argocd
-data:
   ca.crt: |
     -----BEGIN CERTIFICATE-----
     MIIBgjCCASigAwIBAgIUMcyyAJR8FXTZCEE1TvI48dZwNgMwCgYIKoZIzj0EAwIw
