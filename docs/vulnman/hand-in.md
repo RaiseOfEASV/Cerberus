@@ -78,8 +78,8 @@ so the admin Keycloak is never exposed (D3).
 **Co-authored by an LLM (Claude, via Claude Code):** the implementation plan
 (`docs/superpowers/plans/2026-11-16-vulnman.md`), the Go and React code in
 `apps/vuln-api` and `apps/vuln-web`, the Helm/Kubernetes/Terraform changes, the
-threat-model section and this document. Each commit carries a
-`Co-Authored-By: Claude` trailer.
+threat-model section and this document. Unless noted otherwise, assume
+every commit on the VulnMan branch was co-written this way.
 
 **Workflow:** the spec was turned into a written plan with explicit design
 decisions, then implemented task by task, test-first: each task's tests were
