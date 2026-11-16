@@ -36,3 +36,4 @@ th { font-size: .85rem; color: var(--muted); }
 .stat { font-size: 2rem; font-weight: 700; }
 .visually-hidden { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 pre.wrap { white-space: pre-wrap; word-break: break-word; }
+.public { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
