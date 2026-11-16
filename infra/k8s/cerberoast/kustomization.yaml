@@ -8,3 +8,4 @@ resources:
   - namespace.yaml
   - network-policy.yaml
   - ingressroute.yaml
+  - vulnman.yaml
