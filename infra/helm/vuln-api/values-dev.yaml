@@ -17,21 +17,21 @@ initContainer:
   args: ["migrate"]
   envFromSecrets: [vuln-db-owner-url]
 resources:
-  requests: {cpu: 50m, memory: 64Mi}
-  limits: {cpu: 300m, memory: 256Mi}
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 300m, memory: 256Mi }
 env:
-  - {name: PUBLIC_BASE_URL, value: "https://vulns-dev.admin.cerberus.internal"}
-  - {name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman-dev"}
-  - {name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman-dev"}
-  - {name: OIDC_CLIENT_ID, value: vuln-api}
-  - {name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc"}
-  - {name: KEYCLOAK_REALM, value: "vulnman-dev"}
-  - {name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin}
-  - {name: VAULT_ADDR, value: "https://vault.vault.svc:8200"}
-  - {name: VAULT_ROLE, value: "vuln-api-dev"}
-  - {name: TRANSIT_DATA_KEY, value: "vulnman-dev-data"}
-  - {name: TRANSIT_REPORT_KEY, value: "vulnman-dev-report"}
+  - { name: PUBLIC_BASE_URL, value: "https://vulns-dev.admin.cerberus.internal" }
+  - { name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman-dev" }
+  - { name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman-dev" }
+  - { name: OIDC_CLIENT_ID, value: vuln-api }
+  - { name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc" }
+  - { name: KEYCLOAK_REALM, value: "vulnman-dev" }
+  - { name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin }
+  - { name: VAULT_ADDR, value: "https://vault.vault.svc:8200" }
+  - { name: VAULT_ROLE, value: "vuln-api-dev" }
+  - { name: TRANSIT_DATA_KEY, value: "vulnman-dev-data" }
+  - { name: TRANSIT_REPORT_KEY, value: "vulnman-dev-report" }
   # k3s pod CIDR: X-Forwarded-For is only believed from Traefik's pods.
-  - {name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16"}
+  - { name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16" }
 ingress:
   enabled: false
