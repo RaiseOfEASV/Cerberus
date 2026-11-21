@@ -55,3 +55,13 @@ helm-lint:
     done
     # Deployment-config regressions found in VulnMan's final review.
     python3 tools/check-vulnman-config.py
+
+# --- third-party image catalog (docker/images.yaml) ---
+
+# Fail if any image reference in the repo disagrees with docker/images.yaml.
+images-check:
+    python3 tools/images.py check
+
+# Rewrite every image reference (and the scan list) to match docker/images.yaml.
+images-sync:
+    python3 tools/images.py sync
