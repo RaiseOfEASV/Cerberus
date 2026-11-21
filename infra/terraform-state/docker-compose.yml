@@ -25,7 +25,7 @@ services:
     # Daily pg_dump -> the dedicated backup MinIO (infra/backups/). Epic 9
     # - this was flagged as a real gap in this file's own header since
     # Epic 4 ("no backup schedule exists yet"), now closed.
-    image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+    image: postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
     restart: unless-stopped
     depends_on: [terraform-state-db]
     environment:
@@ -43,7 +43,7 @@ services:
     entrypoint: ["/bin/sh", "/scripts/pg-backup.sh"]
 
   terraform-state-db:
-    image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+    image: postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
     restart: unless-stopped
     environment:
       POSTGRES_DB: terraform_state

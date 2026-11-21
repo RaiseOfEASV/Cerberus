@@ -5,7 +5,7 @@
 set -euo pipefail
 if [ -n "${VULN_TEST_DATABASE_URL:-}" ]; then exec "$@"; fi
 name="vuln-test-pg-$$"
-docker run -d --rm --name "$name" -e POSTGRES_PASSWORD=test -p 127.0.0.1::5432 postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e >/dev/null
+docker run -d --rm --name "$name" -e POSTGRES_PASSWORD=test -p 127.0.0.1::5432 postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857 >/dev/null
 trap 'docker stop "$name" >/dev/null 2>&1 || true' EXIT
 port=$(docker port "$name" 5432/tcp | head -1 | sed 's/.*://')
 for _ in $(seq 1 60); do

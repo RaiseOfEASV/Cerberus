@@ -25,7 +25,7 @@ images:
   postgres:
     image: postgres
     tag: 16-alpine
-    digest: sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+    digest: sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
     source: direct
     status: active
     note: vuln-db (chart default), keycloak DBs, dependency-track DB, DB backups, terraform-state VM, CI test DB
