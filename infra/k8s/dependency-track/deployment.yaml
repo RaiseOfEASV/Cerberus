@@ -135,7 +135,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: dependencytrack/frontend:4.12.3@sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
+          image: dependencytrack/frontend:4.14.7@sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
           env:
             - { name: API_BASE_URL, value: "http://dt-apiserver:8080" }
           resources:
