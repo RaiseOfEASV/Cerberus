@@ -21,7 +21,11 @@ check "introduced vulnerabilities listed" 'grep -q "Introduced by this bump: 1" 
 check "unchanged ones are in neither list" '! grep -q "CVE-2026-0002" <<<"$out"'
 
 out=$(python3 "$tool" --asset curl --old "$T/old.json" --new "$T/crit.json" --old-ref a --new-ref b); rc=$?
-check "fixable CRITICAL blocks" '[ $rc = 1 ] && grep -q "Blocked:" <<<"$out" && grep -q "❌" <<<"$out"'
+check "a fixable CRITICAL the bump introduces blocks" '[ $rc = 1 ] && grep -q "Blocked:\*\* this bump introduces 1" <<<"$out" && grep -q "❌" <<<"$out"'
+out=$(python3 "$tool" --asset nginx --old "$T/crit.json" --new "$T/crit.json" --old-ref a --new-ref b); rc=$?
+check "a fixable CRITICAL the old image already had warns but passes" '[ $rc = 0 ] && grep -q "Still present (not blocking):\*\* 1" <<<"$out" && grep -q "⚠️" <<<"$out"'
+python3 "$tool" --asset brand-new --new "$T/crit.json" --new-ref b >/dev/null; rc=$?
+check "a new catalog entry with a fixable CRITICAL blocks" '[ $rc = 1 ]'
 python3 "$tool" --asset curl --new "$T/crit-nofix.json" --new-ref b >/dev/null; rc=$?
 check "CRITICAL without a fix does not block" '[ $rc = 0 ]'
 out=$(python3 "$tool" --asset newimg --new "$T/new.json" --new-ref img@sha256:b)

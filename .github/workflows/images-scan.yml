@@ -6,8 +6,9 @@ name: Image catalog scan
 # ones it introduces. The report is posted as one PR comment (updated in
 # place on every push) and on the check's summary page.
 #
-# Gate: the check fails if a new image has a CRITICAL vulnerability with a
-# fix available - the same rule build.yml applies to our own images. The
+# Gate: the check fails if a bump introduces a CRITICAL vulnerability with a
+# fix available (fixable CRITICALs the old image already had are listed as a
+# warning - blocking them would keep the worse image). The
 # prod vuln-scanner scans the whole catalog every night and files the results
 # in Cerberoast.
 
@@ -77,7 +78,7 @@ jobs:
           done < changed.txt
           {
             echo "---"
-            echo "Gate: fails on a CRITICAL with a fix available in the new image. Run [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) on ${HEAD_SHA:0:7}."
+            echo "Gate: fails when a bump introduces a CRITICAL with a fix available. Run [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) on ${HEAD_SHA:0:7}."
           } >> report.md
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           echo "blocked=${blocked}" >> "$GITHUB_OUTPUT"
@@ -102,5 +103,5 @@ jobs:
       - name: Gate
         if: steps.scan.outputs.blocked == '1'
         run: |
-          echo "::error::A new image has a CRITICAL vulnerability with a fix available (or could not be scanned) - see the report."
+          echo "::error::This change introduces a CRITICAL vulnerability with a fix available (or an image could not be scanned) - see the report."
           exit 1
