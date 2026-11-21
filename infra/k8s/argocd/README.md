@@ -7,7 +7,7 @@ in-cluster credentials. See `infra/k8s/environments/README.md` for the full flow
 
 ## Order of operations (after Epic 4's cluster exists)
 
-1. `helm install argocd argo/argo-cd -n argocd --create-namespace -f ../../helm/values/argocd-values.yaml`
+1. `helm install argocd argo/argo-cd --version 10.11.1 -n argocd --create-namespace -f ../../helm/values/argocd-values.yaml`
 2. `kubectl apply -f root-apps.yaml`
 3. Reach the UI at `https://argocd.admin.cerberus.internal` over headscale, once
    Epic 8's IngressRoute/oauth2-proxy/Keycloak are applied

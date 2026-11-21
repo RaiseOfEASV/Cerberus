@@ -1,55 +1,113 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "timezone": "UTC",
-  "schedule": ["before 6am on monday"],
-  "labels": ["dependencies"],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
   "commitMessagePrefix": "chore(deps):",
   "packageRules": [
     {
       "description": "Auto-merge patch/minor once CI is green; majors always need a human",
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
       "automerge": true,
       "platformAutomerge": true
     },
     {
       "description": "Majors always require manual review",
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
       "dependencyDashboardApproval": true
     },
     {
       "description": "Group Go module updates",
-      "matchManagers": ["gomod"],
+      "matchManagers": [
+        "gomod"
+      ],
       "groupName": "go dependencies"
     },
     {
       "description": "Group npm/JS updates",
-      "matchManagers": ["npm"],
+      "matchManagers": [
+        "npm"
+      ],
       "groupName": "js dependencies"
     },
     {
       "description": "Pin GitHub Actions by SHA, not tag - tags are mutable",
-      "matchManagers": ["github-actions"],
-      "pinDigests": true
-    },
-    {
-      "description": "Pin Docker base images by digest",
-      "matchManagers": ["dockerfile"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "pinDigests": true
     },
     {
       "description": "Group Helm chart and Terraform provider/module bumps separately from app deps",
-      "matchManagers": ["helm-values", "helmv3", "terraform"],
+      "matchManagers": [
+        "helm-values",
+        "helmv3",
+        "terraform"
+      ],
       "groupName": "infra dependencies"
+    },
+    {
+      "description": "Third-party images are managed in docker/images.yaml only (see tools/images.py) - don't bump them where they are referenced",
+      "matchManagers": [
+        "dockerfile",
+        "docker-compose",
+        "kubernetes",
+        "helm-values"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Image catalog: bump tag and digest together; run `just images-sync` on the PR before merging",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "docker/images.yaml"
+      ],
+      "pinDigests": true,
+      "groupName": "image catalog",
+      "automerge": false
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security"]
+    "labels": [
+      "security"
+    ]
   },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on the first day of the month"]
-  }
+    "schedule": [
+      "before 6am on the first day of the month"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "docker/images.yaml entries: image / tag / digest on consecutive lines",
+      "managerFilePatterns": [
+        "/^docker/images\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image: (?<depName>\\S+)\\n\\s+tag: \"?(?<currentValue>[^\"\\n]+?)\"?\\n\\s+digest: (?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
 }

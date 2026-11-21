@@ -2,8 +2,11 @@
 // automatic findings. Run as a CronJob in an app namespace, it:
 //
 //  1. lists the images the namespace's pods are running (Kubernetes API,
-//     with the pod's own ServiceAccount: get/list pods in that namespace);
-//  2. scans each of our images (IMAGE_PREFIX) with Trivy;
+//     with the pod's own ServiceAccount: get/list pods in that namespace),
+//     plus, when IMAGES_FILE is set, the third-party images of the repo's
+//     image catalog (docker/images.yaml, one "asset ref" per line);
+//  2. scans each of our running images (IMAGE_PREFIX) and every catalog
+//     image with Trivy;
 //  3. posts each report to vuln-api's internal endpoint, which creates
 //     findings for new vulnerabilities and closes the ones that are gone.
 //
@@ -42,6 +45,7 @@ type config struct {
 	SADir        string
 	ScanTimeout  time.Duration
 	TrivyOptions []string
+	ImagesFile   string
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -60,6 +64,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 		CacheDir:    or("TRIVY_CACHE_DIR", "/tmp/trivy-cache"),
 		KubeAPI:     or("KUBE_API", "https://kubernetes.default.svc"),
 		SADir:       or("SA_DIR", "/var/run/secrets/kubernetes.io/serviceaccount"),
+		ImagesFile:  strings.TrimSpace(getenv("IMAGES_FILE")),
 	}
 	d, err := time.ParseDuration(or("SCAN_TIMEOUT", "10m"))
 	if err != nil {
@@ -129,6 +134,47 @@ func imagesFromPods(body []byte, prefix string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// target is one image to scan and the asset its findings are filed under.
+type target struct{ Asset, Ref string }
+
+// readImagesFile parses the catalog list: "asset ref" per line, # comments
+// and blank lines ignored. Only digest-pinned references are accepted, so a
+// scan always matches exactly what the catalog pins.
+func readImagesFile(body string) ([]target, error) {
+	var out []target
+	for n, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		f := strings.Fields(line)
+		if len(f) != 2 || !strings.Contains(f[1], "@sha256:") {
+			return nil, fmt.Errorf("images file line %d: want \"asset image@sha256:...\"", n+1)
+		}
+		out = append(out, target{Asset: f[0], Ref: f[1]})
+	}
+	return out, nil
+}
+
+// targets merges running images and catalog images, first one wins per ref.
+func targets(running []string, catalog []target) []target {
+	seen := map[string]bool{}
+	var out []target
+	for _, ref := range running {
+		if !seen[ref] {
+			seen[ref] = true
+			out = append(out, target{Asset: assetOf(ref), Ref: ref})
+		}
+	}
+	for _, t := range catalog {
+		if !seen[t.Ref] {
+			seen[t.Ref] = true
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // assetOf is the finding asset for an image: the repository without the
@@ -232,10 +278,10 @@ func upload(ctx context.Context, c config, hc *http.Client, asset string, report
 }
 
 // scanAll scans and uploads each image; it returns how many failed.
-func scanAll(ctx context.Context, log *slog.Logger, c config, api *http.Client, images []string) int {
+func scanAll(ctx context.Context, log *slog.Logger, c config, api *http.Client, images []target) int {
 	failed := 0
-	for _, ref := range images {
-		asset := assetOf(ref)
+	for _, t := range images {
+		asset, ref := t.Asset, t.Ref
 		report, err := scan(ctx, c, ref)
 		if err != nil {
 			log.Error("scan failed; its findings are left as they are", "image", ref, "err", err)
@@ -262,11 +308,22 @@ func run(ctx context.Context, log *slog.Logger, getenv func(string) string) erro
 	if err != nil {
 		return err
 	}
-	images, err := listImages(ctx, c, kc, token)
+	running, err := listImages(ctx, c, kc, token)
 	if err != nil {
 		return err
 	}
-	log.Info("images to scan", "namespace", c.Namespace, "count", len(images))
+	var catalog []target
+	if c.ImagesFile != "" {
+		b, err := os.ReadFile(c.ImagesFile)
+		if err != nil {
+			return fmt.Errorf("IMAGES_FILE: %w", err)
+		}
+		if catalog, err = readImagesFile(string(b)); err != nil {
+			return err
+		}
+	}
+	images := targets(running, catalog)
+	log.Info("images to scan", "namespace", c.Namespace, "running", len(running), "catalog", len(catalog), "total", len(images))
 	if len(images) == 0 {
 		return nil
 	}

@@ -92,3 +92,8 @@ cronJob:
 # outside the chart.
 kubeApiToken:
   enabled: false
+
+# Small read-only files for the app, as {filename: content}. Rendered into a
+# ConfigMap (<release>-files) and mounted at filesPath.
+files: {}
+filesPath: /etc/app

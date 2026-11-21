@@ -12,7 +12,8 @@ kubeApiToken:
 cronJob:
   schedule: "0 2 * * *"
   timeZone: Europe/Copenhagen
-  activeDeadlineSeconds: 3600
+  # About 40 catalog images on top of the running ones, some large (Wazuh).
+  activeDeadlineSeconds: 10800
 writablePaths: [/tmp]
 envFromSecrets: [vuln-scanner-token]
 resources:
@@ -23,3 +24,6 @@ env:
   - {name: TRIVY_CACHE_DIR, value: /tmp/trivy-cache}
   - {name: TMPDIR, value: /tmp}
   - {name: HOME, value: /tmp}
+  # The image catalog's scan list (docker/images.yaml via scan-images.yaml,
+  # added to this release's value files in the prod Application).
+  - {name: IMAGES_FILE, value: /etc/app/images.txt}

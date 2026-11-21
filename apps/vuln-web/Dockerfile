@@ -1,6 +1,6 @@
 # Build stage: plain public node image (the central-base rule only covers
 # the final runtime stage).
-FROM node:26-alpine AS build
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # Runtime: nginx stable, unprivileged variant - listens on 8080 as UID 101.
-FROM nginxinc/nginx-unprivileged:1.30-alpine
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 USER root
 # apk upgrade: Alpine fixes published after the upstream image was built
 # (build.yml's Trivy gate fails on fixed CRITICALs).

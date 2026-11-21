@@ -49,6 +49,11 @@ seccompProfile:
   mountPath: /var/run/secrets/kubernetes.io/serviceaccount
   readOnly: true
 {{- end }}
+{{- if .Values.files }}
+- name: files
+  mountPath: {{ .Values.filesPath }}
+  readOnly: true
+{{- end }}
 {{- end }}
 
 {{- define "app.volumes" -}}
@@ -82,6 +87,11 @@ seccompProfile:
           items: [{ key: ca.crt, path: ca.crt }]
       - downwardAPI:
           items: [{ path: namespace, fieldRef: { fieldPath: metadata.namespace } }]
+{{- end }}
+{{- if .Values.files }}
+- name: files
+  configMap:
+    name: {{ include "app.fullname" . }}-files
 {{- end }}
 {{- end }}
 
