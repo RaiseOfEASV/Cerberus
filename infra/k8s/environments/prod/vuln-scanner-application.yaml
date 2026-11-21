@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vuln-scanner-prod
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      path: infra/helm/charts/app
+      helm:
+        releaseName: vuln-scanner
+        valueFiles:
+          - $values/infra/helm/vuln-scanner/values-prod.yaml
+    - repoURL: https://github.com/RaiseOfEASV/Cerberus.git
+      targetRevision: master
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cerberoast
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
