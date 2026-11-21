@@ -96,7 +96,7 @@ jobs:
             echo "::error::run this workflow from master (got ${GITHUB_REF})" >&2; exit 1
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Pin image tags and digests for this environment
         id: bump
