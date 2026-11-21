@@ -66,8 +66,8 @@ images:
     note: DB backup CronJobs. Chainguard's free tier only publishes latest, so it is pinned by digest alone.
   kube-bench:
     image: docker.io/aquasec/kube-bench
-    tag: v0.9.1
-    digest: sha256:543ba45ed2499a17d32b08dda2a9f9428ef6f14d387117ac5fc38decfc481511
+    tag: v0.16.0
+    digest: sha256:75506f222d1eb6ce2a751a5533bdc0a3b54c898e2e49e7751d0ee22cfb862679
     source: direct
     status: inactive
     note: CIS benchmark CronJob
