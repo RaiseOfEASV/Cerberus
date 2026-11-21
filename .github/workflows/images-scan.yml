@@ -1,10 +1,15 @@
 name: Image catalog scan
 
-# A version bump in docker/images.yaml can't merge if the new image has a
-# CRITICAL vulnerability that already has a fix - the same rule build.yml
-# applies to our own images. Only the entries this PR changes are scanned;
-# the prod vuln-scanner scans the whole catalog every night and files the
-# results in Cerberoast.
+# For every entry a PR changes in docker/images.yaml (e.g. a Renovate bump),
+# scan the old and the new image with Trivy and report the difference:
+# counts per severity before/after, vulnerabilities the bump fixes and the
+# ones it introduces. The report is posted as one PR comment (updated in
+# place on every push) and on the check's summary page.
+#
+# Gate: the check fails if a new image has a CRITICAL vulnerability with a
+# fix available - the same rule build.yml applies to our own images. The
+# prod vuln-scanner scans the whole catalog every night and files the results
+# in Cerberoast.
 
 on:
   pull_request:
@@ -13,11 +18,17 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # the report comment
+
+concurrency:
+  group: images-scan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   scan-changed:
     name: scan changed images
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -26,32 +37,70 @@ jobs:
       - name: Entries changed by this PR
         id: changed
         run: |
-          python3 tools/images.py changed --base "origin/${BASE_REF}" > changed.txt
-          echo "Images to scan:"; cat changed.txt
+          python3 tools/images.py changed --base "origin/${BASE_REF}" --with-old > changed.txt
+          echo "Changed entries (asset new old):"; cat changed.txt
           echo "count=$(wc -l < changed.txt)" >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.base_ref }}
 
-      - name: Trivy - fail on fixable CRITICAL
+      - name: Scan old and new images, build the report
         if: steps.changed.outputs.count != '0'
+        id: scan
         run: |
-          fail=0
-          {
-            echo "### Image catalog scan"
-            echo
-            echo "| Image | Result |"
-            echo "|---|---|"
-          } >> "$GITHUB_STEP_SUMMARY"
-          # The scanner itself is a catalog entry, so it is pinned too.
+          # The scanner is a catalog entry too, so it is pinned like the rest.
           trivy=$(python3 tools/images.py list | awk '$1 == "aquasec/trivy" {print $2}')
-          while read -r _ ref; do
-            [ -n "$ref" ] || continue
-            if docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" "$trivy" image --quiet \
-                 --severity CRITICAL --ignore-unfixed --exit-code 1 --scanners vuln "$ref"; then
-              echo "| \`$ref\` | no fixable CRITICAL |" >> "$GITHUB_STEP_SUMMARY"
-            else
-              echo "| \`$ref\` | **fixable CRITICAL found** |" >> "$GITHUB_STEP_SUMMARY"
-              fail=1
+          mkdir -p scans "$HOME/.cache/trivy"
+          scan() { # ref out.json
+            docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" "$trivy" image \
+              --quiet --format json --scanners vuln "$1" > "$2"
+          }
+          blocked=0
+          {
+            echo "<!-- image-catalog-scan -->"
+            echo "### Trivy: image catalog changes"
+            echo
+          } > report.md
+          i=0
+          while read -r asset new old; do
+            [ -n "$new" ] || continue
+            i=$((i + 1))
+            if ! scan "$new" "scans/new-$i.json"; then
+              bt='`'; { echo "#### ${bt}${asset}${bt} ⚠️"; echo; echo "Could not scan ${bt}${new}${bt}."; echo; } >> report.md
+              blocked=1; continue
             fi
+            args=(--asset "$asset" --new "scans/new-$i.json" --new-ref "$new")
+            if [ "$old" != "-" ] && scan "$old" "scans/old-$i.json"; then
+              args+=(--old "scans/old-$i.json" --old-ref "$old")
+            fi
+            if ! python3 tools/trivy-diff.py "${args[@]}" >> report.md; then blocked=1; fi
+            echo >> report.md
           done < changed.txt
-          exit $fail
+          {
+            echo "---"
+            echo "Gate: fails on a CRITICAL with a fix available in the new image. Run [${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) on ${HEAD_SHA:0:7}."
+          } >> report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "blocked=${blocked}" >> "$GITHUB_OUTPUT"
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+      - name: Post or update the PR comment
+        if: steps.changed.outputs.count != '0' && always()
+        run: |
+          [ -f report.md ] || exit 0
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+                 --jq '.[] | select(.body | startswith("<!-- image-catalog-scan -->")) | .id' | tail -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" -F body=@report.md >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" -F body=@report.md >/dev/null
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+
+      - name: Gate
+        if: steps.scan.outputs.blocked == '1'
+        run: |
+          echo "::error::A new image has a CRITICAL vulnerability with a fix available (or could not be scanned) - see the report."
+          exit 1

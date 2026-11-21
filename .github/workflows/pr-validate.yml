@@ -76,6 +76,7 @@ jobs:
           python3 tools/check-vulnman-config.py
           tools/tests/deploy-bump-test.sh
           tools/tests/images-test.sh
+          tools/tests/trivy-diff-test.sh
           python3 tools/images.py check
       # Builds vuln-web and checks nginx CSP, caching/404 and security
       # headers, run read-only like in the cluster.

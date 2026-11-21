@@ -5,6 +5,7 @@
     tools/images.py sync             rewrite them (and the generated scan list) to match
     tools/images.py list             "asset ref" for every scannable catalog image
     tools/images.py changed --base R the same, only entries that differ from revision R
+                                     (--with-old adds the previous ref, "-" if new)
 
 Design: docs/superpowers/specs/2026-11-21-image-catalog-design.md
 """
@@ -281,7 +282,7 @@ def run(fix: bool) -> int:
     return 0
 
 
-def changed(base: str) -> list[tuple[str, str]]:
+def changed(base: str, with_old: bool = False) -> list[tuple[str, ...]]:
     entries, _ = load_catalog()
     try:
         old_text = subprocess.run(["git", "show", f"{base}:{CATALOG}"], cwd=ROOT, check=True,
@@ -296,7 +297,10 @@ def changed(base: str) -> list[tuple[str, str]]:
     for key, e in entries.items():
         o = old.get(key)
         if e.digest and (o is None or (o.image, o.tag, o.digest) != (e.image, e.tag, e.digest)):
-            out.append((normalize(e.image), e.ref()))
+            row = (normalize(e.image), e.ref())
+            if with_old:
+                row += ((o.ref() if o is not None and o.digest else "-"),)
+            out.append(row)
     return out
 
 
@@ -308,12 +312,13 @@ def main() -> int:
     sub.add_parser("list")
     c = sub.add_parser("changed")
     c.add_argument("--base", required=True)
+    c.add_argument("--with-old", action="store_true")
     a = ap.parse_args()
     if a.cmd in ("check", "sync"):
         return run(fix=a.cmd == "sync")
-    rows = scan_list(load_catalog()[0]) if a.cmd == "list" else changed(a.base)
-    for asset, ref in rows:
-        print(f"{asset} {ref}")
+    rows = scan_list(load_catalog()[0]) if a.cmd == "list" else changed(a.base, a.with_old)
+    for row in rows:
+        print(" ".join(row))
     return 0
 
 
