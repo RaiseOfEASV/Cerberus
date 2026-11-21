@@ -12,7 +12,13 @@ FROM nginxinc/nginx-unprivileged:1.30-alpine
 USER root
 # apk upgrade: Alpine fixes published after the upstream image was built
 # (build.yml's Trivy gate fails on fixed CRITICALs).
-RUN apk upgrade --no-cache && rm /etc/nginx/conf.d/default.conf && mkdir -p /etc/nginx/snippets
+# The base image pins nginx and its optional modules to one exact version,
+# so `apk upgrade` alone can't take an nginx security fix. vuln-web loads
+# none of the modules: drop them, then take the newest nginx in the repos.
+RUN apk upgrade --no-cache \
+ && apk del --no-cache nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt \
+ && apk add --no-cache --upgrade nginx \
+ && rm /etc/nginx/conf.d/default.conf && mkdir -p /etc/nginx/snippets
 COPY --from=build /src/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/vuln-web.conf
 COPY docker/security.conf /etc/nginx/snippets/security.conf
