@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, ApiError } from '../api'
-import Icon from '../components/Icons'
 
 // Same-site paths only - never send someone off-site after signing in.
 function safeReturn(p: string | null) {
   return p && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\') ? p : '/app'
 }
 
-// VulnMan's own sign-in page. The password goes to vuln-api (same origin),
+// Cerberoast's own sign-in page. The password goes to vuln-api (same origin),
 // which checks it with Keycloak and answers with a session cookie.
 export default function Login() {
   const [params] = useSearchParams()
@@ -29,7 +28,7 @@ export default function Login() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) setError('Wrong username or password.')
       else if (err instanceof ApiError && err.status === 429) setError('Too many attempts. Wait a while and try again.')
-      else if (err instanceof ApiError && err.status === 403) setError('Your account has no VulnMan role yet. Ask a project manager to assign one.')
+      else if (err instanceof ApiError && err.status === 403) setError('Your account has no Cerberoast role yet. Ask a project manager to assign one.')
       else setError(err instanceof Error ? err.message : 'Sign-in failed.')
       setBusy(false)
     }
@@ -38,8 +37,8 @@ export default function Login() {
   return (
     <div className="auth-page">
       <aside className="auth-aside">
-        <Link to="/" className="brand light"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
-        <p className="auth-quote">Every finding, tracked to the fix.</p>
+        <Link to="/" className="brand light"><img className="brand-mark" src="/favicon.svg" alt="" width={30} height={30} /> Cerberoast</Link>
+        <p className="auth-quote">Nothing gets past the gate.</p>
         <small>Secure Software Development, EASV 2026</small>
       </aside>
       <main className="auth-main">

@@ -14,7 +14,7 @@ describe('routing', () => {
   it('shows the product page to visitors', async () => {
     mockApi({ 'GET /api/me': json({ error: 'not logged in' }, 401) })
     at('/')
-    expect(await screen.findByRole('heading', { level: 1, name: /every finding, tracked to the fix/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: /nothing gets past the gate/i })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /sign in/i })[0]).toHaveAttribute('href', '/login')
     expect(screen.getAllByRole('link', { name: /report a vulnerability/i })[0]).toHaveAttribute('href', '/report')
   })

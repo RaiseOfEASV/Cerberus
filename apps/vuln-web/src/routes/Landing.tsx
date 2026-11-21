@@ -1,5 +1,4 @@
 import { Link } from 'react-router'
-import Icon from '../components/Icons'
 
 // The lifecycle a finding really moves through (the app's own statuses).
 const lifecycle = [
@@ -9,13 +8,21 @@ const lifecycle = [
   { status: 'Remediated', text: 'Fixed, recorded, and visible to auditors.' },
 ]
 
-const capabilities = [
-  { title: 'One queue for every source', text: 'Manual findings, the public disclosure form, Trivy image and SBOM scans, and CSV imports. Duplicates are merged on the way in.' },
-  { title: 'Deadlines set by severity', text: 'Assign an owner and the due date follows from the SLA for that severity. Overdue work shows up on the dashboard, not in a meeting.' },
-  { title: 'Sensitive fields encrypted', text: 'Descriptions, reporter contacts and evidence are encrypted per finding. The keys live in Vault, never in the database.' },
-  { title: 'An audit trail you can check', text: 'Every change is written to a hash-chained log. Verifying the chain shows whether anyone rewrote history.' },
-  { title: 'Reports that prove themselves', text: 'Export findings for any period or asset as a report signed with Ed25519. Anyone with the public key can verify it.' },
-  { title: 'Four roles, enforced by the server', text: 'Analysts triage, developers fix, managers set targets, auditors read. The interface only shows what a role can do.' },
+// Cerberus had three heads and let nothing past the gate. Each head keeps
+// one watch; the copy groups the app's real features under them.
+const heads = [
+  {
+    title: 'The first head watches the gate',
+    text: 'Every report comes through one queue: findings your team enters, the public disclosure form, Trivy image and SBOM scans, and CSV imports. Duplicates are merged on the way in.',
+  },
+  {
+    title: 'The second head watches the clock',
+    text: 'Assign an owner and the due date follows from the SLA for that severity. The dashboard shows what is open, what is overdue and how compliance is trending.',
+  },
+  {
+    title: 'The third head watches the record',
+    text: 'Sensitive fields are encrypted with keys held in Vault. Every change goes into a hash-chained audit log, and exported reports are signed so anyone can verify them.',
+  },
 ]
 
 function FindingSpecimen() {
@@ -49,7 +56,7 @@ export default function Landing() {
   return (
     <div className="site">
       <header className="site-nav">
-        <Link to="/" className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
+        <Link to="/" className="brand"><img className="brand-mark" src="/favicon.svg" alt="" width={30} height={30} /> Cerberoast</Link>
         <nav aria-label="Site">
           <Link to="/report">Report a vulnerability</Link>
           <Link to="/login" className="button small">Sign in</Link>
@@ -58,10 +65,11 @@ export default function Landing() {
 
       <section className="hero">
         <div className="hero-copy">
-          <h1>Every finding, tracked to the fix.</h1>
+          <h1>Nothing gets past the gate.</h1>
           <p className="lead">
-            VulnMan is where a security team keeps its vulnerabilities: reported, triaged,
-            assigned with a deadline, and fixed, with a record of every step that nobody can quietly edit.
+            Cerberus kept the gates of the underworld, and nothing slipped by him. Cerberoast keeps
+            watch over your software the same way: every vulnerability is reported, triaged, assigned with
+            a deadline and fixed, with a record of each step that nobody can quietly edit.
           </p>
           <div className="cta">
             <Link to="/login" className="button large">Sign in</Link>
@@ -85,9 +93,9 @@ export default function Landing() {
       </section>
 
       <section className="band" aria-labelledby="cap-h">
-        <h2 id="cap-h">What it does</h2>
+        <h2 id="cap-h">Three heads, three watches</h2>
         <div className="capabilities">
-          {capabilities.map((c) => (
+          {heads.map((c) => (
             <div key={c.title}>
               <h3>{c.title}</h3>
               <p>{c.text}</p>
@@ -105,7 +113,7 @@ export default function Landing() {
       </section>
 
       <footer className="site-footer">
-        <span>VulnMan, Secure Software Development, EASV 2026</span>
+        <span>Cerberoast, Secure Software Development, EASV 2026</span>
         <Link to="/login">Sign in</Link>
       </footer>
     </div>
