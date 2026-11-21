@@ -84,7 +84,7 @@ services:
       - "514:514/udp"
 
   wazuh.dashboard:
-    image: wazuh/wazuh-dashboard:4.9.0@sha256:9cc37f86a1efac76c0f0ddbc955dda0bdf72517b5067f384d66bcc7d95338a6c
+    image: wazuh/wazuh-dashboard:4.14.10@sha256:2987776f76cbf3d47452a51b0e59792453686e5d37bbff7768ec033987b073a0
     hostname: wazuh.dashboard
     restart: unless-stopped
     depends_on: [wazuh.indexer, wazuh.manager]
