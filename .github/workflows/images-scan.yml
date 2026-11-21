@@ -1,0 +1,57 @@
+name: Image catalog scan
+
+# A version bump in docker/images.yaml can't merge if the new image has a
+# CRITICAL vulnerability that already has a fix - the same rule build.yml
+# applies to our own images. Only the entries this PR changes are scanned;
+# the prod vuln-scanner scans the whole catalog every night and files the
+# results in Cerberoast.
+
+on:
+  pull_request:
+    paths:
+      - docker/images.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  scan-changed:
+    name: scan changed images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Entries changed by this PR
+        id: changed
+        run: |
+          python3 tools/images.py changed --base "origin/${BASE_REF}" > changed.txt
+          echo "Images to scan:"; cat changed.txt
+          echo "count=$(wc -l < changed.txt)" >> "$GITHUB_OUTPUT"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - name: Trivy - fail on fixable CRITICAL
+        if: steps.changed.outputs.count != '0'
+        run: |
+          fail=0
+          {
+            echo "### Image catalog scan"
+            echo
+            echo "| Image | Result |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # The scanner itself is a catalog entry, so it is pinned too.
+          trivy=$(python3 tools/images.py list | awk '$1 == "aquasec/trivy" {print $2}')
+          while read -r _ ref; do
+            [ -n "$ref" ] || continue
+            if docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" "$trivy" image --quiet \
+                 --severity CRITICAL --ignore-unfixed --exit-code 1 --scanners vuln "$ref"; then
+              echo "| \`$ref\` | no fixable CRITICAL |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`$ref\` | **fixable CRITICAL found** |" >> "$GITHUB_STEP_SUMMARY"
+              fail=1
+            fi
+          done < changed.txt
+          exit $fail
