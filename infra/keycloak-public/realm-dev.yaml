@@ -3,7 +3,7 @@
 # its environment (Vault via ESO) - never write a real secret here.
 realm: vulnman-dev
 enabled: true
-displayName: VulnMan (dev)
+displayName: Cerberoast (dev)
 loginWithEmailAllowed: true
 registrationAllowed: false
 resetPasswordAllowed: false
