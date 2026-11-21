@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { json, mockApi } from '../test-utils'
 import Report from './Report'
@@ -18,7 +19,7 @@ async function fill(title = 'IDOR in order history') {
 describe('Report (public)', () => {
   it('submits and shows the reference', async () => {
     const calls = mockApi({ 'POST /api/public/reports': json({ reference: 'VM-ABC123DEF4', message: 'Thank you.' }, 201) })
-    render(<Report />)
+    render(<MemoryRouter><Report /></MemoryRouter>)
     await fill()
     expect(await screen.findByText('VM-ABC123DEF4')).toBeInTheDocument()
     expect(calls[0].body).toEqual({
@@ -29,21 +30,21 @@ describe('Report (public)', () => {
 
   it('shows the rate-limit message on 429', async () => {
     mockApi({ 'POST /api/public/reports': json({ error: 'too many' }, 429) })
-    render(<Report />)
+    render(<MemoryRouter><Report /></MemoryRouter>)
     await fill()
     expect(await screen.findByText(/too many reports from your network/i)).toBeInTheDocument()
   })
 
   it('shows a server validation error', async () => {
     mockApi({ 'POST /api/public/reports': json({ error: 'contactEmail must be a plain e-mail address' }, 400) })
-    render(<Report />)
+    render(<MemoryRouter><Report /></MemoryRouter>)
     await fill()
     expect(await screen.findByText('contactEmail must be a plain e-mail address')).toBeInTheDocument()
   })
 
   it('renders user input as text', async () => {
     mockApi({ 'POST /api/public/reports': json({ reference: 'VM-XSSXSSXSS0', message: 'Thank you.' }, 201) })
-    const { container } = render(<Report />)
+    const { container } = render(<MemoryRouter><Report /></MemoryRouter>)
     await fill('<img src=x onerror=alert(1)>')
     await screen.findByText('VM-XSSXSSXSS0')
     expect(container.querySelector('img')).toBeNull()
@@ -52,7 +53,7 @@ describe('Report (public)', () => {
 
   it('keeps the honeypot out of sight and out of the tab order', () => {
     mockApi({})
-    render(<Report />)
+    render(<MemoryRouter><Report /></MemoryRouter>)
     const hp = document.querySelector('input[name="website"]') as HTMLInputElement
     expect(hp).not.toBeNull()
     expect(hp.tabIndex).toBe(-1)

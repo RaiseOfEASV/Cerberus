@@ -54,6 +54,20 @@ func newIdP(t *testing.T) *fakeIdP {
 	})
 	mux.HandleFunc("POST /token", func(w http.ResponseWriter, r *http.Request) {
 		_ = r.ParseForm()
+		if r.Form.Get("grant_type") == "password" {
+			if r.Form.Get("username") != "ana" || r.Form.Get("password") != "correct horse" {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"Invalid user credentials"}`))
+				return
+			}
+			now := time.Now()
+			std := jwt.Claims{Issuer: f.srv.URL, Subject: "user-123", Expiry: jwt.NewNumericDate(now.Add(5 * time.Minute)), IssuedAt: jwt.NewNumericDate(now)}
+			id := f.sign(t, std, jwt.Audience{"vuln-api"}, map[string]any{"name": "Ana Analyst", "email": "ana@example.com"})
+			access := f.sign(t, std, jwt.Audience{"account"}, map[string]any{"azp": "vuln-api", "realm_access": map[string]any{"roles": f.roles}})
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "id_token": id, "token_type": "Bearer", "expires_in": 300})
+			return
+		}
 		f.mu.Lock()
 		req, ok := f.codes[r.Form.Get("code")]
 		delete(f.codes, r.Form.Get("code"))
@@ -294,5 +308,87 @@ func TestLogout(t *testing.T) {
 	}
 	if _, ok, _ := ss.Touch(context.Background(), sess.Value, time.Minute); ok {
 		t.Fatal("session still valid after logout")
+	}
+}
+
+func passwordLogin(o *OIDC, remote, body string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest("POST", "/auth/password", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	r.RemoteAddr = remote
+	w := httptest.NewRecorder()
+	o.PasswordLogin(w, r)
+	return w
+}
+
+func TestPasswordLoginCreatesSession(t *testing.T) {
+	o, _, ss, logins := setup(t)
+	w := passwordLogin(o, "192.0.2.1:1", `{"username":"ana","password":"correct horse"}`)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"role":"analyst"`) {
+		t.Fatalf("password login: %d %s", w.Code, w.Body)
+	}
+	var sess *http.Cookie
+	for _, c := range w.Result().Cookies() {
+		if c.Name == SessionCookie {
+			sess = c
+		}
+	}
+	if sess == nil || !sess.HttpOnly || !sess.Secure || sess.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("session cookie: %+v", sess)
+	}
+	if u, ok, _ := ss.Touch(context.Background(), sess.Value, time.Minute); !ok || u.Sub != "user-123" || u.Role != domain.RoleAnalyst {
+		t.Fatalf("session user: %+v %v", u, ok)
+	}
+	if len(*logins) != 1 {
+		t.Fatal("login not recorded")
+	}
+	if strings.Contains(w.Body.String(), "token") {
+		t.Fatal("tokens must never reach the browser")
+	}
+}
+
+func TestPasswordLoginWrongPassword(t *testing.T) {
+	o, _, ss, _ := setup(t)
+	for _, body := range []string{`{"username":"ana","password":"wrong"}`, `{"username":"nobody","password":"correct horse"}`} {
+		w := passwordLogin(o, "192.0.2.2:1", body)
+		if w.Code != http.StatusUnauthorized || !strings.Contains(w.Body.String(), "invalid username or password") {
+			t.Fatalf("%s: %d %s", body, w.Code, w.Body)
+		}
+	}
+	if len(ss.byID) != 0 {
+		t.Fatal("session created for bad credentials")
+	}
+}
+
+func TestPasswordLoginNoRole(t *testing.T) {
+	o, idp, ss, _ := setup(t)
+	idp.roles = []string{"offline_access"}
+	if w := passwordLogin(o, "192.0.2.3:1", `{"username":"ana","password":"correct horse"}`); w.Code != http.StatusForbidden {
+		t.Fatalf("no role: %d %s", w.Code, w.Body)
+	}
+	if len(ss.byID) != 0 {
+		t.Fatal("session created for a user without a role")
+	}
+}
+
+func TestPasswordLoginRateLimited(t *testing.T) {
+	o, _, _, _ := setup(t)
+	for i := 0; i < 10; i++ {
+		passwordLogin(o, "192.0.2.4:1", `{"username":"ana","password":"guess"}`)
+	}
+	w := passwordLogin(o, "192.0.2.5:1", `{"username":"ana","password":"correct horse"}`)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("11th attempt for one username (from another address): %d", w.Code)
+	}
+	if w := passwordLogin(o, "192.0.2.6:1", `{"username":"other","password":"x"}`); w.Code == http.StatusTooManyRequests {
+		t.Fatal("limit leaked to another username")
+	}
+}
+
+func TestPasswordLoginRejectsBadBodies(t *testing.T) {
+	o, _, _, _ := setup(t)
+	for _, body := range []string{`not json`, `{"username":"ana"}`, `{"username":"","password":"x"}`, `{"username":"ana","password":"x","extra":1}`, `{"username":"` + strings.Repeat("a", 5000) + `","password":"x"}`} {
+		if w := passwordLogin(o, "192.0.2.7:1", body); w.Code != http.StatusBadRequest && w.Code != http.StatusRequestEntityTooLarge {
+			t.Errorf("%.40s: %d", body, w.Code)
+		}
 	}
 }

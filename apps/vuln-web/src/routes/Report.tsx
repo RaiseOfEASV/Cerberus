@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { api, ApiError } from '../api'
+import Icon from '../components/Icons'
 
 // AUTH-03 / FIND-02: anyone may report a vulnerability - no account needed.
 // The acknowledgement shows the reference the reporter can quote later.
@@ -26,6 +28,11 @@ export default function Report() {
   }
 
   return (
+    <div className="site">
+    <header className="site-nav">
+      <Link to="/" className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
+      <nav><Link to="/login" className="button small">Sign in</Link></nav>
+    </header>
     <main className="public">
       <h1>Report a security vulnerability</h1>
       {done ? (
@@ -55,5 +62,6 @@ export default function Report() {
         </form>
       )}
     </main>
+    </div>
   )
 }

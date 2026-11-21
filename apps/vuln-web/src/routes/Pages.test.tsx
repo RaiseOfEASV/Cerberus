@@ -31,7 +31,7 @@ describe('Dashboard', () => {
     expect(screen.getByRole('figure', { name: /findings by status/i })).toHaveTextContent('Remediated: 4')
     expect(screen.getByText('66.7%')).toBeInTheDocument()
     expect(screen.getByText(/1 of 3 open findings with a due date are overdue/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Late one' })).toHaveAttribute('href', '/findings/9')
+    expect(screen.getByRole('link', { name: 'Late one' })).toHaveAttribute('href', '/app/findings/9')
     expect(screen.getByRole('figure', { name: /opened vs closed/i })).toHaveTextContent('week of')
   })
 

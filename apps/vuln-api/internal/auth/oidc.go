@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/config"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
+	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/ratelimit"
 )
 
 type OIDC struct {
@@ -31,6 +33,9 @@ type OIDC struct {
 	endSession string
 	sessions   SessionStore
 	onLogin    func(context.Context, User)
+	userLimit  *ratelimit.Limiter
+	ipLimit    *ratelimit.Limiter
+	trusted    []netip.Prefix
 }
 
 // NewOIDC discovers the provider. Discovery uses cfg.OIDCDiscoveryURL (the
@@ -63,6 +68,10 @@ func NewOIDC(ctx context.Context, cfg config.Config, sessions SessionStore, onLo
 		endSession: extra.EndSession,
 		sessions:   sessions,
 		onLogin:    onLogin,
+		// Per hour: 10 attempts per username, 30 per client address.
+		userLimit: ratelimit.New(10, time.Now),
+		ipLimit:   ratelimit.New(30, time.Now),
+		trusted:   cfg.TrustedProxyCIDRs,
 	}, nil
 }
 
@@ -141,49 +150,11 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "login failed")
 		return
 	}
-	rawID, _ := tok.Extra("id_token").(string)
-	idt, err := o.idVerifier.Verify(ctx, rawID)
-	if err != nil {
-		slog.Warn("id token rejected", "err", err)
-		jsonError(w, http.StatusBadRequest, "login failed")
+	u, code, msg := o.verifyTokens(ctx, tok, st.Nonce)
+	if code != 0 {
+		jsonError(w, code, msg)
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(idt.Nonce), []byte(st.Nonce)) != 1 {
-		jsonError(w, http.StatusBadRequest, "login failed")
-		return
-	}
-	var idClaims struct {
-		Name              string `json:"name"`
-		Email             string `json:"email"`
-		PreferredUsername string `json:"preferred_username"`
-	}
-	_ = idt.Claims(&idClaims)
-	at, err := o.atVerifier.Verify(ctx, tok.AccessToken)
-	if err != nil {
-		slog.Warn("access token rejected", "err", err)
-		jsonError(w, http.StatusBadRequest, "login failed")
-		return
-	}
-	var atc struct {
-		Azp         string `json:"azp"`
-		RealmAccess struct {
-			Roles []string `json:"roles"`
-		} `json:"realm_access"`
-	}
-	if err := at.Claims(&atc); err != nil || atc.Azp != o.clientID || at.Subject != idt.Subject {
-		jsonError(w, http.StatusBadRequest, "login failed")
-		return
-	}
-	role, err := domain.RoleFromClaims(atc.RealmAccess.Roles)
-	if err != nil {
-		jsonError(w, http.StatusForbidden, "no VulnMan role assigned")
-		return
-	}
-	name := idClaims.Name
-	if name == "" {
-		name = idClaims.PreferredUsername
-	}
-	u := User{Sub: idt.Subject, Name: name, Email: idClaims.Email, Role: role}
 	id, err := o.sessions.Create(ctx, u, AbsoluteTTL)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "could not start session")
@@ -197,6 +168,112 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		o.onLogin(ctx, u)
 	}
 	http.Redirect(w, r, st.Return, http.StatusFound)
+}
+
+// verifyTokens checks a token response from Keycloak - ID token (issuer,
+// audience and, for the redirect flow, nonce), access token (azp, same
+// subject) - and maps realm roles to one app role. Shared by the redirect
+// callback and the password login, so both trust exactly the same things.
+// code is 0 on success, otherwise the HTTP status to answer with.
+func (o *OIDC) verifyTokens(ctx context.Context, tok *oauth2.Token, wantNonce string) (User, int, string) {
+	rawID, _ := tok.Extra("id_token").(string)
+	idt, err := o.idVerifier.Verify(ctx, rawID)
+	if err != nil {
+		slog.Warn("id token rejected", "err", err)
+		return User{}, http.StatusBadRequest, "login failed"
+	}
+	if wantNonce != "" && subtle.ConstantTimeCompare([]byte(idt.Nonce), []byte(wantNonce)) != 1 {
+		return User{}, http.StatusBadRequest, "login failed"
+	}
+	var idClaims struct {
+		Name              string `json:"name"`
+		Email             string `json:"email"`
+		PreferredUsername string `json:"preferred_username"`
+	}
+	_ = idt.Claims(&idClaims)
+	at, err := o.atVerifier.Verify(ctx, tok.AccessToken)
+	if err != nil {
+		slog.Warn("access token rejected", "err", err)
+		return User{}, http.StatusBadRequest, "login failed"
+	}
+	var atc struct {
+		Azp         string `json:"azp"`
+		RealmAccess struct {
+			Roles []string `json:"roles"`
+		} `json:"realm_access"`
+	}
+	if err := at.Claims(&atc); err != nil || atc.Azp != o.clientID || at.Subject != idt.Subject {
+		return User{}, http.StatusBadRequest, "login failed"
+	}
+	role, err := domain.RoleFromClaims(atc.RealmAccess.Roles)
+	if err != nil {
+		return User{}, http.StatusForbidden, "no VulnMan role assigned"
+	}
+	name := idClaims.Name
+	if name == "" {
+		name = idClaims.PreferredUsername
+	}
+	return User{Sub: idt.Subject, Name: name, Email: idClaims.Email, Role: role}, 0, ""
+}
+
+// PasswordLogin: POST /auth/password {"username","password"} - VulnMan's own
+// login form. vuln-api checks the credentials with Keycloak's password grant
+// as a confidential client (the browser never talks to Keycloak and never
+// sees a token), then starts the same server-side session as the redirect
+// login. Attempts are limited per username and per client address, on top
+// of Keycloak's brute-force lockout.
+func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		jsonError(w, http.StatusBadRequest, "expected a JSON body with username and password")
+		return
+	}
+	if in.Username == "" || len(in.Username) > 256 || in.Password == "" || len(in.Password) > 1024 {
+		jsonError(w, http.StatusBadRequest, "username and password are required")
+		return
+	}
+	if !o.userLimit.Allow(strings.ToLower(in.Username)) || !o.ipLimit.Allow(ratelimit.ClientIP(r, o.trusted)) {
+		w.Header().Set("Retry-After", "3600")
+		jsonError(w, http.StatusTooManyRequests, "too many login attempts - try again later")
+		return
+	}
+	ctx := r.Context()
+	tok, err := o.oauth.PasswordCredentialsToken(ctx, in.Username, in.Password)
+	if err != nil {
+		var re *oauth2.RetrieveError
+		if errors.As(err, &re) && (re.Response.StatusCode == http.StatusUnauthorized || re.Response.StatusCode == http.StatusBadRequest) {
+			jsonError(w, http.StatusUnauthorized, "invalid username or password")
+			return
+		}
+		slog.Error("password grant failed", "err", err)
+		jsonError(w, http.StatusBadGateway, "sign-in is unavailable right now")
+		return
+	}
+	u, code, msg := o.verifyTokens(ctx, tok, "")
+	if code != 0 {
+		jsonError(w, code, msg)
+		return
+	}
+	id, err := o.sessions.Create(ctx, u, AbsoluteTTL)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "could not start session")
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: SessionCookie, Value: id, Path: "/", MaxAge: int(AbsoluteTTL / time.Second),
+		HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
+	})
+	if o.onLogin != nil {
+		o.onLogin(ctx, u)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(u)
 }
 
 // Logout: POST /auth/logout - ends the local session and redirects to

@@ -33,7 +33,10 @@ clients:
     secret: "$(env:VULN_STAGING_OIDC_SECRET)"
     standardFlowEnabled: true
     implicitFlowEnabled: false
-    directAccessGrantsEnabled: false
+    # Password grant: VulnMan's own login form posts to vuln-api, which checks
+    # the credentials here as a confidential client (browser never sees a
+    # token). Keycloak's brute-force lockout still applies.
+    directAccessGrantsEnabled: true
     serviceAccountsEnabled: false
     redirectUris: ["https://vulns-staging.admin.cerberus.internal/auth/callback"]
     webOrigins: ["+"]

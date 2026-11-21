@@ -130,7 +130,7 @@ export function Links({ f }: { f: Finding }) {
         <ul>
           {links.map((l) => (
             <li key={l.findingId}>
-              {l.kind.replaceAll('_', ' ')}: <Link to={`/findings/${l.findingId}`}>{l.ref} - {l.title}</Link>{' '}
+              {l.kind.replaceAll('_', ' ')}: <Link to={`/app/findings/${l.findingId}`}>{l.ref} - {l.title}</Link>{' '}
               {editable && <button className="link" onClick={() => remove(l.findingId)}>remove</button>}
             </li>
           ))}

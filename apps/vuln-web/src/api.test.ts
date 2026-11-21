@@ -39,7 +39,7 @@ describe('request', () => {
     setUnauthorizedHandler(onUnauth)
     reply(401, { error: 'not logged in' })
     await expect(request('GET', '/api/me')).rejects.toBeInstanceOf(ApiError)
-    expect(onUnauth).toHaveBeenCalledWith('/auth/login?return=%2Ffindings%3Fstatus%3DNew')
+    expect(onUnauth).toHaveBeenCalledWith('/login?return=%2Ffindings%3Fstatus%3DNew')
   })
 
   it('turns an error reply into ApiError with the server message', async () => {

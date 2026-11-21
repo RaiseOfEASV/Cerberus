@@ -19,10 +19,10 @@ export function setUnauthorizedHandler(fn: (loginUrl: string) => void) {
 }
 
 export function loginUrl(returnPath = window.location.pathname + window.location.search) {
-  return '/auth/login?return=' + encodeURIComponent(returnPath)
+  return '/login?return=' + encodeURIComponent(returnPath)
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown, opts: { quiet401?: boolean } = {}): Promise<T> {
   const headers: Record<string, string> = {}
   let payload: BodyInit | undefined
   if (body instanceof FormData || body instanceof Blob || typeof body === 'string') {
@@ -32,7 +32,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     payload = JSON.stringify(body)
   }
   const res = await fetch(path, { method, headers, body: payload, credentials: 'same-origin' })
-  if (res.status === 401) {
+  if (res.status === 401 && !opts.quiet401) {
     onUnauthorized(loginUrl())
     throw new ApiError(401, 'Your session has ended - signing you in again.')
   }
@@ -69,7 +69,11 @@ export interface NewFinding { title: string; description: string; asset: string;
 export type FindingPatch = Partial<{ title: string; description: string; asset: string; severity: string; cve: string; cvss: number | null }>
 
 export const api = {
-  me: () => request<User>('GET', '/api/me'),
+  // quiet401: "not signed in" is a normal answer here, not a reason to redirect.
+  me: () => request<User>('GET', '/api/me', undefined, { quiet401: true }),
+  // VulnMan's own login form: vuln-api checks the credentials with Keycloak.
+  signIn: (username: string, password: string) =>
+    request<User>('POST', '/auth/password', { username, password }, { quiet401: true }),
   logout: () => request<void>('POST', '/auth/logout'),
   listFindings: (f: FindingFilter = {}) => request<FindingList>('GET', '/api/findings' + query(f)),
   exportCsvUrl: (f: FindingFilter = {}) => '/api/export/csv' + query(f),

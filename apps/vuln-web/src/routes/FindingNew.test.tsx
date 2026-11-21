@@ -15,7 +15,7 @@ it('creates a finding and opens it', async () => {
   await u.selectOptions(screen.getByLabelText(/severity/i), 'Medium')
   await u.type(screen.getByLabelText(/cvss/i), '6.1')
   await u.click(screen.getByRole('button', { name: /create/i }))
-  await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/findings/42'))
+  await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/app/findings/42'))
   expect(calls.find((c) => c.method === 'POST')!.body).toMatchObject({ title: 'Open redirect', asset: 'login', severity: 'Medium', cvss: 6.1 })
 })
 

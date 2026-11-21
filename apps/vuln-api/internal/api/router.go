@@ -57,6 +57,8 @@ func New(d Deps) http.Handler {
 		root.HandleFunc("GET /auth/login", d.OIDC.Login)
 		root.HandleFunc("GET /auth/callback", d.OIDC.Callback)
 		root.Handle("POST /auth/logout", auth.SameOrigin(d.Cfg.PublicBaseURL)(http.HandlerFunc(d.OIDC.Logout)))
+		// VulnMan's own login form (the redirect flow above stays as a fallback).
+		root.Handle("POST /auth/password", auth.SameOrigin(d.Cfg.PublicBaseURL)(http.HandlerFunc(d.OIDC.PasswordLogin)))
 	}
 
 	api := http.NewServeMux()
