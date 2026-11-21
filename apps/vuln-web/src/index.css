@@ -1,22 +1,24 @@
 /* Cerberoast design system.
-   Palette: steel (ground), paper (surfaces), ink (text, chrome, primary
-   actions), slate (secondary text), rule (lines) and one signal amber that
-   only marks time and attention: SLA clocks, the active nav item, focus.
+   Palette, taken from Cerberus himself: charcoal fur (ink - text, chrome,
+   primary actions), grey ground, slate (secondary text), rule (lines) and
+   one ember (signal) that only marks time and attention: SLA clocks, the
+   active nav item, focus, link underlines. Ember is dark enough for white
+   text on it (AA).
    Type: Bricolage Grotesque (variable: weight, width, optical size); the
    condensed display cut carries headlines. IBM Plex Mono only for
    identifiers people copy: references, CVSS, hashes, commands.
    Fonts are bundled and served from 'self' - the CSP allows nothing else. */
 :root {
-  --steel: #e8ecf0;
+  --steel: #e9e9eb;
   --paper: #ffffff;
-  --ink: #15233b;
-  --ink-2: #2b3a52;
-  --ink-hover: #22365a;
-  --slate: #586a7e;
-  --rule: #cbd4dd;
-  --rule-soft: #dfe5eb;
-  --signal: #f0a202;
-  --signal-soft: #fdf1d6;
+  --ink: #26272b;
+  --ink-2: #3a3b41;
+  --ink-hover: #3a3b41;
+  --slate: #616269;
+  --rule: #d3d3d7;
+  --rule-soft: #e4e4e7;
+  --signal: #c4461a;
+  --signal-soft: #f6ddd2;
   --danger: #b42318;
   --ok: #1f7a55;
 
@@ -71,9 +73,9 @@ button.block { width: 100%; margin-top: 1.2rem; padding: .7rem 1rem; }
 .button.large { padding: .8rem 1.35rem; font-size: 1.05rem; }
 .button.ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
 .button.ghost:hover { background: var(--ink); color: #fff; }
-.button.signal { background: var(--signal); border-color: var(--signal); color: var(--ink); }
-.button.signal:hover { background: #ffb81c; border-color: #ffb81c; }
-.icon-button { background: transparent; border: 0; color: #a9b6c6; padding: .45rem; }
+.button.signal { background: var(--signal); border-color: var(--signal); color: #fff; }
+.button.signal:hover { background: #a93a12; border-color: #a93a12; }
+.icon-button { background: transparent; border: 0; color: #b4b5bb; padding: .45rem; }
 .icon-button:hover { background: rgb(255 255 255 / 8%); color: #fff; }
 
 label { display: block; margin: .9rem 0 .3rem; font-weight: 600; font-size: .9rem; color: var(--ink-2); }
@@ -94,7 +96,7 @@ input[type="checkbox"] { width: auto; margin-right: .45rem; accent-color: var(--
 .app-shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
 .sidebar {
   position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
-  background: var(--ink); color: #c3cdd9; padding: 1.2rem .75rem 1rem;
+  background: var(--ink); color: #cfcfd4; padding: 1.2rem .75rem 1rem;
 }
 .brand { display: inline-flex; align-items: center; gap: .55rem; font-weight: 800; font-size: 1.1rem; font-stretch: 85%; color: var(--ink); text-decoration: none; }
 .brand-mark { display: block; width: 30px; height: 30px; border-radius: 7px; }
@@ -102,15 +104,15 @@ input[type="checkbox"] { width: auto; margin-right: .45rem; accent-color: var(--
 .sidebar .brand, .brand.light { color: #fff; }
 .sidebar .brand { padding: 0 .65rem 1.4rem; }
 .sidebar nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.nav-item { display: flex; align-items: center; gap: .7rem; padding: .55rem .65rem; border-radius: var(--r-sm); color: #c3cdd9; font-weight: 500; text-decoration: none; border-left: 3px solid transparent; }
+.nav-item { display: flex; align-items: center; gap: .7rem; padding: .55rem .65rem; border-radius: var(--r-sm); color: #cfcfd4; font-weight: 500; text-decoration: none; border-left: 3px solid transparent; }
 .nav-item:hover { color: #fff; background: rgb(255 255 255 / 6%); }
 .nav-item.active { color: #fff; background: rgb(255 255 255 / 9%); border-left-color: var(--signal); }
-.nav-section { margin: 1.3rem .65rem .35rem; font-size: var(--t-sm); color: #8394a8; font-weight: 600; }
+.nav-section { margin: 1.3rem .65rem .35rem; font-size: var(--t-sm); color: #8e8f96; font-weight: 600; }
 .sidebar-user { display: flex; align-items: center; gap: .6rem; padding: .9rem .4rem 0; border-top: 1px solid rgb(255 255 255 / 10%); }
 .sidebar-user .who { flex: 1; min-width: 0; line-height: 1.25; }
 .sidebar-user .who strong { display: block; color: #fff; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-user .who small { color: #8394a8; text-transform: capitalize; }
-.avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #2b3f60; color: #fff; font-weight: 700; font-size: .78rem; }
+.sidebar-user .who small { color: #8e8f96; text-transform: capitalize; }
+.avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #46474c; color: #fff; font-weight: 700; font-size: .78rem; }
 .content { padding: 2.2rem clamp(1rem, 3vw, 2.8rem) 3rem; max-width: 1220px; width: 100%; }
 .content > h1 { margin-bottom: 1.4rem; }
 
@@ -135,7 +137,7 @@ table { width: 100%; border-collapse: collapse; background: var(--paper); border
 th, td { text-align: left; padding: .75rem .95rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
 th { font-size: .85rem; color: var(--slate); font-weight: 600; background: var(--paper); border-bottom: 1px solid var(--rule); }
 tr:last-child td { border-bottom: 0; }
-tbody tr:hover td { background: #f6f8fa; }
+tbody tr:hover td { background: #f5f5f6; }
 td a { font-weight: 600; }
 
 /* Severity: tinted chip with a solid mark, readable without relying on colour alone. */
@@ -213,7 +215,7 @@ figure { margin: 0; }
 
 .disclose {
   display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;
-  background: var(--ink); color: #c3cdd9; padding: clamp(2.5rem, 6vw, 4rem) clamp(1rem, 5vw, 4.5rem);
+  background: var(--ink); color: #cfcfd4; padding: clamp(2.5rem, 6vw, 4rem) clamp(1rem, 5vw, 4.5rem);
 }
 .disclose h2 { color: #fff; font-size: var(--t-xl); font-stretch: 85%; }
 .disclose p { margin: 0; max-width: 34rem; }
@@ -221,8 +223,9 @@ figure { margin: 0; }
 
 /* ---------- sign-in and public report ---------- */
 .auth-page { display: grid; grid-template-columns: minmax(18rem, 28rem) 1fr; min-height: 100vh; background: var(--paper); }
-.auth-aside { display: flex; flex-direction: column; justify-content: space-between; padding: 2.4rem; background: var(--ink); color: #8394a8; }
+.auth-aside { display: flex; flex-direction: column; justify-content: space-between; padding: 2.4rem; background: var(--ink); color: #8e8f96; }
 .auth-quote { color: #fff; font-size: clamp(2rem, 3.4vw, 2.9rem); font-weight: 800; font-stretch: 75%; line-height: 1; letter-spacing: -0.02em; max-width: 12ch; text-wrap: balance; border-left: 4px solid var(--signal); padding-left: 1rem; }
+.auth-hound { display: block; width: 168px; height: 168px; border-radius: 36px; margin-bottom: 2rem; box-shadow: 0 0 0 1px rgb(255 255 255 / 12%); }
 .auth-main { display: grid; place-items: center; padding: 2rem 1rem; }
 .auth-card { width: 100%; max-width: 23rem; }
 .auth-card h1 { font-size: var(--t-xl); }
