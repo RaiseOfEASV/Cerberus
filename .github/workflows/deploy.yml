@@ -43,8 +43,8 @@ name: Deploy
 # tools/deploy-bump.sh (tested by tools/tests/deploy-bump-test.sh).
 #
 # dev isn't an option here: dev's tag is changed by a normal PR, and dev
-# auto-syncs. prod's Applications are manual-sync in ArgoCD, so after the
-# prod bump PR merges, sync vuln-*-prod deliberately.
+# auto-syncs. The prod apps auto-sync too once the prod bump PR merges (after
+# the production approval and the merge); root-prod stays manual.
 
 on:
   workflow_dispatch:
@@ -156,7 +156,7 @@ jobs:
           done <<< "$CHANGED"
           after_merge="ArgoCD auto-syncs ${ENVIRONMENT} after merge."
           if [ "$ENVIRONMENT" = "prod" ]; then
-            after_merge="prod is manual-sync: after merge, sync the vuln-*-prod applications in ArgoCD."
+            after_merge="The prod apps sync automatically after merge (root-prod stays manual)."
           fi
           gh pr create --base master --head "$branch" --title "$title" \
             --body "$(printf '%s\n' \

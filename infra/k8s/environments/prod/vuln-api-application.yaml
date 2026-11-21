@@ -19,3 +19,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: cerberoast
+  # Deploys as soon as a prod bump PR merges - that PR already passed the
+  # `production` approval and a review. Self-heal reverts drift; prune stays
+  # off, so a sync never deletes prod resources on its own. root-prod
+  # (routing, certificate, policies) stays manual.
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true

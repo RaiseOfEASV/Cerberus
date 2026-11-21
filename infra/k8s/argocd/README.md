@@ -29,13 +29,14 @@ in-cluster credentials. See `infra/k8s/environments/README.md` for the full flow
   re-running the realm-config Job that's worth reading before touching any of
   this again).
 
-## Why prod doesn't auto-sync
+## How prod syncs
 
-`root-prod` and its children (`vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod`) have no
-automated sync on purpose. A prod change already passes the `production` GitHub
-Environment approval and a PR review; auto-sync on top would make the final step
-implicit. Sync prod deliberately - which app to sync, the no-CLI way, and the
-zero-downtime order for routing changes are in
+The prod apps (`vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod`) sync automatically
+once a prod bump PR merges: that PR has already passed the `production` GitHub
+Environment approval and a review, so a third manual step added friction rather
+than safety. They self-heal but never prune. `root-prod` (cerberoast.site's
+routing, certificate and NetworkPolicies) stays manual - sync it deliberately; the
+no-CLI way and the zero-downtime order for routing changes are in
 `infra/k8s/environments/README.md` ("Syncing prod").
 
 ## What's deployed through it (2026-11-09)
@@ -44,7 +45,7 @@ zero-downtime order for routing changes are in
 |---|---|---|
 | `root-dev` | `vuln-api-dev`, `vuln-web-dev`, `vuln-db-dev` (+ VPN preview route) | automated |
 | `root-staging` | `vuln-api-staging`, `vuln-web-staging`, `vuln-db-staging` (+ VPN preview route) | automated |
-| `root-prod` | `vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod`, and `infra/k8s/cerberoast/` | manual |
+| `root-prod` | `vuln-api-prod`, `vuln-web-prod`, `vuln-db-prod` (automated, no prune), and `infra/k8s/cerberoast/` | root: manual |
 
 Children are multi-source: the generic chart `infra/helm/charts/app` plus a
 `ref: values` source; `$values` resolves to the repo root, so value files are
