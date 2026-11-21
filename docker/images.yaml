@@ -90,8 +90,8 @@ images:
     note: Dependency-Track
   dependency-track-frontend:
     image: dependencytrack/frontend
-    tag: 4.12.3
-    digest: sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
+    tag: 4.14.7
+    digest: sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
     source: direct
     status: inactive
     note: Dependency-Track

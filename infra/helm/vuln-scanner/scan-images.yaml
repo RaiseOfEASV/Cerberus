@@ -11,7 +11,7 @@ files:
     cgr.dev/chainguard/minio-client cgr.dev/chainguard/minio-client@sha256:1260ca38acf78bf8d2833845fda6636b27388ab919b750d79f2c7167fb45ec74
     aquasec/kube-bench docker.io/aquasec/kube-bench:v0.9.1@sha256:543ba45ed2499a17d32b08dda2a9f9428ef6f14d387117ac5fc38decfc481511
     dependencytrack/apiserver dependencytrack/apiserver:4.14.7@sha256:a936a5560df5647db11942775941d5f9e3d84eac5dab7848fd3f2b2165cf0e7e
-    dependencytrack/frontend dependencytrack/frontend:4.12.3@sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
+    dependencytrack/frontend dependencytrack/frontend:4.14.7@sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
     headscale/headscale headscale/headscale:0.23.0@sha256:ffe793968ef6fbec78a8d095893fe03112e6a74231afe366eb504fbc822afea6
     wazuh/wazuh-manager wazuh/wazuh-manager:4.9.0@sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004
     wazuh/wazuh-indexer wazuh/wazuh-indexer:4.9.0@sha256:a7adcac99648b73e075c4fa8daa5bd552da46ec4a7700d7faccd579a2c5e7cc2
