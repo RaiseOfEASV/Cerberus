@@ -107,3 +107,96 @@ spec:
   secretName: vulnman-dev-admin-tls
   dnsNames: ["vulns-dev.admin.cerberus.internal"]
   issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
+---
+# Nightly Trivy scan (vuln-scanner CronJob) -> vuln-api's internal
+# /internal/scans/trivy endpoint. Shared token, generated in-cluster once
+# (refreshInterval 0) - it never leaves the namespace and isn't in Vault.
+# Delete the Secret to rotate it, then restart vuln-api.
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: vuln-scanner-token
+  namespace: dev
+spec:
+  length: 48
+  digits: 10
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vuln-scanner-token
+  namespace: dev
+spec:
+  refreshInterval: "0"
+  target: { name: vuln-scanner-token }
+  dataFrom:
+    - sourceRef:
+        generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: vuln-scanner-token }
+      rewrite:
+        - regexp: { source: "^password$", target: SCANNER_TOKEN }
+---
+# The scanner reads which images run here - nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vuln-scanner-pod-reader
+  namespace: dev
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vuln-scanner-pod-reader
+  namespace: dev
+subjects:
+  - { kind: ServiceAccount, name: vuln-scanner, namespace: dev }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: vuln-scanner-pod-reader }
+---
+# Scanner egress: DNS, the API server (node IP :6443 after DNAT - see
+# infra/k8s/vault/network-policy.yaml), vuln-api, and HTTPS to the internet
+# for the Trivy database and image layers (GHCR, mirror.gcr.io). Coarse by
+# necessity: NetworkPolicy can't match hostnames.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vuln-scanner-egress
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: vuln-scanner }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+    - to:
+        - ipBlock: { cidr: 10.0.2.0/24 }
+      ports: [{ port: 6443, protocol: TCP }]
+    - to:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: vuln-api } }
+      ports: [{ port: 8080, protocol: TCP }]
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16] }
+      ports: [{ port: 443, protocol: TCP }]
+---
+# ...and vuln-api accepts the scanner (on top of the admin-Traefik allow).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vuln-api-from-scanner
+  namespace: dev
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: vuln-api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: vuln-scanner } }
+      ports: [{ port: 8080, protocol: TCP }]

@@ -66,6 +66,22 @@ cutover was done):
 `infra/k8s/cerberoast`'s namespace is annotated `Prune=false,Delete=false`, so
 no root-prod sync can delete it (or the Let's Encrypt certificate in it).
 
+## Nightly Trivy scan (dev)
+
+`vuln-scanner` runs at 02:00 (Europe/Copenhagen) as a CronJob in `dev`. It
+lists the images the namespace's pods run, scans each of ours
+(`ghcr.io/raiseofeasv/*`) with Trivy, and posts the reports to vuln-api's
+internal `/internal/scans/trivy` endpoint. New vulnerabilities become
+findings (source `trivy`, asset = image repository) and findings no longer
+reported are set to Remediated, both recorded in the audit trail as
+`system:trivy-scanner`. Its token, Role and network rules are in
+`dev/vulnman.yaml`. To run it now instead of waiting:
+
+```
+kubectl -n dev create job --from=cronjob/vuln-scanner vuln-scanner-manual
+kubectl -n dev logs -f job/vuln-scanner-manual
+```
+
 ## Team previews of dev/staging (admin side)
 
 `dev/vulnman.yaml` and `staging/vulnman.yaml` expose VulnMan to the team at:

@@ -76,3 +76,19 @@ initContainer:
   enabled: false
   args: []
   envFromSecrets: []
+
+# Run as a CronJob instead of a Deployment + Service (e.g. vuln-scanner).
+# Setting schedule switches the workload kind; probes and ports don't apply.
+cronJob:
+  schedule: ""            # cron syntax, e.g. "0 2 * * *"
+  timeZone: Etc/UTC
+  activeDeadlineSeconds: 3600
+  args: []
+
+# Kubernetes API access for the pod's own ServiceAccount: the standard
+# token + cluster CA + namespace, mounted at
+# /var/run/secrets/kubernetes.io/serviceaccount. Still opt-in - the pod keeps
+# automountServiceAccountToken: false. Grant permissions with a Role
+# outside the chart.
+kubeApiToken:
+  enabled: false

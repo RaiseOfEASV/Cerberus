@@ -1,0 +1,28 @@
+# vuln-scanner, dev - the nightly Trivy scan (apps/vuln-scanner) as a CronJob
+# from infra/helm/charts/app. Role, token and network rules are in
+# infra/k8s/environments/dev/vulnman.yaml.
+image:
+  repository: ghcr.io/raiseofeasv/vuln-scanner
+  # tag + digest set by deploy.yml (placeholder until the first dev deploy).
+  tag: "0000000000000000000000000000000000000000"
+  digest: ""
+serviceAccount:
+  create: true
+  name: vuln-scanner
+kubeApiToken:
+  enabled: true
+cronJob:
+  schedule: "0 2 * * *"
+  timeZone: Europe/Copenhagen
+  activeDeadlineSeconds: 3600
+# Trivy's database and image layers (about 2 GB at peak).
+writablePaths: [/tmp]
+envFromSecrets: [vuln-scanner-token]
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: "1", memory: 1536Mi}
+env:
+  - {name: VULN_API_URL, value: "http://vuln-api.dev.svc"}
+  - {name: TRIVY_CACHE_DIR, value: /tmp/trivy-cache}
+  - {name: TMPDIR, value: /tmp}
+  - {name: HOME, value: /tmp}

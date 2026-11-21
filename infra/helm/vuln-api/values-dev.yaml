@@ -11,7 +11,7 @@ serviceAccount:
 vaultToken:
   enabled: true
 caConfigMap: cerberus-internal-ca
-envFromSecrets: [vuln-db-app-url, vuln-api-oidc, vuln-api-kc-admin]
+envFromSecrets: [vuln-db-app-url, vuln-api-oidc, vuln-api-kc-admin, vuln-scanner-token]
 initContainer:
   enabled: true
   args: ["migrate"]
