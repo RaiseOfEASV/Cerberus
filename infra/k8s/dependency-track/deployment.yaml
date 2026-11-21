@@ -85,7 +85,7 @@ spec:
     spec:
       containers:
         - name: apiserver
-          image: dependencytrack/apiserver:4.12.3@sha256:fca5c4cf1a97826d0997f8985376cbc3e68a2fa476c8f9d20c61647808f5afec
+          image: dependencytrack/apiserver:4.14.7@sha256:a936a5560df5647db11942775941d5f9e3d84eac5dab7848fd3f2b2165cf0e7e
           env:
             - { name: ALPINE_DATABASE_MODE, value: external }
             - { name: ALPINE_DATABASE_URL, value: "jdbc:postgresql://dt-postgres:5432/dtrack" }
