@@ -66,12 +66,43 @@ func TestScanAllUploadsAndSkipsFailures(t *testing.T) {
 	c := config{VulnAPIURL: api.URL, Token: "tok", TrivyBin: "trivy", ScanTimeout: 1e9}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	failed := scanAll(context.Background(), log, c, api.Client(),
-		[]string{"ghcr.io/raiseofeasv/vuln-api@sha256:aaa", "ghcr.io/raiseofeasv/vuln-web@sha256:bbb"})
+		targets([]string{"ghcr.io/raiseofeasv/vuln-api@sha256:aaa", "ghcr.io/raiseofeasv/vuln-web@sha256:bbb"}, nil))
 	if failed != 1 {
 		t.Fatalf("failed = %d, want 1", failed)
 	}
 	// The failed image was never uploaded, so none of its findings get closed.
 	if len(posted) != 1 || posted[0] != `ghcr.io/raiseofeasv/vuln-api {"SchemaVersion":2}` {
 		t.Fatalf("posted %q", posted)
+	}
+}
+
+func TestCatalogImagesAreAddedOnce(t *testing.T) {
+	cat, err := readImagesFile("# generated\npostgres postgres:16-alpine@sha256:ccc\n\nhashicorp/vault hashicorp/vault:1.17@sha256:ddd\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// vuln-api is both running and (hypothetically) listed: scanned once, as the running image.
+	cat = append(cat, target{Asset: "other", Ref: "ghcr.io/raiseofeasv/vuln-api@sha256:aaa"})
+	got := targets([]string{"ghcr.io/raiseofeasv/vuln-api@sha256:aaa"}, cat)
+	want := []target{
+		{"ghcr.io/raiseofeasv/vuln-api", "ghcr.io/raiseofeasv/vuln-api@sha256:aaa"},
+		{"postgres", "postgres:16-alpine@sha256:ccc"},
+		{"hashicorp/vault", "hashicorp/vault:1.17@sha256:ddd"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("target %d: %v, want %v", i, got[i], want[i])
+		}
+	}
+}
+
+func TestImagesFileRejectsUnpinnedOrMalformed(t *testing.T) {
+	for _, bad := range []string{"postgres postgres:16-alpine", "just-one-field", "a b c@sha256:x"} {
+		if _, err := readImagesFile(bad); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
 	}
 }

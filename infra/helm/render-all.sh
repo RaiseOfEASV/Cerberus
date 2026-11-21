@@ -12,7 +12,11 @@ for values in "$root"/infra/helm/*/values-*.yaml; do
   case "$app" in charts|values) continue;; esac
   n=$((n+1))
   chart="$root/infra/helm/charts/$(cat "$(dirname "$values")/.chart" 2>/dev/null || echo app)"
-  if out=$(helm template "$app" "$chart" -f "$values" 2>&1); then
+  extra=()
+  # prod's vuln-scanner also gets the image catalog's scan list (tools/images.py).
+  overlay="$(dirname "$values")/scan-images.yaml"
+  if [ "$(basename "$values")" = values-prod.yaml ] && [ -f "$overlay" ]; then extra=(-f "$overlay"); fi
+  if out=$(helm template "$app" "$chart" -f "$values" "${extra[@]}" 2>&1); then
     echo "PASS render $app/$(basename "$values")"
   else
     echo "FAIL render $app/$(basename "$values"): $(printf '%s' "$out" | grep -m1 -iE 'error|fail')"; fail=1
