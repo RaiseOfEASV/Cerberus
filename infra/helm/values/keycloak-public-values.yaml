@@ -4,7 +4,7 @@
 fullnameOverride: keycloak-public
 image:
   repository: quay.io/keycloak/keycloak
-  tag: "26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332"
+  tag: "26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3"
 args: ["start"]
 database:
   vendor: postgres
@@ -68,7 +68,7 @@ extraVolumeMounts: |
     mountPath: /tmp
 extraInitContainers: |
   - name: seed-quarkus
-    image: quay.io/keycloak/keycloak:26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
+    image: quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
     command: ["/bin/sh", "-c", "cp -r /opt/keycloak/lib/quarkus/. /seed/"]
     securityContext:
       runAsNonRoot: true

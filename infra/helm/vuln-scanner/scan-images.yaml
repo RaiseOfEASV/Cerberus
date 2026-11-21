@@ -5,7 +5,7 @@ files:
   images.txt: |
     postgres postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
     hashicorp/vault hashicorp/vault:1.17@sha256:74a4ab138ab5d64725e89cd9a9c73f7040c7fe49e98b71697b275ca9a69919df
-    quay.io/keycloak/keycloak quay.io/keycloak/keycloak:26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
+    quay.io/keycloak/keycloak quay.io/keycloak/keycloak:26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3
     adorsys/keycloak-config-cli adorsys/keycloak-config-cli:6.5.1-26.5.5@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274
     curlimages/curl curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69
     cgr.dev/chainguard/minio-client cgr.dev/chainguard/minio-client@sha256:1260ca38acf78bf8d2833845fda6636b27388ab919b750d79f2c7167fb45ec74
