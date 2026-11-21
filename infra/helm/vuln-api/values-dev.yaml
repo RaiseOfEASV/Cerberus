@@ -3,8 +3,8 @@
 image:
   repository: ghcr.io/raiseofeasv/vuln-api
   # tag + digest bumped by hand for dev (deploy.yml for staging/prod).
-  tag: "cbda551aa539b352d62578ec25460bea42a89add"
-  digest: "sha256:26b11450866046387a878e0a8427d07abbf968d83d1f3755234d5b47e6d8955e"
+  tag: "5a10db60a063d06311905de6604ee14fb7dac19b"
+  digest: "sha256:d7d596a3dd3ea6540323fc0db0fec75637a9d26b55d3e010c1c03d2900f79f81"
 serviceAccount:
   create: true
   name: vuln-api
@@ -17,21 +17,21 @@ initContainer:
   args: ["migrate"]
   envFromSecrets: [vuln-db-owner-url]
 resources:
-  requests: { cpu: 50m, memory: 64Mi }
-  limits: { cpu: 300m, memory: 256Mi }
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {cpu: 300m, memory: 256Mi}
 env:
-  - { name: PUBLIC_BASE_URL, value: "https://vulns-dev.admin.cerberus.internal" }
-  - { name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman-dev" }
-  - { name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman-dev" }
-  - { name: OIDC_CLIENT_ID, value: vuln-api }
-  - { name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc" }
-  - { name: KEYCLOAK_REALM, value: "vulnman-dev" }
-  - { name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin }
-  - { name: VAULT_ADDR, value: "https://vault.vault.svc:8200" }
-  - { name: VAULT_ROLE, value: "vuln-api-dev" }
-  - { name: TRANSIT_DATA_KEY, value: "vulnman-dev-data" }
-  - { name: TRANSIT_REPORT_KEY, value: "vulnman-dev-report" }
+  - {name: PUBLIC_BASE_URL, value: "https://vulns-dev.admin.cerberus.internal"}
+  - {name: OIDC_ISSUER, value: "https://auth.cerberoast.site/realms/vulnman-dev"}
+  - {name: OIDC_DISCOVERY_URL, value: "http://keycloak-public-http.keycloak-public.svc/realms/vulnman-dev"}
+  - {name: OIDC_CLIENT_ID, value: vuln-api}
+  - {name: KEYCLOAK_ADMIN_BASE_URL, value: "http://keycloak-public-http.keycloak-public.svc"}
+  - {name: KEYCLOAK_REALM, value: "vulnman-dev"}
+  - {name: KEYCLOAK_ADMIN_CLIENT_ID, value: vuln-api-admin}
+  - {name: VAULT_ADDR, value: "https://vault.vault.svc:8200"}
+  - {name: VAULT_ROLE, value: "vuln-api-dev"}
+  - {name: TRANSIT_DATA_KEY, value: "vulnman-dev-data"}
+  - {name: TRANSIT_REPORT_KEY, value: "vulnman-dev-report"}
   # k3s pod CIDR: X-Forwarded-For is only believed from Traefik's pods.
-  - { name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16" }
+  - {name: TRUSTED_PROXY_CIDRS, value: "10.42.0.0/16"}
 ingress:
   enabled: false
