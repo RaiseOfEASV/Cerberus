@@ -50,7 +50,7 @@ jobs:
     # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Toolchains for every apps/*/Justfile (Go + Node today). Versions
       # follow the apps' own go.mod / Dockerfile build stages.
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
@@ -86,7 +86,7 @@ jobs:
     name: sast
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: CodeQL init
         uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
@@ -108,7 +108,7 @@ jobs:
     name: sca
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Trivy - dependency vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -142,7 +142,7 @@ jobs:
     name: secret-scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0 # ggshield scans the full PR diff range, not just HEAD
 
