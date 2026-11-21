@@ -17,8 +17,8 @@ data "github_user" "production_reviewers" {
   username = each.value
 }
 
-# Used only by .github/workflows/deploy-dev.yml to record dev releases in
-# GitHub's Deployments list (ArgoCD does the deploying). No reviewers; master only.
+# deploy.yml's dev option runs here, so dev releases show in GitHub's
+# Deployments list. No reviewers; master only.
 resource "github_repository_environment" "dev" {
   repository  = var.github_repo
   environment = "dev"

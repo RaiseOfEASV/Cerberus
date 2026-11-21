@@ -7,8 +7,8 @@ name: Deploy
 # infra/k8s/environments/<env>/) - and ArgoCD does the actual apply, from
 # inside the cluster, under its own credentials.
 #
-# The `environment` input uses the repo's real directory/namespace names
-# (staging, prod). The GitHub Environment gating the job maps `prod` to
+# The `environment` input uses the repo's real directory names (dev,
+# staging, prod). The GitHub Environment gating the job maps `prod` to
 # `production` (infra/terraform/github/environments.tf - required reviewer,
 # deployments from master only); a bare `prod` would silently auto-create a new,
 # unprotected environment and bypass that reviewer.
@@ -42,9 +42,10 @@ name: Deploy
 # so prod gets byte-for-byte what was tested. The bump itself is
 # tools/deploy-bump.sh (tested by tools/tests/deploy-bump-test.sh).
 #
-# dev isn't an option here: dev's tag is changed by a normal PR, and dev
-# auto-syncs. The prod apps auto-sync too once the prod bump PR merges (after
-# the production approval and the merge); root-prod stays manual.
+# dev and staging auto-sync once their bump PR merges. The prod apps auto-sync
+# too once the prod bump PR merges (after the production approval and the
+# merge); root-prod stays manual. The `dev` environment has no reviewers and,
+# like production, only accepts runs from master.
 
 on:
   workflow_dispatch:
@@ -53,7 +54,7 @@ on:
         description: Target environment
         required: true
         type: choice
-        options: [staging, prod]
+        options: [dev, staging, prod]
       source:
         description: "tag = deploy the image tag below; staging = promote exactly what staging runs (prod only)"
         required: true
