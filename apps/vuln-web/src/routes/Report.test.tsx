@@ -47,7 +47,8 @@ describe('Report (public)', () => {
     const { container } = render(<MemoryRouter><Report /></MemoryRouter>)
     await fill('<img src=x onerror=alert(1)>')
     await screen.findByText('VM-XSSXSSXSS0')
-    expect(container.querySelector('img')).toBeNull()
+    // The only image allowed is the logo; the injected <img src=x> must stay text.
+    expect(container.querySelector('img:not(.brand-mark)')).toBeNull()
     expect(screen.getByText(/<img src=x onerror=alert\(1\)>/)).toBeInTheDocument()
   })
 

@@ -71,7 +71,7 @@ export type FindingPatch = Partial<{ title: string; description: string; asset: 
 export const api = {
   // quiet401: "not signed in" is a normal answer here, not a reason to redirect.
   me: () => request<User>('GET', '/api/me', undefined, { quiet401: true }),
-  // VulnMan's own login form: vuln-api checks the credentials with Keycloak.
+  // Cerberoast's own login form: vuln-api checks the credentials with Keycloak.
   signIn: (username: string, password: string) =>
     request<User>('POST', '/auth/password', { username, password }, { quiet401: true }),
   logout: () => request<void>('POST', '/auth/logout'),

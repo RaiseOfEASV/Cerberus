@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</div>
+        <div className="brand"><img className="brand-mark" src="/favicon.svg" alt="" width={30} height={30} /> Cerberoast</div>
         <nav aria-label="Main">
           <Item to="/app" end icon="grid" label="Dashboard" />
           <Item to="/app/findings" end icon="list" label="Findings" />

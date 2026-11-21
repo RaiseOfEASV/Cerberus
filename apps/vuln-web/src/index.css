@@ -1,4 +1,4 @@
-/* VulnMan design system.
+/* Cerberoast design system.
    Palette: steel (ground), paper (surfaces), ink (text, chrome, primary
    actions), slate (secondary text), rule (lines) and one signal amber that
    only marks time and attention: SLA clocks, the active nav item, focus.
@@ -97,7 +97,8 @@ input[type="checkbox"] { width: auto; margin-right: .45rem; accent-color: var(--
   background: var(--ink); color: #c3cdd9; padding: 1.2rem .75rem 1rem;
 }
 .brand { display: inline-flex; align-items: center; gap: .55rem; font-weight: 800; font-size: 1.1rem; font-stretch: 85%; color: var(--ink); text-decoration: none; }
-.brand-mark { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--signal); color: var(--ink); }
+.brand-mark { display: block; width: 30px; height: 30px; border-radius: 7px; }
+.sidebar .brand-mark, .brand.light .brand-mark { box-shadow: 0 0 0 1px rgb(255 255 255 / 18%); }
 .sidebar .brand, .brand.light { color: #fff; }
 .sidebar .brand { padding: 0 .65rem 1.4rem; }
 .sidebar nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
@@ -175,7 +176,7 @@ figure { margin: 0; }
 .lead { font-size: var(--t-md); line-height: 1.5; color: var(--ink-2); max-width: 36rem; margin-bottom: 2rem; }
 .cta { display: flex; gap: .8rem; flex-wrap: wrap; }
 
-/* The hero object: a finding as it looks inside VulnMan. */
+/* The hero object: a finding as it looks inside Cerberoast. */
 .specimen { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r-lg); padding: 1.4rem 1.5rem; box-shadow: 0 1px 0 var(--rule), 14px 14px 0 var(--steel); }
 .specimen-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
 .specimen-title { font-size: var(--t-md); font-weight: 700; margin-bottom: 1rem; }
