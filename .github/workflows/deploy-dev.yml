@@ -1,0 +1,55 @@
+name: Deploy dev
+
+# Records dev releases in GitHub's Deployments list, next to staging and
+# production. It deploys nothing itself: dev changes when a PR that edits
+# infra/helm/<app>/values-dev.yaml merges into master, and ArgoCD (root-dev,
+# automated sync) applies it from inside the cluster. CI still has no cluster
+# credentials. The record shows the merged change, not the end of the rollout;
+# ArgoCD usually catches up within a few minutes.
+#
+# The `dev` environment (infra/terraform/github/environments.tf) has no
+# reviewers and only accepts master.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "infra/helm/*/values-dev.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  record:
+    name: record-dev-deployment
+    # TEMPORARY (Epic 3 deferred): ubuntu-latest until the ARC runner pool
+    # (arc-runner-set) is deployed.
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://vulns-dev.admin.cerberus.internal
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List the image each app now runs in dev
+        # yq (mikefarah v4) is preinstalled on ubuntu-latest runners.
+        run: |
+          {
+            echo "### Dev release"
+            echo
+            echo "| App | Tag | Digest |"
+            echo "|---|---|---|"
+            for f in infra/helm/*/values-dev.yaml; do
+              app=$(basename "$(dirname "$f")")
+              tag=$(yq '.image.tag // ""' "$f")
+              digest=$(yq '.image.digest // ""' "$f")
+              [ -n "$tag" ] || continue
+              echo "| $app | \`$tag\` | \`$digest\` |"
+            done
+            echo
+            echo "ArgoCD syncs dev automatically from master."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
