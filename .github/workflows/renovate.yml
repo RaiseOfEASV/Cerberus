@@ -9,7 +9,9 @@ name: Renovate
 #
 # Needs the RENOVATE_TOKEN secret: a fine-grained PAT on this repository with
 # Contents, Pull requests, Issues and Workflows read/write, plus Commit
-# statuses, Checks and Dependabot alerts read. GITHUB_TOKEN won't do - PRs
+# statuses and Dependabot alerts read (fine-grained tokens have no Checks
+# permission; automerge is left to GitHub's native auto-merge, which waits
+# for checks itself). GITHUB_TOKEN won't do - PRs
 # it opens don't trigger CI. Commits go through the GitHub API
 # (platformCommit), so they are signed (Verified).
 
