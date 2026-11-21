@@ -4,9 +4,11 @@
     tools/trivy-diff.py --asset NAME --new NEW.json [--old OLD.json]
                         --new-ref REF [--old-ref REF]
 
-Prints a markdown section for the PR report and exits 1 when the new image
-has a CRITICAL vulnerability with a fix available (the same gate build.yml
-applies to our own images). Used by .github/workflows/images-scan.yml.
+Prints a markdown section for the PR report and exits 1 when the bump
+introduces a CRITICAL vulnerability with a fix available (for a new catalog
+entry: any such CRITICAL). Fixable CRITICALs the old image already had are
+listed as a warning but don't block - blocking them would keep the worse
+image. Used by .github/workflows/images-scan.yml.
 """
 from __future__ import annotations
 
@@ -54,12 +56,14 @@ def rows(vulns: list[dict]) -> list[str]:
 
 
 def report(asset: str, new_ref: str, old_ref: str | None, new: dict, old: dict) -> tuple[str, bool]:
-    gate = [v for v in new.values() if v.get("Severity") == "CRITICAL" and v.get("FixedVersion")]
+    fixable_crit = {k: v for k, v in new.items() if v.get("Severity") == "CRITICAL" and v.get("FixedVersion")}
+    gate = [v for k, v in fixable_crit.items() if k not in old]
+    inherited = [v for k, v in fixable_crit.items() if k in old]
     fixed = [old[k] for k in old.keys() - new.keys()]
     introduced = [new[k] for k in new.keys() - old.keys()]
     nc, oc = counts(new), counts(old)
 
-    md = [f"#### `{asset}` {'❌' if gate else '✅'}", ""]
+    md = [f"#### `{asset}` {'❌' if gate else ('⚠️' if inherited else '✅')}", ""]
     md.append(f"`{old_ref}` → `{new_ref}`" if old_ref else f"New image: `{new_ref}`")
     md.append("")
     if old_ref:
@@ -81,8 +85,12 @@ def report(asset: str, new_ref: str, old_ref: str | None, new: dict, old: dict) 
             md += ["", "| Severity | Vulnerability | Package | Fixed in |", "|---|---|---|---|", *rows(introduced)]
         md.append("")
     if gate:
-        md += [f"**Blocked:** {len(gate)} CRITICAL with a fix available.", "",
+        md += [f"**Blocked:** this bump introduces {len(gate)} CRITICAL with a fix available.", "",
                "| Severity | Vulnerability | Package | Fixed in |", "|---|---|---|---|", *rows(gate), ""]
+    if inherited:
+        md += [f"**Still present (not blocking):** {len(inherited)} CRITICAL with a fix available that the old image "
+               "already had - fixed upstream, waiting for a newer image.", "",
+               "| Severity | Vulnerability | Package | Fixed in |", "|---|---|---|---|", *rows(inherited), ""]
     return "\n".join(md), bool(gate)
 
 
