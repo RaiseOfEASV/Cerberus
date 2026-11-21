@@ -7,7 +7,7 @@ Each directory is synced by one ArgoCD app-of-apps Application from
 |---|---|---|---|
 | `dev/` | `root-dev` | automated | `dev` |
 | `staging/` | `root-staging` | automated | `staging` |
-| `prod/` | `root-prod` | **manual** | `cerberoast` (cerberoast.site) |
+| `prod/` | `root-prod` | apps automated (no prune), **root manual** | `cerberoast` (cerberoast.site) |
 
 Each app is a multi-source child Application: the generic chart
 `infra/helm/charts/app` plus `infra/helm/<app>/values-<env>.yaml`. Image tag
@@ -31,17 +31,16 @@ reviewed PR:
   `deploy/*` branch (signed by GitHub) and opens a PR. prod first waits for the `production` environment
   approval. The PR is merged (by a reviewing teammate, or by an admin via
   the ruleset bypass - so one admin *can* promote to prod alone; see
-  deploy.yml's header); staging then auto-syncs, prod needs a
-  manual `argocd app sync <app>-prod`.
+  deploy.yml's header); ArgoCD then deploys it - staging and the prod apps
+  both sync automatically.
 
 ## Syncing prod
 
-Prod Applications never sync on their own. After a prod bump PR merges:
-
-- **Image change only** (the usual case): sync the changed app -
-  `argocd app sync vuln-web-prod`.
+- **Image change** (the usual release): nothing to do - the prod apps sync
+  automatically when the bump PR merges. They never prune, so removing a
+  resource from a prod app still needs a manual sync with prune.
 - **Changes under `infra/k8s/environments/prod/` or `infra/k8s/cerberoast/`**
-  (new app, routing, certificate): sync `root-prod`.
+  (new app, routing, certificate, policies): `root-prod` is manual - sync it.
 
 Without the `argocd` CLI the same is done by setting the Application's
 `operation` (what the CLI does under the hood):
