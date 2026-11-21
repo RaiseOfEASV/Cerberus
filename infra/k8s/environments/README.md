@@ -15,13 +15,13 @@ and digest in those values files are what promotion changes. `master` is
 protected (PR + review + signed commits), so every change lands through a
 reviewed PR:
 
-- **dev**: edit `values-dev.yaml` (tag + digest) in a normal PR. After the
-  merge, `deploy-dev.yml` records the release in GitHub's Deployments list
-  (`dev` environment); ArgoCD does the deploying.
-- **staging/prod**: run `.github/workflows/deploy.yml`. One run deploys the
-  whole release (backend and frontend together) as one PR:
+- **dev, staging, prod**: run `.github/workflows/deploy.yml`. One run deploys
+  the whole release (backend and frontend together) as one PR; merge it and
+  ArgoCD applies it:
 
   ```
+  # 0. dev: try a build first (optional)
+  gh workflow run deploy.yml -f environment=dev -f source=tag -f version=<commit-sha>
   # 1. staging: every app at the commit CI built
   gh workflow run deploy.yml -f environment=staging -f source=tag -f version=<commit-sha>
   # 2. after testing staging: prod gets exactly what staging runs

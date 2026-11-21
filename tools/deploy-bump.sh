@@ -2,6 +2,7 @@
 # Pins apps' image tag + digest in their per-environment Helm values - the
 # GitOps change behind a deploy. Used by .github/workflows/deploy.yml.
 #
+#   deploy-bump.sh --env dev     --apps all --version <tag>
 #   deploy-bump.sh --env staging --apps all --version <tag>
 #   deploy-bump.sh --env prod    --apps all --from staging
 #
@@ -31,7 +32,7 @@ while [ $# -gt 0 ]; do
     *) die "unknown argument $1" ;;
   esac
 done
-case "$env" in staging|prod) ;; *) die "--env must be staging or prod" ;; esac
+case "$env" in dev|staging|prod) ;; *) die "--env must be dev, staging or prod" ;; esac
 [ -n "$apps" ] || die "--apps is required"
 if [ -n "$from" ]; then
   [ "$from" = staging ] || die "--from only supports staging"

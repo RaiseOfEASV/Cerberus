@@ -11,7 +11,7 @@ check() { if eval "$2"; then ok "$1"; else bad "$1"; fi; }
 new_repo() {
   R=$(mktemp -d)
   for a in vuln-api vuln-web; do mkdir -p "$R/apps/$a"; touch "$R/apps/$a/Dockerfile"; done
-  for a in vuln-api vuln-web; do for e in staging prod; do
+  for a in vuln-api vuln-web; do for e in dev staging prod; do
     mkdir -p "$R/infra/helm/$a"
     printf 'image:\n  repository: ghcr.io/raiseofeasv/%s\n  tag: "old"\n  digest: "sha256:%064d"\n' "$a" 0 > "$R/infra/helm/$a/values-$e.yaml"
   done; done
@@ -64,7 +64,14 @@ R=$(new_repo); DEPLOY_ROOT=$R "$bump" --env staging --apps all --version same >/
 out=$(DEPLOY_ROOT=$R "$bump" --env staging --apps all --version same 2>/dev/null)
 check "no change prints no files" '[ -z "$out" ]'
 
-# 6. summary for the PR body
+# 6. dev works like staging and leaves the other environments alone
+R=$(new_repo); DEPLOY_ROOT=$R "$bump" --env dev --apps all --version d1 >/dev/null 2>&1; rc=$?
+check "all -> dev exits 0 and pins both apps" '[ $rc = 0 ] && [ "$(tag $R/infra/helm/vuln-api/values-dev.yaml)" = d1 ] && [ "$(digest $R/infra/helm/vuln-web/values-dev.yaml)" = "$(digest_of vuln-web d1)" ]'
+check "dev leaves staging untouched" '[ "$(tag $R/infra/helm/vuln-api/values-staging.yaml)" = old ]'
+DEPLOY_ROOT=$R "$bump" --env dev --apps all --from staging >/dev/null 2>&1; rc=$?
+check "dev refuses --from staging" '[ $rc != 0 ]'
+
+# 7. summary for the PR body
 R=$(new_repo); S=$(mktemp); DEPLOY_SUMMARY=$S DEPLOY_ROOT=$R "$bump" --env staging --apps all --version t9 >/dev/null 2>&1
 check "summary lists each app with tag and digest" 'grep -q "vuln-api.*t9.*sha256:" $S && grep -q "vuln-web.*t9.*sha256:" $S'
 exit $fail
