@@ -2,7 +2,7 @@
 # vulnman_owner (owns the database, runs migrations) and vulnman_app (what
 # the running app uses - no DDL). The postgres superuser password never
 # leaves this pod's Secret.
-image: postgres:16-alpine
+image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
 database: vulnman
 storage: 2Gi
 # Vault KV path (under secret/) with keys superuser_password,

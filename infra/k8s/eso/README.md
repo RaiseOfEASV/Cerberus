@@ -9,7 +9,7 @@ two gaps that were flagged as open since Epic 2 and Epic 3:
 ## Order of operations
 
 1. Epic 4's cluster, Epic 6's Vault deployed + initialized/unsealed + `infra/terraform/vault/` applied.
-2. `helm install external-secrets external-secrets/external-secrets -n external-secrets --create-namespace -f ../helm/values/eso-values.yaml`
+2. `helm install external-secrets external-secrets/external-secrets --version 2.14.0 -n external-secrets --create-namespace -f ../helm/values/eso-values.yaml`
 3. `kubectl apply -f cluster-secret-store.yaml`
 4. Write the real secret values into Vault by hand (never via Terraform or this
    repo - see `infra/terraform/vault/README.md` step 3).

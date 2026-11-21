@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
           env:
             - name: POSTGRES_DB
               value: dtrack
@@ -85,7 +85,7 @@ spec:
     spec:
       containers:
         - name: apiserver
-          image: dependencytrack/apiserver:4.12.3
+          image: dependencytrack/apiserver:4.12.3@sha256:fca5c4cf1a97826d0997f8985376cbc3e68a2fa476c8f9d20c61647808f5afec
           env:
             - { name: ALPINE_DATABASE_MODE, value: external }
             - { name: ALPINE_DATABASE_URL, value: "jdbc:postgresql://dt-postgres:5432/dtrack" }
@@ -135,7 +135,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: dependencytrack/frontend:4.12.3
+          image: dependencytrack/frontend:4.12.3@sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
           env:
             - { name: API_BASE_URL, value: "http://dt-apiserver:8080" }
           resources:

@@ -2,20 +2,20 @@
 
 Order of operations once `infra/terraform/cluster/` has provisioned a cluster:
 
-1. **MetalLB** - `helm install metallb metallb/metallb -n metallb-system --create-namespace -f ../helm/values/metallb-values.yaml`,
+1. **MetalLB** - `helm install metallb metallb/metallb --version 0.16.1 -n metallb-system --create-namespace -f ../helm/values/metallb-values.yaml`,
    then `kubectl apply -f metallb/ip-address-pool.yaml`. **Done** - the pool is a
    real IP now (`10.0.2.50`), not the kind-era placeholder. On Azure specifically,
    this IP also has to be registered as a secondary IP configuration on the
    cluster VM's NIC (see `infra/terraform/modules/k8s-cluster/azure-k3s/main.tf`) -
    MetalLB's default L2/ARP mode doesn't work unmodified on Azure's SDN otherwise.
-2. **Traefik** - `helm install traefik traefik/traefik -n traefik --create-namespace -f ../helm/values/traefik-values.yaml`.
+2. **Traefik** - `helm install traefik traefik/traefik --version 42.1.3 -n traefik --create-namespace -f ../helm/values/traefik-values.yaml`.
    Gets its external IP from MetalLB. **Done** - confirmed serving traffic on
    `10.0.2.50` (301 on :80, redirecting to :443 per `traefik-values.yaml`; 404 on
    :443, expected with no IngressRoutes registered yet). Also had to fix the
    values file's `ports.web/websecure` keys for the chart's current schema (v42,
    Traefik v3.7) - the originally-scaffolded `redirectTo`/`tls` keys are from an
    older chart major version and were rejected outright on install.
-3. **Kyverno** - `helm install kyverno kyverno/kyverno -n kyverno --create-namespace -f ../helm/values/kyverno-values.yaml`,
+3. **Kyverno** - `helm install kyverno kyverno/kyverno --version 3.9.2 -n kyverno --create-namespace -f ../helm/values/kyverno-values.yaml`,
    then `kubectl apply -f kyverno/policies/`. Do this early - the namespace-baseline
    policies (PSA labels + default-deny NetworkPolicy generation) only apply to
    namespaces created AFTER Kyverno is up, so later steps benefit from them, earlier
