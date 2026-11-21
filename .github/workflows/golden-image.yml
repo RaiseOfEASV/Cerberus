@@ -49,7 +49,7 @@ jobs:
           ls -la /dev/kvm
 
       - name: Install Packer
-        uses: hashicorp/setup-packer@main
+        uses: hashicorp/setup-packer@ccebc9ff384f18f44b9866a603d149286dcafcda # main
         with:
           version: "1.11.2"
 

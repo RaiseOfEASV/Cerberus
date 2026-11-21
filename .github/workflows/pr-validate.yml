@@ -100,7 +100,7 @@ jobs:
         uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
 
       - name: Semgrep - custom org rules, layered on top of CodeQL
-        uses: returntocorp/semgrep-action@v1
+        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:
           config: auto
 
@@ -147,7 +147,7 @@ jobs:
           fetch-depth: 0 # ggshield scans the full PR diff range, not just HEAD
 
       - name: GitGuardian scan
-        uses: GitGuardian/ggshield-action@v1
+        uses: GitGuardian/ggshield-action@5cc1ed2be3e8bf625d354c7170731880670f74de # v1
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
         # No `args`: the action's entrypoint already runs
