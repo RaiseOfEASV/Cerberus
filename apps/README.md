@@ -20,7 +20,7 @@ image has to make them possible:
 
 - **Final stage `FROM` a central base** (`ghcr.io/raiseofeasv/base-*`, see
   `docker/base/`) where one fits. Build stages can use any public image.
-  Exception: a static frontend is served by `nginxinc/nginx-unprivileged`
+  Exception: a static frontend is served by `nginx/nginx-unprivileged`
   (stable line) instead.
 - **Numeric non-root `USER`** (e.g. `65532:65532` for distroless, `101` for
   nginx-unprivileged) - Kubernetes can't verify `runAsNonRoot` for a named user.
