@@ -30,6 +30,9 @@ type Config struct {
 	TransitDataKey            string
 	TransitReportKey          string
 	TrustedProxyCIDRs         []netip.Prefix
+	// ScannerToken enables POST /internal/scans/trivy for the in-cluster
+	// nightly scanner (vuln-scanner). Empty = the endpoint doesn't exist.
+	ScannerToken string
 }
 
 var required = []string{
@@ -73,6 +76,10 @@ func Load(getenv func(string) string) (Config, error) {
 		VaultTokenPath:            or("VAULT_TOKEN_PATH", "/var/run/secrets/vault/token"),
 		TransitDataKey:            getenv("TRANSIT_DATA_KEY"),
 		TransitReportKey:          getenv("TRANSIT_REPORT_KEY"),
+		ScannerToken:              strings.TrimSpace(getenv("SCANNER_TOKEN")),
+	}
+	if c.ScannerToken != "" && len(c.ScannerToken) < 32 {
+		return Config{}, errors.New("SCANNER_TOKEN must be at least 32 characters")
 	}
 	for _, s := range strings.Split(getenv("TRUSTED_PROXY_CIDRS"), ",") {
 		if s = strings.TrimSpace(s); s == "" {

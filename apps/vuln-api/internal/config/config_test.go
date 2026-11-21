@@ -81,3 +81,18 @@ func TestLoadMigrateOnlyNeedsMigrateURL(t *testing.T) {
 		t.Fatalf("expected missing MIGRATE_DATABASE_URL, got %v", err)
 	}
 }
+
+func TestLoadScannerToken(t *testing.T) {
+	m := full()
+	if c, err := Load(env(m)); err != nil || c.ScannerToken != "" {
+		t.Fatalf("no SCANNER_TOKEN: %q %v (the scan endpoint must stay off)", c.ScannerToken, err)
+	}
+	m["SCANNER_TOKEN"] = "too-short"
+	if _, err := Load(env(m)); err == nil {
+		t.Fatal("a short SCANNER_TOKEN was accepted")
+	}
+	m["SCANNER_TOKEN"] = "0123456789abcdef0123456789abcdef"
+	if c, err := Load(env(m)); err != nil || c.ScannerToken != m["SCANNER_TOKEN"] {
+		t.Fatalf("valid SCANNER_TOKEN: %v", err)
+	}
+}
