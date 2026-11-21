@@ -32,7 +32,10 @@ spec:
           initContainers:
             - name: dump
               image: {{ .Values.image }}
-              command: ["sh", "-c", "pg_dump -Fc -h {{ $name }} -U vulnman_owner -d {{ .Values.database }} -f /backup/{{ .Values.database }}-$(date -u +%Y%m%dT%H%M%SZ).dump"]
+              # Wait first: kube-router adds a new pod's IP to NetworkPolicy
+              # sets a second or two after it starts, so an immediate
+              # connection is refused (this failed every night until fixed).
+              command: ["sh", "-c", "for i in $(seq 1 60); do pg_isready -q -h {{ $name }} && break; sleep 1; done; pg_dump -Fc -h {{ $name }} -U vulnman_owner -d {{ .Values.database }} -f /backup/{{ .Values.database }}-$(date -u +%Y%m%dT%H%M%SZ).dump"]
               env:
                 - name: PGPASSWORD
                   valueFrom: { secretKeyRef: { name: {{ $name }}-credentials, key: owner_password } }

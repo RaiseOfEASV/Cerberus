@@ -44,6 +44,8 @@ if cj:
     js=cj["spec"]["jobTemplate"]["spec"]["template"]["spec"]
     imgs=[c["image"] for c in js.get("initContainers",[])+js["containers"]]
     check("backup uses chainguard minio-client, not minio/mc", any("cgr.dev/chainguard/minio-client" in i for i in imgs) and not any(i.startswith("minio/mc") for i in imgs))
+    dump=[c for c in js.get("initContainers",[]) if c["name"]=="dump"][0]
+    check("backup waits for the database before pg_dump (kube-router admits new pods late)", "pg_isready" in " ".join(dump["command"]))
     check("backup containers have limits", all(c["resources"]["limits"].get("cpu") and c["resources"]["limits"].get("memory") for c in js.get("initContainers",[])+js["containers"]))
 sys.exit(0 if ok else 1)
 EOF
