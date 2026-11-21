@@ -13,6 +13,15 @@ import (
 
 func actor(u auth.User) store.Actor { return store.Actor{Sub: u.Sub, Name: u.Name, Role: u.Role} }
 
+// ownerReq is the assignee the store must re-check under its row lock: the
+// developer themself (D5), or nobody for roles that may act on any finding.
+func ownerReq(u auth.User) string {
+	if u.Role == domain.RoleDeveloper {
+		return u.Sub
+	}
+	return ""
+}
+
 func user(r *http.Request) auth.User { u, _ := auth.UserFrom(r.Context()); return u }
 
 func pathID(r *http.Request, name string) (int64, bool) {
@@ -218,6 +227,7 @@ func (s *server) patchFinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sp.Title, sp.Description, sp.Asset, sp.CVE = p.Title, p.Description, p.Asset, p.CVE
+	sp.RequireAssignee = ownerReq(u)
 	if p.Severity != nil {
 		sev, err := parseSeverity(*p.Severity)
 		if bad(err) {
@@ -277,7 +287,7 @@ func (s *server) changeStatus(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusForbidden, "your role may not move a finding to "+string(to))
 		return
 	}
-	out, err := s.Store.ChangeStatus(r.Context(), actor(u), f.ID, to, req.Note)
+	out, err := s.Store.ChangeStatus(r.Context(), actor(u), f.ID, to, req.Note, ownerReq(u))
 	if err != nil {
 		s.fail(w, r, err)
 		return

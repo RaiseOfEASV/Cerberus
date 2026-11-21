@@ -111,8 +111,15 @@ func (s *server) assignees(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	if list == nil {
-		list = []Assignee{}
+	// Only what the assignment picker needs - no e-mail addresses.
+	type assignee struct {
+		Sub  string      `json:"sub"`
+		Name string      `json:"name"`
+		Role domain.Role `json:"role"`
 	}
-	writeJSON(w, http.StatusOK, list)
+	out := make([]assignee, 0, len(list))
+	for _, a := range list {
+		out = append(out, assignee{a.Sub, a.Name, a.Role})
+	}
+	writeJSON(w, http.StatusOK, out)
 }

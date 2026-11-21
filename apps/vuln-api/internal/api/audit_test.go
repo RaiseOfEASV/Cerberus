@@ -95,3 +95,19 @@ func TestVerifyEndpointReportsTamper(t *testing.T) {
 		t.Fatalf("tampered chain reported OK: %+v", v)
 	}
 }
+
+func TestHistoryReadableWhenCiphertextTampered(t *testing.T) {
+	hs := newHarness(t)
+	f := hs.createFinding("Tampered")
+	owner := testdb.OwnerOf(t, hs.st.Pool())
+	if _, err := owner.Exec(context.Background(), `UPDATE findings SET description_ct = '\x00' WHERE id = $1`, f.ID); err != nil {
+		t.Fatal(err)
+	}
+	w := hs.do(uAuditor, "GET", fmt.Sprintf("/api/findings/%d/history", f.ID), nil)
+	if w.Code != 200 || len(decode[[]store.AuditEntry](t, w)) == 0 {
+		t.Fatalf("history of a tampered finding: %d %s", w.Code, w.Body)
+	}
+	if w := hs.do(uAuditor, "GET", "/api/findings/999/history", nil); w.Code != 404 {
+		t.Fatalf("history of a missing finding: %d", w.Code)
+	}
+}

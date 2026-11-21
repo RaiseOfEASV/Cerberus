@@ -23,6 +23,9 @@ var (
 	ErrConflict          = errors.New("conflict")
 	ErrInvalid           = errors.New("invalid")
 	ErrIllegalTransition = errors.New("illegal status transition")
+	// ErrForbidden: the finding's assignee changed after the API's
+	// ownership check (D5) - re-checked under the row lock.
+	ErrForbidden = errors.New("only the assignee may do this")
 	// ErrDecrypt: a stored ciphertext failed to decrypt (tampering, moved
 	// data, or Vault refusing). Never returned with partial plaintext.
 	ErrDecrypt = errors.New("decryption failed")

@@ -16,10 +16,20 @@ type ImportResult struct {
 // finding gets its own finding.create audit row, plus one import.<source>
 // summary row.
 func (s *Store) Import(ctx context.Context, a Actor, nfs []NewFinding, source string) (ImportResult, error) {
+	// Data keys first: a 2000-row import would otherwise make 2000 Vault
+	// calls while holding the audit lock, blocking every other mutation.
+	keys := make([]dataKey, len(nfs))
+	for i := range nfs {
+		k, err := s.newKey(ctx)
+		if err != nil {
+			return ImportResult{}, err
+		}
+		keys[i] = k
+	}
 	var res ImportResult
 	err := s.mutate(ctx, func(tx pgx.Tx) error {
 		res = ImportResult{}
-		for _, nf := range nfs {
+		for i, nf := range nfs {
 			if nf.Fingerprint != "" {
 				var exists bool
 				if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM findings WHERE fingerprint = $1
@@ -31,7 +41,7 @@ func (s *Store) Import(ctx context.Context, a Actor, nfs []NewFinding, source st
 					continue
 				}
 			}
-			if _, err := s.createTx(ctx, tx, a, nf, map[string]any{"import": source}); err != nil {
+			if _, err := s.createTx(ctx, tx, a, nf, map[string]any{"import": source}, keys[i]); err != nil {
 				return err
 			}
 			res.Created++

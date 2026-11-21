@@ -30,12 +30,16 @@ func attAAD(findingID, attID int64) []byte {
 
 // AddAttachment stores bytes sealed under the finding's data key. Type and
 // size checks happen in the API (sniffed type, 10 MiB cap).
-func (s *Store) AddAttachment(ctx context.Context, a Actor, findingID int64, name, contentType string, data []byte) (Attachment, error) {
+// requireAssignee (optional) must still be the assignee under the row lock.
+func (s *Store) AddAttachment(ctx context.Context, a Actor, findingID int64, name, contentType string, data []byte, requireAssignee ...string) (Attachment, error) {
 	var att Attachment
 	err := s.mutate(ctx, func(tx pgx.Tx) error {
-		var wrapped string
-		if err := tx.QueryRow(ctx, `SELECT wrapped_dek FROM findings WHERE id=$1 FOR UPDATE`, findingID).Scan(&wrapped); err != nil {
+		var wrapped, assignee string
+		if err := tx.QueryRow(ctx, `SELECT wrapped_dek, assignee_sub FROM findings WHERE id=$1 FOR UPDATE`, findingID).Scan(&wrapped, &assignee); err != nil {
 			return notFound(err)
+		}
+		if len(requireAssignee) > 0 && requireAssignee[0] != "" && assignee != requireAssignee[0] {
+			return ErrForbidden
 		}
 		var n int
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM attachments WHERE finding_id=$1`, findingID).Scan(&n); err != nil {

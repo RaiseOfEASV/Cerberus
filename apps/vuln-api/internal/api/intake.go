@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/intake"
@@ -25,6 +27,7 @@ const (
 	maxTrivyFindings = 2000
 	maxCSVBytes      = 1 << 20
 	maxCSVRows       = 2000
+	maxExportRows    = 10000
 )
 
 // readBody reads at most limit bytes, answering 413 above it.
@@ -83,6 +86,10 @@ func (s *server) runImport(w http.ResponseWriter, r *http.Request, nfs []store.N
 		if nf.DiscoveredAt.IsZero() {
 			nf.DiscoveredAt = s.Now()
 		}
+		if nf.DiscoveredAt.After(s.Now().Add(time.Minute)) {
+			writeErr(w, http.StatusBadRequest, (&intake.RowError{Row: i + 2, Err: errBad("discovered_at is in the future")}).Error())
+			return
+		}
 		c := createReq{Title: nf.Title, Description: nf.Description, Asset: nf.Asset, Severity: string(nf.Severity), CVSS: nf.CVSS, CVE: nf.CVE}
 		if _, err := validateNew(c); err != nil {
 			if source == "csv" {
@@ -112,6 +119,7 @@ func (s *server) exportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var all []store.Finding
+	truncated := false
 	f.Limit, f.Offset = 200, 0
 	for {
 		items, total, err := s.Store.ListFindings(r.Context(), f)
@@ -121,14 +129,20 @@ func (s *server) exportCSV(w http.ResponseWriter, r *http.Request) {
 		}
 		all = append(all, items...)
 		f.Offset += len(items)
-		if len(items) == 0 || f.Offset >= total || f.Offset >= 10000 {
+		if len(items) == 0 || f.Offset >= total {
+			break
+		}
+		if f.Offset >= maxExportRows {
+			truncated = true
 			break
 		}
 	}
-	if err := s.Store.RecordEvent(r.Context(), actor(u), "export.csv", map[string]any{"rows": len(all), "query": r.URL.RawQuery}); err != nil {
+	if err := s.Store.RecordEvent(r.Context(), actor(u), "export.csv", map[string]any{"rows": len(all), "truncated": truncated, "query": r.URL.RawQuery}); err != nil {
 		s.fail(w, r, err)
 		return
 	}
+	// Exports stop at maxExportRows; say so rather than silently cutting off.
+	w.Header().Set("X-Export-Truncated", strconv.FormatBool(truncated))
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="findings.csv"`)
 	_ = intake.WriteCSV(w, all)

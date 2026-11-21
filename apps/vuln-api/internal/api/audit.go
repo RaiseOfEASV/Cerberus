@@ -74,12 +74,25 @@ func (s *server) verifyAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
+// history only checks that the finding exists - it never decrypts it, so
+// the trail stays readable exactly when a finding's data has been damaged.
 func (s *server) history(w http.ResponseWriter, r *http.Request) {
-	f, _, ok := s.load(w, r, domain.ActViewAudit)
-	if !ok {
+	if !can(w, user(r), domain.ActViewAudit) {
 		return
 	}
-	entries, err := s.Store.Audit(r.Context(), store.AuditFilter{FindingID: &f.ID, Limit: 1000})
+	id, ok := pathID(r, "id")
+	if !ok {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if exists, err := s.Store.FindingExists(r.Context(), id); err != nil {
+		s.fail(w, r, err)
+		return
+	} else if !exists {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	entries, err := s.Store.Audit(r.Context(), store.AuditFilter{FindingID: &id, Limit: 1000})
 	if err != nil {
 		s.fail(w, r, err)
 		return
