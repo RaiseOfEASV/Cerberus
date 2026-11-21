@@ -32,7 +32,7 @@ Evidence names the automated test(s) that prove the behaviour (Go tests in
 | FIND-06 | SHOULD | Done | Every change audited in the same transaction. `TestUpdateAuditsChangedFieldsOnly`, `TestAuditRecordsActorAndTime` |
 | FIND-07 | SHOULD | Done | Links: duplicate / related / same root cause. `TestLinkSymmetricAndNoSelf`, `TestLinksAPI` |
 | FIND-08 | STRETCH | Partial | CSV import (all-or-nothing) and export (formula-safe); no Excel. `TestCSVImportBadSeverity400`, `TestCSVExportRoundTrip`, `TestCSVFormulaEscaped` |
-| FIND-09 | STRETCH | Done | Trivy image and SBOM scan JSON, de-duplicated. Fixtures are real trivy 0.58.1 output. `TestParseTrivyImage`, `TestParseTrivySBOM`, `TestTrivyImportAndReimportSkipsDuplicates` |
+| FIND-09 | STRETCH | Done | Trivy image and SBOM scan JSON, de-duplicated. Fixtures are real trivy 0.58.1 output. Also automatic: a nightly in-cluster scan (`apps/vuln-scanner`) scans the images running in the environment and syncs them through vuln-api's internal endpoint, opening findings for new vulnerabilities and closing (Remediated, audited) the ones no longer reported. `TestParseTrivyImage`, `TestParseTrivySBOM`, `TestTrivyImportAndReimportSkipsDuplicates`, `TestSyncScanCreatesSkipsAndCloses`, `TestScanEndpointRefusals` |
 | FIND-10 | STRETCH | Not done | Out of scope (plan D18 / optional Task 24) |
 | FIND-11 | SHOULD | Done | Envelope encryption with Vault Transit. `TestCreateEncryptsDescription`, `TestSwappedCiphertextFails`, `TestOpenWrongAAD` |
 | AUDIT-01 | SHOULD | Done | Who, what, which finding, when - for every mutation, login, import, export and role change |
