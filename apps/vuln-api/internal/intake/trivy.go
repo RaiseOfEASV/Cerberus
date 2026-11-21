@@ -13,7 +13,6 @@ import (
 	"math"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/domain"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/store"
@@ -69,7 +68,6 @@ func ParseTrivy(r io.Reader, max int, asset string) ([]store.NewFinding, error) 
 	if !domain.ValidAsset(asset) {
 		return nil, fmt.Errorf("asset %q is not a valid asset name; pass ?asset=", asset)
 	}
-	now := time.Now().UTC()
 	seen := map[string]bool{}
 	var out []store.NewFinding
 	for _, res := range rep.Results {
@@ -90,13 +88,12 @@ func ParseTrivy(r io.Reader, max int, asset string) ([]store.NewFinding, error) 
 				sev = domain.SevLow
 			}
 			nf := store.NewFinding{
-				Title:        truncate(strings.TrimSpace(v.VulnerabilityID+" in "+v.PkgName+" "+v.InstalledVersion), 200),
-				Description:  truncate(describe(v.Title, v.Description, v.FixedVersion, v.PrimaryURL, res.Target), 20000),
-				Asset:        asset,
-				Severity:     sev,
-				Source:       "trivy",
-				Fingerprint:  fp,
-				DiscoveredAt: now,
+				Title:       truncate(strings.TrimSpace(v.VulnerabilityID+" in "+v.PkgName+" "+v.InstalledVersion), 200),
+				Description: truncate(describe(v.Title, v.Description, v.FixedVersion, v.PrimaryURL, res.Target), 20000),
+				Asset:       asset,
+				Severity:    sev,
+				Source:      "trivy",
+				Fingerprint: fp, // DiscoveredAt is left zero: the API stamps the import time
 			}
 			if cveRe.MatchString(v.VulnerabilityID) {
 				nf.CVE = v.VulnerabilityID

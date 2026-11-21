@@ -7,6 +7,9 @@ database: vulnman
 storage: 2Gi
 # Vault KV path (under secret/) with keys superuser_password,
 # owner_password, app_password - read via ESO.
+# The passwords are put into postgres:// URLs verbatim (ESO templates), so
+# keep them URL-safe - hex or alphanumeric, as generated. In-cluster traffic
+# uses sslmode=disable; NetworkPolicy limits who can connect.
 vaultPath: ""
 # Pod labels allowed to connect on 5432 (besides the backup job).
 clientSelector: {}

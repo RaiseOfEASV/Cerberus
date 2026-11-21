@@ -83,7 +83,7 @@ func (s *server) addAttachment(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "file type "+ct+" is not allowed (png, jpeg, pdf, plain text, json)")
 		return
 	}
-	att, err := s.Store.AddAttachment(r.Context(), actor(u), f.ID, name, ct, data)
+	att, err := s.Store.AddAttachment(r.Context(), actor(u), f.ID, name, ct, data, ownerReq(u))
 	if err != nil {
 		s.fail(w, r, err)
 		return

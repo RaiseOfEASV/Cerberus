@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/auth"
 	"github.com/RaiseOfEASV/Cerberus/apps/vuln-api/internal/store"
@@ -136,5 +137,23 @@ func TestCSVExportRoundTrip(t *testing.T) {
 	}
 	if w := hs.do(uDev, "GET", "/api/export/csv", nil); w.Code != 403 {
 		t.Fatalf("developer export: %d", w.Code)
+	}
+}
+
+func TestCSVImportRejectsFutureDiscoveredAt(t *testing.T) {
+	hs := newHarness(t)
+	future := hs.now.Add(48 * time.Hour).Format(time.RFC3339)
+	w := hs.raw(uAnalyst, "POST", "/api/import/csv", "text/csv", []byte("title,asset,severity,discovered_at\nFuture one,a,Low,"+future+"\n"))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), "row 2") {
+		t.Fatalf("future discovered_at: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestCSVExportFlagsTruncation(t *testing.T) {
+	hs := newHarness(t)
+	hs.createFinding("Only one")
+	w := hs.do(uPM, "GET", "/api/export/csv", nil)
+	if w.Header().Get("X-Export-Truncated") != "false" {
+		t.Fatalf("export without truncation should say so: %v", w.Header())
 	}
 }

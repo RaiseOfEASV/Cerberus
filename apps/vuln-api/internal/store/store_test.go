@@ -453,3 +453,44 @@ func TestCreateDuplicateOpenFingerprintConflict(t *testing.T) {
 		t.Fatalf("failed create left audit rows: %+v", res)
 	}
 }
+
+func TestOwnershipCheckedInsideTransaction(t *testing.T) {
+	e := newEnv(t)
+	f := e.create("Race", "x", domain.SevLow)
+	if _, err := e.s.Assign(ctx, pm, f.ID, "dev-2", "Other Dev", nil); err != nil {
+		t.Fatal(err)
+	}
+	title := "hijacked"
+	// The API checked ownership when dev-1 still owned it; by the time the
+	// write runs the finding belongs to dev-2, and the store must refuse.
+	_, err := e.s.UpdateFinding(ctx, dev, f.ID, store.Patch{Title: &title, RequireAssignee: dev.Sub})
+	if !errors.Is(err, store.ErrForbidden) {
+		t.Fatalf("UpdateFinding after reassignment: %v", err)
+	}
+	if _, err := e.s.ChangeStatus(ctx, dev, f.ID, domain.StTriaged, "", dev.Sub); !errors.Is(err, store.ErrForbidden) {
+		t.Fatalf("ChangeStatus after reassignment: %v", err)
+	}
+	if _, err := e.s.AddAttachment(ctx, dev, f.ID, "a.txt", "text/plain", []byte("x"), dev.Sub); !errors.Is(err, store.ErrForbidden) {
+		t.Fatalf("AddAttachment after reassignment: %v", err)
+	}
+	got, _ := e.s.GetFinding(ctx, f.ID)
+	if got.Title != "Race" {
+		t.Fatal("refused update was applied")
+	}
+}
+
+func TestImportFetchesDataKeysBeforeLocking(t *testing.T) {
+	e := newEnv(t)
+	spy := &lockSpyTransit{Transit: crypttest.New(), pool: e.s.Pool()}
+	s := store.New(e.s.Pool(), spy, func() time.Time { return t0 })
+	nfs := make([]store.NewFinding, 5)
+	for i := range nfs {
+		nfs[i] = store.NewFinding{Title: fmt.Sprintf("imp %d", i), Asset: "x", Severity: domain.SevLow, Source: "csv", DiscoveredAt: t0}
+	}
+	if _, err := s.Import(ctx, analyst, nfs, "csv"); err != nil {
+		t.Fatal(err)
+	}
+	if n := spy.during.Load(); n != 0 {
+		t.Fatalf("%d Vault calls happened while the audit lock was held", n)
+	}
+}

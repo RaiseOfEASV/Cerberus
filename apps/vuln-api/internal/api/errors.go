@@ -24,6 +24,8 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 // answered with a generic 500 - never internals or stack traces.
 func (s *server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, store.ErrForbidden):
+		writeErr(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, store.ErrNotFound):
 		writeErr(w, http.StatusNotFound, "not found")
 	case errors.Is(err, store.ErrIllegalTransition):

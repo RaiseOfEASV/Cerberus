@@ -284,3 +284,11 @@ func TestAssigneesList(t *testing.T) {
 		t.Fatalf("assignees: %d %+v", w.Code, list)
 	}
 }
+
+func TestAssigneesOmitEmail(t *testing.T) {
+	hs := newHarness(t)
+	w := hs.do(uDev, "GET", "/api/assignees", nil)
+	if strings.Contains(w.Body.String(), "email") {
+		t.Fatalf("assignee list exposes e-mail addresses: %s", w.Body)
+	}
+}

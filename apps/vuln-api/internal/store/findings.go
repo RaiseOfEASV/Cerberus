@@ -45,11 +45,36 @@ type NewFinding struct {
 }
 
 // Patch: nil fields are left unchanged. ClearCVSS removes the score.
+// RequireAssignee, when set, must still be the assignee under the row lock.
 type Patch struct {
 	Title, Description, Asset, CVE *string
 	Severity                       *domain.Severity
 	CVSS                           *float64
 	ClearCVSS                      bool
+	RequireAssignee                string
+}
+
+type dataKey struct {
+	plain   []byte
+	wrapped string
+}
+
+// newKey fetches a data key from Vault. Called before a mutation starts, so
+// no Vault round-trip happens while the audit chain lock is held.
+func (s *Store) newKey(ctx context.Context) (dataKey, error) {
+	p, w, err := s.transit.DataKey(ctx)
+	if err != nil {
+		return dataKey{}, fmt.Errorf("data key: %w", err)
+	}
+	return dataKey{p, w}, nil
+}
+
+// owns re-checks D5 ownership under the row lock.
+func owns(cur Finding, require string) error {
+	if require != "" && cur.AssigneeSub != require {
+		return ErrForbidden
+	}
+	return nil
 }
 
 type Filter struct {
@@ -80,10 +105,14 @@ func aad(id int64, field string) []byte { return []byte(strconv.FormatInt(id, 10
 // reporter e-mail sealed under a fresh per-finding data key (D9).
 // ErrConflict: an open finding already has this fingerprint.
 func (s *Store) CreateFinding(ctx context.Context, a Actor, nf NewFinding) (Finding, error) {
+	key, err := s.newKey(ctx)
+	if err != nil {
+		return Finding{}, err
+	}
 	var f Finding
-	err := s.mutate(ctx, func(tx pgx.Tx) error {
+	err = s.mutate(ctx, func(tx pgx.Tx) error {
 		var err error
-		f, err = s.createTx(ctx, tx, a, nf, nil)
+		f, err = s.createTx(ctx, tx, a, nf, nil, key)
 		return err
 	})
 	return f, err
@@ -91,14 +120,12 @@ func (s *Store) CreateFinding(ctx context.Context, a Actor, nf NewFinding) (Find
 
 // createTx inserts one finding and its finding.create audit row inside a
 // mutation. extra is merged into the audit details (e.g. the import source).
-func (s *Store) createTx(ctx context.Context, tx pgx.Tx, a Actor, nf NewFinding, extra map[string]any) (Finding, error) {
+func (s *Store) createTx(ctx context.Context, tx pgx.Tx, a Actor, nf NewFinding, extra map[string]any, key dataKey) (Finding, error) {
 	if !validSource(nf.Source) {
 		return Finding{}, invalid("unknown source %q", nf.Source)
 	}
-	dek, wrapped, err := s.transit.DataKey(ctx)
-	if err != nil {
-		return Finding{}, fmt.Errorf("data key: %w", err)
-	}
+	dek, wrapped := key.plain, key.wrapped
+	var err error
 	var id int64
 	if err := tx.QueryRow(ctx, `SELECT nextval('findings_id_seq')`).Scan(&id); err != nil {
 		return Finding{}, err
@@ -288,6 +315,9 @@ func (s *Store) UpdateFinding(ctx context.Context, a Actor, id int64, p Patch) (
 		if err != nil {
 			return err
 		}
+		if err := owns(cur, p.RequireAssignee); err != nil {
+			return err
+		}
 		changes := map[string]any{}
 		sets := []string{}
 		var args []any
@@ -357,11 +387,17 @@ func (s *Store) UpdateFinding(ctx context.Context, a Actor, id int64, p Patch) (
 
 // ChangeStatus moves a finding through D6's state machine for the actor's
 // role. Triaging sets triaged_at and, unless a due date exists, the SLA due date.
-func (s *Store) ChangeStatus(ctx context.Context, a Actor, id int64, to domain.Status, note string) (Finding, error) {
+// requireAssignee (optional) must still be the assignee under the row lock.
+func (s *Store) ChangeStatus(ctx context.Context, a Actor, id int64, to domain.Status, note string, requireAssignee ...string) (Finding, error) {
 	err := s.mutate(ctx, func(tx pgx.Tx) error {
 		cur, err := lockFinding(ctx, tx, id)
 		if err != nil {
 			return err
+		}
+		if len(requireAssignee) > 0 {
+			if err := owns(cur, requireAssignee[0]); err != nil {
+				return err
+			}
 		}
 		if !domain.CanTransition(a.Role, cur.Status, to) {
 			return fmt.Errorf("%w: %s -> %s", ErrIllegalTransition, cur.Status, to)
@@ -423,6 +459,14 @@ func (s *Store) Assign(ctx context.Context, a Actor, id int64, assigneeSub, assi
 		return Finding{}, err
 	}
 	return s.GetFinding(ctx, id)
+}
+
+// FindingExists reports whether a finding exists, without decrypting it
+// (audit history must stay readable even if its ciphertext is damaged).
+func (s *Store) FindingExists(ctx context.Context, id int64) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM findings WHERE id = $1)`, id).Scan(&ok)
+	return ok, err
 }
 
 // FindingIDByRef resolves a "VM-…" reference.
