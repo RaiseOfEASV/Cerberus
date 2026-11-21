@@ -41,7 +41,7 @@ jobs:
     outputs:
       targets: ${{ steps.read.outputs.targets }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: read
         name: Read docs/security/dast-targets.yaml
         # Assumes python3 + PyYAML are present on the arc-runner-set
@@ -62,10 +62,10 @@ jobs:
         target: ${{ fromJson(needs.discover.outputs.targets) }}
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@66042c8e7e24680119199a017e5b0e8603bf4dae # v0.12.0
         with:
           target: ${{ matrix.target.staging_url }}
           rules_file_name: ".zap/rules.tsv"

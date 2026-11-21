@@ -34,7 +34,7 @@ jobs:
     steps:
       # The repo's own tools/images.py runs inside Renovate's checkout of each
       # branch; the runner provides python3 + PyYAML.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
       - name: Run Renovate

@@ -50,16 +50,16 @@ jobs:
     # (arc-runner-set) is deployed - see docs/superpowers/specs/2026-10-28-cerberoast-first-app-design.md.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Toolchains for every apps/*/Justfile (Go + Node today). Versions
       # follow the apps' own go.mod / Dockerfile build stages.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/vuln-api/go.mod
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "26"
-      - uses: extractions/setup-just@v2
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
       - name: just lint-all
         run: just lint-all
       # Unit tests of every app (vuln-api: Go against a throwaway Postgres
@@ -86,21 +86,21 @@ jobs:
     name: sast
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: CodeQL init
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@d2aacf54c2fbc910db8d7ec338fdb54ea48c692d # v3
         with:
           languages: go, javascript-typescript
 
       - name: CodeQL autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@d2aacf54c2fbc910db8d7ec338fdb54ea48c692d # v3
 
       - name: CodeQL analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@d2aacf54c2fbc910db8d7ec338fdb54ea48c692d # v3
 
       - name: Semgrep - custom org rules, layered on top of CodeQL
-        uses: returntocorp/semgrep-action@v1
+        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:
           config: auto
 
@@ -108,7 +108,7 @@ jobs:
     name: sca
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Trivy - dependency vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -142,12 +142,12 @@ jobs:
     name: secret-scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0 # ggshield scans the full PR diff range, not just HEAD
 
       - name: GitGuardian scan
-        uses: GitGuardian/ggshield-action@v1
+        uses: GitGuardian/ggshield-action@5cc1ed2be3e8bf625d354c7170731880670f74de # v1
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
         # No `args`: the action's entrypoint already runs
