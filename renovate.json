@@ -91,6 +91,13 @@
         ],
         "executionMode": "branch"
       }
+    },
+    {
+      "description": "Renovate's tag lookup for trivy-action fails (no-result), which blocks every branch that touches a workflow using it. It is pinned by SHA (v0.36.0 = ed142fd); bump it by hand.",
+      "matchPackageNames": [
+        "aquasecurity/trivy-action"
+      ],
+      "enabled": false
     }
   ],
   "vulnerabilityAlerts": {
