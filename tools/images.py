@@ -33,6 +33,7 @@ SKIP_PATHS = (
     SCAN_LIST,
     "infra/k8s/kyverno/policies/",  # admission patterns like "!*:latest"
     "infra/helm/charts/app/tests/",  # chart test fixtures
+    "tools/tests/",  # fixtures with deliberately unpinned references
     ".github/workflows/",  # matrices like `image: [go, node]`
     "docs/",
 )
