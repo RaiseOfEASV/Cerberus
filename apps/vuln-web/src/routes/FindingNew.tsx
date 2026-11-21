@@ -22,7 +22,7 @@ export default function FindingNew() {
         ...(f.cve ? { cve: f.cve } : {}),
         ...(f.cvss ? { cvss: Number(f.cvss) } : {}),
       })
-      nav(`/findings/${created.id}`)
+      nav(`/app/findings/${created.id}`)
     } catch (err) {
       setError(message(err))
       setBusy(false)

@@ -27,7 +27,7 @@ describe('Findings list', () => {
     mockApi({ 'GET /api/me': users.auditor, 'GET /api/assignees': [], 'GET /api/findings': { items: [finding({ severity: 'Critical' })], total: 1 } })
     renderAt(<Findings />, '/findings')
     const link = await screen.findByRole('link', { name: 'SQL injection in login' })
-    expect(link.getAttribute('href')).toBe('/findings/7')
+    expect(link.getAttribute('href')).toBe('/app/findings/7')
     expect(screen.getByText('Critical', { selector: '.badge' })).toHaveClass('sev-Critical')
   })
 

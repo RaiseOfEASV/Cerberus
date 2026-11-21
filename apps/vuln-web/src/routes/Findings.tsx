@@ -96,7 +96,7 @@ export default function Findings() {
               {data.items.map((f) => (
                 <tr key={f.id}>
                   <td><code>{f.ref}</code></td>
-                  <td><Link to={`/findings/${f.id}`}>{f.title}</Link></td>
+                  <td><Link to={`/app/findings/${f.id}`}>{f.title}</Link></td>
                   <td>{f.asset}</td>
                   <td><SeverityBadge severity={f.severity} /></td>
                   <td>{f.status}</td>

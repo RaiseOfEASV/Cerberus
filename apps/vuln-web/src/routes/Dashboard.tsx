@@ -34,11 +34,11 @@ export default function Dashboard() {
           {d.overdueList.length > 0 && (
             <ul>
               {d.overdueList.map((f) => (
-                <li key={f.id}><Link to={`/findings/${f.id}`}>{f.title}</Link> - due {fmtDate(f.dueDate)}</li>
+                <li key={f.id}><Link to={`/app/findings/${f.id}`}>{f.title}</Link> - due {fmtDate(f.dueDate)}</li>
               ))}
             </ul>
           )}
-          <p><Link to="/findings?overdue=true">All overdue findings</Link></p>
+          <p><Link to="/app/findings?overdue=true">All overdue findings</Link></p>
         </section>
       </div>
       {weeks.length > 0 && <TrendChart title="Opened vs closed per week" weeks={weeks} />}

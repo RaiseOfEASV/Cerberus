@@ -61,7 +61,7 @@ export default function Audit() {
               <td>{fmtTime(r.at)}</td>
               <td>{r.actorSub} ({r.actorRole})</td>
               <td>{r.action}</td>
-              <td>{r.findingId ? <Link to={`/findings/${r.findingId}`}>{r.findingId}</Link> : '-'}</td>
+              <td>{r.findingId ? <Link to={`/app/findings/${r.findingId}`}>{r.findingId}</Link> : '-'}</td>
               <td><code>{JSON.stringify(r.details)}</code></td>
             </tr>
           ))}
