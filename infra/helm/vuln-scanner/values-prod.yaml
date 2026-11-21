@@ -1,0 +1,25 @@
+# vuln-scanner, prod - nightly Trivy scan (apps/vuln-scanner) as a CronJob
+image:
+  repository: ghcr.io/raiseofeasv/vuln-scanner
+  # tag + digest set by deploy.yml.
+  tag: "0000000000000000000000000000000000000000"
+  digest: ""
+serviceAccount:
+  create: true
+  name: vuln-scanner
+kubeApiToken:
+  enabled: true
+cronJob:
+  schedule: "0 2 * * *"
+  timeZone: Europe/Copenhagen
+  activeDeadlineSeconds: 3600
+writablePaths: [/tmp]
+envFromSecrets: [vuln-scanner-token]
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: "1", memory: 1536Mi}
+env:
+  - {name: VULN_API_URL, value: "http://vuln-api.cerberoast.svc"}
+  - {name: TRIVY_CACHE_DIR, value: /tmp/trivy-cache}
+  - {name: TMPDIR, value: /tmp}
+  - {name: HOME, value: /tmp}
