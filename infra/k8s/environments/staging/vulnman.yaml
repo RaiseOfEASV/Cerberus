@@ -192,3 +192,4 @@ spec:
     - from:
         - podSelector: { matchLabels: { app.kubernetes.io/name: vuln-scanner } }
       ports: [{ port: 8080, protocol: TCP }]
+ 
