@@ -1,6 +1,6 @@
 # Nightly Trivy scanner (see cmd/vuln-scanner). The Trivy binary comes from
 # the official image, pinned by digest - bump it deliberately (CI fails the
-# build on a CRITICAL CVE in it, as it did on 0.69.3).
+# build on a CRITICAL CVE in it - 0.69.3 had one in its gRPC library).
 FROM golang:1.27-alpine AS build
 WORKDIR /src
 COPY go.mod ./
