@@ -17,17 +17,15 @@ accessTokenLifespan: 300
 ssoSessionIdleTimeout: 1800
 ssoSessionMaxLifespan: 28800
 
-# AUTH-05 (D17): every prod user enrols TOTP on first login.
-otpPolicyType: totp
-otpPolicyAlgorithm: HmacSHA1
-otpPolicyDigits: 6
-otpPolicyPeriod: 30
+# MFA is off for now (owner's decision, 2026-11-21): TOTP isn't required at
+# login. Listed explicitly with defaultAction false because keycloak-config-cli
+# doesn't remove a required action that just disappears from this file.
 requiredActions:
   - alias: CONFIGURE_TOTP
     name: Configure OTP
     providerId: CONFIGURE_TOTP
     enabled: true
-    defaultAction: true
+    defaultAction: false
 
 roles:
   realm:
@@ -45,7 +43,10 @@ clients:
     secret: "$(env:VULN_PROD_OIDC_SECRET)"
     standardFlowEnabled: true
     implicitFlowEnabled: false
-    directAccessGrantsEnabled: false
+    # Password grant: VulnMan's own login form posts to vuln-api, which checks
+    # the credentials here as a confidential client (browser never sees a
+    # token). Keycloak's brute-force lockout still applies.
+    directAccessGrantsEnabled: true
     serviceAccountsEnabled: false
     redirectUris: ["https://cerberoast.site/auth/callback"]
     webOrigins: ["+"]
