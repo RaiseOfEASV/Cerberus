@@ -73,7 +73,7 @@
       "enabled": false
     },
     {
-      "description": "Image catalog: bump tag and digest together, then rewrite every reference (tools/images.py sync) in the same PR",
+      "description": "Image catalog: one PR per image, tag and digest together, then every reference rewritten (tools/images.py sync) in the same PR",
       "matchManagers": [
         "custom.regex"
       ],
@@ -81,7 +81,6 @@
         "docker/images.yaml"
       ],
       "pinDigests": true,
-      "groupName": "image catalog",
       "automerge": false,
       "postUpgradeTasks": {
         "commands": [
@@ -109,12 +108,12 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "docker/images.yaml entries: image / tag / digest on consecutive lines",
+      "description": "docker/images.yaml entries we deploy ourselves (source direct/vm/build): image / tag / digest / source on consecutive lines. Chart and k3s images follow their chart or k3s version instead.",
       "managerFilePatterns": [
         "/^docker/images\\.yaml$/"
       ],
       "matchStrings": [
-        "image: (?<depName>\\S+)\\n\\s+tag: \"?(?<currentValue>[^\"\\n]+?)\"?\\n\\s+digest: (?<currentDigest>sha256:[a-f0-9]{64})"
+        "image: (?<depName>\\S+)\\n\\s+tag: \"?(?<currentValue>[^\"\\n]+?)\"?\\n\\s+digest: (?<currentDigest>sha256:[a-f0-9]{64})\\n\\s+source: (?:direct|vm|build)\\n"
       ],
       "datasourceTemplate": "docker"
     }
