@@ -106,8 +106,8 @@ images:
     note: VPN control server (bootstrap VM)
   wazuh-manager:
     image: wazuh/wazuh-manager
-    tag: 4.9.0
-    digest: sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004
+    tag: 4.14.10
+    digest: sha256:beda27e1e88bfe5fe5e882eea3b006dfc4a77e19f31d5a0292e5126f23900e75
     source: vm
     status: active
     note: Wazuh VM
