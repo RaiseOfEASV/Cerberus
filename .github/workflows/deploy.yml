@@ -36,6 +36,12 @@ name: Deploy
 # doesn't run on them. Fine while required-status-checks is evaluate-only;
 # flipping it to active needs a GitHub App token here instead.
 #
+# One run deploys a whole release: apps=all bumps every deployable app
+# (vuln-api and vuln-web) in one PR, so frontend and backend move together.
+# For prod, source=staging copies the exact tag + digest pairs staging runs,
+# so prod gets byte-for-byte what was tested. The bump itself is
+# tools/deploy-bump.sh (tested by tools/tests/deploy-bump-test.sh).
+#
 # dev isn't an option here: dev's tag is changed by a normal PR, and dev
 # auto-syncs. prod's Applications are manual-sync in ArgoCD, so after the
 # prod bump PR merges, sync vuln-*-prod deliberately.
@@ -43,32 +49,37 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
-      app:
-        description: App to deploy (directory name under apps/)
-        required: true
-        type: string
-      version:
-        description: Image tag to deploy (e.g. v1.2.3 or a commit SHA)
-        required: true
-        type: string
       environment:
         description: Target environment
         required: true
         type: choice
         options: [staging, prod]
+      source:
+        description: "tag = deploy the image tag below; staging = promote exactly what staging runs (prod only)"
+        required: true
+        type: choice
+        default: tag
+        options: [tag, staging]
+      version:
+        description: Image tag to deploy, e.g. a commit SHA (only for source=tag)
+        required: false
+        type: string
+      apps:
+        description: "all, or a comma-separated list of apps (directory names under apps/)"
+        required: true
+        type: string
+        default: all
 
 permissions:
-  contents: write # create the deploy/* branch and its commit
+  contents: write # create the deploy/* branch and its commits
   pull-requests: write # open the PR
 
 # Serialize runs so promotions dispatched back to back are created in order.
+# GitHub keeps only one pending run per group (a newer one cancels it) - with
+# apps=all there's no need to queue several.
 concurrency:
   group: deploy-gitops
   cancel-in-progress: false
-
-env:
-  REGISTRY: ghcr.io
-  OWNER: raiseofeasv
 
 jobs:
   update-gitops-config:
@@ -86,89 +97,75 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Bump image tag and digest in the GitOps config for this environment
+      - name: Pin image tags and digests for this environment
         id: bump
-        # yq (mikefarah v4) and docker buildx are preinstalled on
+        # yq (mikefarah v4), jq and docker buildx are preinstalled on
         # ubuntu-latest runners. Images are public, so no registry login.
+        # deploy-bump.sh validates every input and resolves every digest
+        # before it writes anything.
         run: |
-          # Inputs are free text - reject anything that isn't a plain
-          # app name / image tag before it reaches a path or a values file.
-          if ! printf '%s' "$APP" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
-            echo "::error::invalid app name: ${APP}" >&2; exit 1
+          if [ "$SOURCE" = staging ]; then
+            args=(--from staging)
+            label="from staging"
+          else
+            args=(--version "$VERSION")
+            label="$VERSION"
           fi
-          if ! printf '%s' "$VERSION" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' || [ "$VERSION" = "latest" ]; then
-            echo "::error::invalid image tag: ${VERSION}" >&2; exit 1
-          fi
-          target="infra/helm/${APP}/values-${ENVIRONMENT}.yaml"
-          if [ ! -f "$target" ]; then
-            echo "::error::${target} doesn't exist - ${APP} isn't wired into ${ENVIRONMENT} (see infra/k8s/environments/${ENVIRONMENT}/)." >&2
-            exit 1
-          fi
-          # Pin the tag to its manifest digest - the same digest Kyverno's
-          # verify-image-signatures resolves at admission - so git matches
-          # what runs and the deploy references an immutable image. Fails if
-          # the tag doesn't exist (e.g. never built by build.yml).
-          ref="${REGISTRY}/${OWNER}/${APP}:${VERSION}"
-          DIGEST=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r .digest)
-          if ! printf '%s' "$DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'; then
-            echo "::error::couldn't resolve a digest for ${ref}" >&2; exit 1
-          fi
-          export DIGEST
-          yq -i '.image.tag = strenv(VERSION) | .image.digest = strenv(DIGEST)' "$target"
-          echo "Set ${APP} to ${VERSION}@${DIGEST} in ${target}"
+          summary=$(mktemp)
+          changed=$(DEPLOY_SUMMARY="$summary" tools/deploy-bump.sh --env "$ENVIRONMENT" --apps "$APPS" "${args[@]}")
           {
-            echo "target=${target}"
-            echo "digest=${DIGEST}"
+            echo "label=${label}"
+            echo "changed<<EOF"; echo "$changed"; echo "EOF"
+            echo "summary<<EOF"; cat "$summary"; echo "EOF"
           } >> "$GITHUB_OUTPUT"
+          echo "$changed"
         env:
-          APP: ${{ inputs.app }}
-          VERSION: ${{ inputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
+          SOURCE: ${{ inputs.source }}
+          VERSION: ${{ inputs.version }}
+          APPS: ${{ inputs.apps }}
 
-      - name: Open a pull request with the change
+      - name: Open one pull request with all the changes
         run: |
-          if git diff --quiet -- "$TARGET"; then
-            echo "${TARGET} already pins ${VERSION}@${DIGEST} - nothing to deploy."
+          if [ -z "$CHANGED" ]; then
+            echo "Every app is already pinned to that version in ${ENVIRONMENT} - nothing to deploy."
             exit 0
           fi
           # Branch from exactly the commit this job checked out and edited,
-          # so the PR diff is only this bump (a conflict shows on the PR if
-          # master changed the same lines meanwhile).
+          # so the PR diff is only this bump.
           base_sha=$(git rev-parse HEAD)
-          branch="deploy/${APP}-${ENVIRONMENT}-${VERSION:0:12}-${GITHUB_RUN_ID}"
+          branch="deploy/${ENVIRONMENT}-${GITHUB_RUN_ID}"
           gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
             -f ref="refs/heads/${branch}" -f sha="${base_sha}" >/dev/null
-          # Contents API commit: authored by github-actions[bot] and signed
-          # by GitHub (Verified), which main_protection's required_signatures
-          # accepts.
-          blob_sha=$(git rev-parse "HEAD:${TARGET}")
-          message=$(printf '%s\n\n%s\n%s\n' \
-            "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}" \
+          title="deploy: ${LABEL} to ${ENVIRONMENT}"
+          message=$(printf '%s\n\n%s\n%s\n' "$title" \
             "Co-authored-by: Andrii Savchenko <109040480+andriiVIt@users.noreply.github.com>" \
             "Co-authored-by: Ionut Andrei Grosu <80783004+grosuionutandrei@users.noreply.github.com>")
-          gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${TARGET}" \
-            -f message="${message}" \
-            -f content="$(base64 -w0 "$TARGET")" \
-            -f sha="${blob_sha}" \
-            -f branch="${branch}" >/dev/null
+          # One Contents API commit per changed file: authored by
+          # github-actions[bot] and signed by GitHub (Verified), which
+          # main_protection's required_signatures accepts. The PR is
+          # squash-merged into a single commit.
+          while read -r target; do
+            [ -n "$target" ] || continue
+            blob_sha=$(git rev-parse "HEAD:${target}")
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${target}" \
+              -f message="${message}" \
+              -f content="$(base64 -w0 "$target")" \
+              -f sha="${blob_sha}" \
+              -f branch="${branch}" >/dev/null
+          done <<< "$CHANGED"
           after_merge="ArgoCD auto-syncs ${ENVIRONMENT} after merge."
           if [ "$ENVIRONMENT" = "prod" ]; then
-            after_merge="prod is manual-sync: after merge, sync \`${APP}-prod\` in ArgoCD."
+            after_merge="prod is manual-sync: after merge, sync the vuln-*-prod applications in ArgoCD."
           fi
-          gh pr create --base master --head "$branch" \
-            --title "deploy: ${APP} ${VERSION} to ${ENVIRONMENT}" \
+          gh pr create --base master --head "$branch" --title "$title" \
             --body "$(printf '%s\n' \
-              "Promotes **${APP}** to **${ENVIRONMENT}**:" \
-              "" \
-              "- tag \`${VERSION}\`" \
-              "- digest \`${DIGEST}\`" \
-              "" \
+              "Deploys to **${ENVIRONMENT}** (${LABEL}):" "" "${SUMMARY}" "" \
               "Opened by deploy.yml run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} (triggered by @${GITHUB_ACTOR})." \
               "${after_merge}")"
         env:
           GH_TOKEN: ${{ github.token }}
-          APP: ${{ inputs.app }}
-          VERSION: ${{ inputs.version }}
           ENVIRONMENT: ${{ inputs.environment }}
-          TARGET: ${{ steps.bump.outputs.target }}
-          DIGEST: ${{ steps.bump.outputs.digest }}
+          LABEL: ${{ steps.bump.outputs.label }}
+          CHANGED: ${{ steps.bump.outputs.changed }}
+          SUMMARY: ${{ steps.bump.outputs.summary }}
