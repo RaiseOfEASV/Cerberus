@@ -1,89 +1,111 @@
 import { Link } from 'react-router'
 import Icon from '../components/Icons'
 
-const features = [
-  { icon: 'inbox', title: 'Every intake channel', text: 'Manual findings, a public disclosure form, Trivy image and SBOM scans, and CSV imports land in one queue - de-duplicated automatically.' },
-  { icon: 'list', title: 'Triage that sticks', text: 'Severity, CVSS, CVE and affected asset on every finding. Assign an owner and the SLA due date follows from the severity.' },
-  { icon: 'clock', title: 'SLAs you can see', text: 'A live dashboard shows what is open, what is overdue and how compliance is trending week over week.' },
-  { icon: 'lock', title: 'Encrypted by default', text: 'Descriptions, reporter contacts and evidence are encrypted per finding with keys held in Vault - never in the database.' },
-  { icon: 'history', title: 'Tamper-evident audit trail', text: 'Every change is recorded in a hash-chained log. One click verifies that nobody rewrote history.' },
-  { icon: 'file', title: 'Signed reports', text: 'Export a report for any period or asset, signed with Ed25519, so auditors can verify it was not altered.' },
+// The lifecycle a finding really moves through (the app's own statuses).
+const lifecycle = [
+  { status: 'New', text: 'Reported by a researcher, a scanner or your own team.' },
+  { status: 'Triaged', text: 'An analyst confirms severity and scope. The SLA clock starts.' },
+  { status: 'In Progress', text: 'The assigned developer works on the fix.' },
+  { status: 'Remediated', text: 'Fixed, recorded, and visible to auditors.' },
 ]
 
-const steps = [
-  { title: 'Report', text: 'A researcher, a scanner or your own team reports an issue.' },
-  { title: 'Triage', text: 'Analysts confirm severity and scope, and the SLA clock starts.' },
-  { title: 'Fix', text: 'The assigned developer moves it to In Progress, then Remediated.' },
-  { title: 'Prove it', text: 'Auditors read the trail and verify signed reports.' },
+const capabilities = [
+  { title: 'One queue for every source', text: 'Manual findings, the public disclosure form, Trivy image and SBOM scans, and CSV imports. Duplicates are merged on the way in.' },
+  { title: 'Deadlines set by severity', text: 'Assign an owner and the due date follows from the SLA for that severity. Overdue work shows up on the dashboard, not in a meeting.' },
+  { title: 'Sensitive fields encrypted', text: 'Descriptions, reporter contacts and evidence are encrypted per finding. The keys live in Vault, never in the database.' },
+  { title: 'An audit trail you can check', text: 'Every change is written to a hash-chained log. Verifying the chain shows whether anyone rewrote history.' },
+  { title: 'Reports that prove themselves', text: 'Export findings for any period or asset as a report signed with Ed25519. Anyone with the public key can verify it.' },
+  { title: 'Four roles, enforced by the server', text: 'Analysts triage, developers fix, managers set targets, auditors read. The interface only shows what a role can do.' },
 ]
+
+function FindingSpecimen() {
+  return (
+    <figure className="specimen" aria-label="An example finding record">
+      <div className="specimen-head">
+        <code>VM-0142</code>
+        <span className="badge sev-Critical">Critical</span>
+      </div>
+      <p className="specimen-title">SQL injection in invoice search</p>
+      <dl className="specimen-fields">
+        <div><dt>Asset</dt><dd>billing-api</dd></div>
+        <div><dt>CVSS</dt><dd><code>9.1</code></dd></div>
+        <div><dt>Assignee</dt><dd>Developer</dd></div>
+        <div><dt>Status</dt><dd>In Progress</dd></div>
+      </dl>
+      <div className="sla">
+        <div className="sla-label"><span>SLA, 7 days for critical</span><strong>2 days left</strong></div>
+        <div className="sla-track"><span className="sla-fill" /></div>
+      </div>
+      <ol className="chain">
+        <li><code>3f9a…c21e</code> Reported through the public form</li>
+        <li><code>b07d…4a90</code> Severity set to Critical by an analyst</li>
+        <li><code>e51c…08f3</code> Assigned to a developer</li>
+      </ol>
+    </figure>
+  )
+}
 
 export default function Landing() {
   return (
     <div className="site">
       <header className="site-nav">
-        <div className="brand"><span className="brand-mark"><Icon name="shield" size={20} /></span> VulnMan</div>
-        <nav>
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
+        <Link to="/" className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
+        <nav aria-label="Site">
           <Link to="/report">Report a vulnerability</Link>
           <Link to="/login" className="button small">Sign in</Link>
         </nav>
       </header>
 
       <section className="hero">
-        <p className="eyebrow">Vulnerability management</p>
-        <h1>From the first report to the verified fix.</h1>
-        <p className="lead">
-          VulnMan collects vulnerabilities from every source, routes them to the right people with clear
-          deadlines, and keeps a tamper-evident record of everything that happened.
-        </p>
-        <div className="cta">
-          <Link to="/login" className="button large">Sign in <Icon name="arrow" /></Link>
-          <Link to="/report" className="button large ghost">Report a vulnerability</Link>
+        <div className="hero-copy">
+          <h1>Every finding, tracked to the fix.</h1>
+          <p className="lead">
+            VulnMan is where a security team keeps its vulnerabilities: reported, triaged,
+            assigned with a deadline, and fixed, with a record of every step that nobody can quietly edit.
+          </p>
+          <div className="cta">
+            <Link to="/login" className="button large">Sign in</Link>
+            <Link to="/report" className="button large ghost">Report a vulnerability</Link>
+          </div>
         </div>
-        <ul className="hero-points">
-          <li><Icon name="check" /> Role-based access for analysts, developers, managers and auditors</li>
-          <li><Icon name="check" /> Single sign-on through Keycloak</li>
-          <li><Icon name="check" /> Built and deployed with signed, scanned images</li>
-        </ul>
+        <FindingSpecimen />
       </section>
 
-      <section id="features" className="section">
-        <h2>Everything a security team needs, nothing it doesn't</h2>
-        <div className="feature-grid">
-          {features.map((f) => (
-            <article key={f.title} className="feature">
-              <span className="feature-icon"><Icon name={f.icon} size={22} /></span>
-              <h3>{f.title}</h3>
-              <p>{f.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="how" className="section">
-        <h2>How it works</h2>
-        <ol className="steps">
-          {steps.map((s, i) => (
-            <li key={s.title}>
-              <span className="step-no">{i + 1}</span>
-              <h3>{s.title}</h3>
+      <section className="band" aria-labelledby="lifecycle-h">
+        <h2 id="lifecycle-h">How a finding moves</h2>
+        <ol className="lifecycle">
+          {lifecycle.map((s) => (
+            <li key={s.status}>
+              <span className="lifecycle-dot" />
+              <h3>{s.status}</h3>
               <p>{s.text}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="section disclose">
+      <section className="band" aria-labelledby="cap-h">
+        <h2 id="cap-h">What it does</h2>
+        <div className="capabilities">
+          {capabilities.map((c) => (
+            <div key={c.title}>
+              <h3>{c.title}</h3>
+              <p>{c.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="disclose">
         <div>
           <h2>Found a security issue?</h2>
-          <p>You don't need an account. Tell us what you found and you'll get a reference number to follow up with.</p>
+          <p>You don't need an account. Describe what you found and you'll get a reference number to follow up with.</p>
         </div>
-        <Link to="/report" className="button large">Report a vulnerability</Link>
+        <Link to="/report" className="button large signal">Report a vulnerability</Link>
       </section>
 
       <footer className="site-footer">
-        <span>VulnMan - Secure Software Development, EASV 2026</span>
+        <span>VulnMan, Secure Software Development, EASV 2026</span>
         <Link to="/login">Sign in</Link>
       </footer>
     </div>

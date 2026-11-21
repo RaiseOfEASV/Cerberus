@@ -33,7 +33,7 @@ export function TrendChart({ title, weeks }: { title: string; weeks: { weekStart
   return (
     <figure className="panel chart" aria-label={title}>
       <h2>{title}</h2>
-      <svg role="img" aria-hidden="true" viewBox={`0 0 ${weeks.length * W + 10} ${H + 20}`} width="100%">
+      <svg role="img" aria-hidden="true" viewBox={`0 0 ${weeks.length * W + 10} ${H + 20}`} width="100%" preserveAspectRatio="xMinYMid meet">
         {weeks.map((w, i) => {
           const o = (w.opened / max) * H
           const c = (w.closed / max) * H

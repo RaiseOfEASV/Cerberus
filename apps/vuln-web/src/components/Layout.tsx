@@ -11,13 +11,15 @@ function Item({ to, icon, label, end }: { to: string; icon: string; label: strin
   )
 }
 
+const roleLabel: Record<string, string> = { pm: 'Project manager', analyst: 'Analyst', developer: 'Developer', auditor: 'Auditor' }
+
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, can } = useAuth()
   const initials = (user?.name ?? '?').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark"><Icon name="shield" size={20} /></span> VulnMan</div>
+        <div className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</div>
         <nav aria-label="Main">
           <Item to="/app" end icon="grid" label="Dashboard" />
           <Item to="/app/findings" end icon="list" label="Findings" />
@@ -32,7 +34,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <span className="avatar">{initials}</span>
           <div className="who">
             <strong>{user?.name}</strong>
-            <small>{user?.role}</small>
+            <small>{roleLabel[user?.role ?? ''] ?? user?.role}</small>
           </div>
           {/* A real form POST: the server answers with a redirect to Keycloak's logout. */}
           <form method="post" action="/auth/logout">

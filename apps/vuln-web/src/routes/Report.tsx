@@ -30,7 +30,7 @@ export default function Report() {
   return (
     <div className="site">
     <header className="site-nav">
-      <Link to="/" className="brand"><span className="brand-mark"><Icon name="shield" size={20} /></span> VulnMan</Link>
+      <Link to="/" className="brand"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
       <nav><Link to="/login" className="button small">Sign in</Link></nav>
     </header>
     <main className="public">

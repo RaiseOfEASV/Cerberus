@@ -38,17 +38,14 @@ export default function Login() {
   return (
     <div className="auth-page">
       <aside className="auth-aside">
-        <Link to="/" className="brand light"><span className="brand-mark"><Icon name="shield" size={20} /></span> VulnMan</Link>
-        <div>
-          <h2>Every vulnerability, accounted for.</h2>
-          <p>Intake, triage, remediation and a tamper-evident audit trail in one place.</p>
-        </div>
+        <Link to="/" className="brand light"><span className="brand-mark"><Icon name="shield" size={18} /></span> VulnMan</Link>
+        <p className="auth-quote">Every finding, tracked to the fix.</p>
         <small>Secure Software Development, EASV 2026</small>
       </aside>
       <main className="auth-main">
         <form className="auth-card" onSubmit={submit}>
           <h1>Sign in</h1>
-          <p className="muted">Use your VulnMan account.</p>
+          <p className="muted">Use the username and password from your team lead.</p>
           <label htmlFor="l-user">Username</label>
           <input id="l-user" autoComplete="username" required autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
           <label htmlFor="l-pass">Password</label>

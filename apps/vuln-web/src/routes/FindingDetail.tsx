@@ -21,7 +21,7 @@ export default function FindingDetail() {
 
   return (
     <>
-      <p><code>{f.ref}</code> · <SeverityBadge severity={f.severity} /> · <span className="status">{f.status}</span></p>
+      <p className="header-meta"><code>{f.ref}</code> <SeverityBadge severity={f.severity} /> <span className="status">{f.status}</span></p>
       <h1>{f.title}</h1>
       {editing ? (
         <EditForm f={f} onDone={(nf) => { if (nf) setF(nf); setEditing(false) }} />
