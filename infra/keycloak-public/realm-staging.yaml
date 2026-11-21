@@ -3,7 +3,7 @@
 # its environment (Vault via ESO) - never write a real secret here.
 realm: vulnman-staging
 enabled: true
-displayName: VulnMan (staging)
+displayName: Cerberoast (staging)
 loginWithEmailAllowed: true
 registrationAllowed: false
 resetPasswordAllowed: false
