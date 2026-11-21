@@ -24,6 +24,14 @@ Changes to the upstream charts' versions (`charts:`) are applied by re-running
 the `helm install`/`upgrade` command in the component's README, which
 `just images-check` keeps at the catalog's `--version`.
 
+## Renovate
+
+`.github/workflows/renovate.yml` runs Renovate every Monday (or on demand:
+Actions -> Renovate -> Run workflow). For the catalog it bumps `tag` and
+`digest` together, runs `python3 tools/images.py sync` in the same branch,
+and opens one PR per week ("image catalog") that updates every reference.
+Catalog PRs always wait for a human review.
+
 ## Scanning
 
 Every night the prod `vuln-scanner` scans all catalog images that have a

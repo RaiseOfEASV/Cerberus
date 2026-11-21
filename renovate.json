@@ -73,7 +73,7 @@
       "enabled": false
     },
     {
-      "description": "Image catalog: bump tag and digest together; run `just images-sync` on the PR before merging",
+      "description": "Image catalog: bump tag and digest together, then rewrite every reference (tools/images.py sync) in the same PR",
       "matchManagers": [
         "custom.regex"
       ],
@@ -82,7 +82,16 @@
       ],
       "pinDigests": true,
       "groupName": "image catalog",
-      "automerge": false
+      "automerge": false,
+      "postUpgradeTasks": {
+        "commands": [
+          "python3 tools/images.py sync"
+        ],
+        "fileFilters": [
+          "**/*"
+        ],
+        "executionMode": "branch"
+      }
     }
   ],
   "vulnerabilityAlerts": {
