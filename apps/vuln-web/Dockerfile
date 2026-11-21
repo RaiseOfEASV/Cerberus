@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # Runtime: nginx stable, unprivileged variant - listens on 8080 as UID 101.
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+FROM nginx/nginx-unprivileged:1.31-alpine@sha256:60214a103e6f38e953ff957f34b1f2e97a9db801ab2df3821da955d0fe6cadd6
 USER root
 # apk upgrade: Alpine fixes published after the upstream image was built
 # (build.yml's Trivy gate fails on fixed CRITICALs).
