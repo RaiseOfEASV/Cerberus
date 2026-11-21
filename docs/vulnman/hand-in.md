@@ -19,11 +19,11 @@ Evidence names the automated test(s) that prove the behaviour (Go tests in
 
 | ID | Priority | Status | How / evidence |
 |---|---|---|---|
-| AUTH-01 | MUST | Done | OIDC code flow + PKCE against Keycloak (`keycloak-public`), backend-for-frontend. `TestLoginSetsStateAndPKCE`, `TestCallbackCreatesSession`, `TestCallbackRejectsBadState`, `TestCallbackRejectsWrongNonce` |
+| AUTH-01 | MUST | Done | Keycloak (`keycloak-public`) as the IdP. VulnMan's own login form posts to vuln-api, which uses Keycloak's password grant as a confidential client; the OIDC code flow with PKCE stays as the single sign-on fallback. Either way the browser only gets an HttpOnly session cookie. `TestPasswordLoginCreatesSession`, `TestPasswordLoginRateLimited`, `TestLoginSetsStateAndPKCE`, `TestCallbackCreatesSession` |
 | AUTH-02 | MUST | Done | Permission matrix enforced server-side on every route. `TestCanMatrix`, `TestDeveloperOwnership`, `TestTransitions`, `TestAuditorReadOnly`, `TestDeveloperEditOthersFinding403NoAudit`, `TestCreateRequiresAnalystOrPM` |
 | AUTH-03 | MUST | Done | `/report` + `POST /api/public/reports`, acknowledgement with a `VM-` reference. `TestPublicCreatesNewExternalFinding`, `Report.test.tsx` |
 | AUTH-04 | SHOULD | Done | PM changes roles through the Keycloak admin API; sessions of the target end. `TestSetRoleReplacesOthers`, `TestSetRoleRevokesSessions`, `TestPMCannotChangeOwnRole` |
-| AUTH-05 | STRETCH | Done | TOTP required on first login in the prod realm (`infra/keycloak-public/realm-prod.yaml`) |
+| AUTH-05 | STRETCH | Not done (switched off) | TOTP was enforced in the prod realm, then switched off on 2026-11-21 to simplify sign-in for now. It can be turned back on in `infra/keycloak-public/realm-prod.yaml` (`CONFIGURE_TOTP` defaultAction). The password-grant login would then need an OTP field. |
 | FIND-01 | MUST | Done | `POST /api/findings` (analyst, PM). `TestCreateRequiresAnalystOrPM`, `FindingNew.test.tsx` |
 | FIND-02 | MUST | Done | See AUTH-03; reporter e-mail stored encrypted |
 | FIND-03 | SHOULD | Done | Attachments, type sniffed from content, 10 MiB, encrypted. `TestAttachmentTypeSniffed`, `TestAttachmentTooLarge413`, `TestAttachmentRoundTripEncrypted`, `TestAttachmentDownloadHeaders` |
@@ -53,6 +53,10 @@ Evidence names the automated test(s) that prove the behaviour (Go tests in
 - **Disclosure approval:** the spec says no role may approve public disclosures,
   so we built no disclosure workflow (D18).
 - **Reports as JSON, not PDF** (the spec allows either); signed instead.
+- **Own login page (2026-11-21):** sign-in happens on VulnMan's own page,
+  with vuln-api checking the password against Keycloak (password grant). This
+  is a deliberate trade-off against OAuth guidance, which prefers the redirect
+  flow; mitigations are listed in the threat model.
 
 ### Added requirements
 
@@ -66,7 +70,7 @@ so the admin Keycloak is never exposed (D3).
 | Where | What | Why |
 |---|---|---|
 | Transport | TLS everywhere: Let's Encrypt for public names, the internal CA for admin names and for vuln-api -> Vault | Confidentiality and server authentication |
-| Login | OAuth 2.0 code flow with PKCE (S256), `state` and `nonce`; tokens are JWTs verified against Keycloak's keys | Stops code interception, login CSRF and token replay |
+| Login | Own login form: password checked by vuln-api through Keycloak's password grant (confidential client, server-side). Fallback: OAuth 2.0 code flow with PKCE (S256), `state` and `nonce`. Tokens are JWTs verified against Keycloak's keys and never reach the browser | Credentials go only to our own origin; tokens stay server-side; the fallback blocks code interception, login CSRF and token replay |
 | Sessions | 256-bit random IDs; only SHA-256(ID) stored | A database leak doesn't hand out live sessions |
 | Finding data at rest (FIND-11) | Envelope encryption: a fresh AES-256 data key per finding from Vault Transit (`datakey/plaintext`), fields sealed with AES-256-GCM, AAD = `"<finding id>:<field>"`; only the wrapped key is stored | The master key never leaves Vault; ciphertexts can't be moved between rows or fields; keys can be rotated with Transit `rewrap` |
 | Audit integrity (AUDIT-03) | Each row's hash = SHA-256(previous hash ‖ canonical JSON of the row) | Editing or deleting history is detectable |
