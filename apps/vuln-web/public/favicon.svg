@@ -1,19 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <path id="h" d="M-9.5-1-10-17-3.5-9.5h7L10-17 9.5-1 6.5 4.5 5 14h-10l-1.5-9.5Z"/>
-    <path id="f" d="M-6.6-1.4-2.6 0-3 1.6-6.8.2ZM6.6-1.4 2.6 0 3 1.6 6.8.2ZM-2.6 10.6h5.2L1.4 13h-2.8Z"/>
+    <g id="d">
+      <use href="#h" fill="#5c5d63" stroke="#141417" stroke-width="2.4" paint-order="stroke"/>
+      <path d="M-8.3-14.2-4.6-9.9-8.6-8.4ZM8.3-14.2 4.6-9.9 8.6-8.4Z" fill="#d07a72"/>
+      <path d="M-4.2 4h8.4l-.9 8.6h-6.6Z" fill="#c98a4b"/>
+      <path d="M-7.4-4.6h3.2v1.9h-3.2ZM4.2-4.6h3.2v1.9H4.2Z" fill="#c98a4b"/>
+      <path d="M-7-1.6-2.7 0-3.1 1.7-7.2.3ZM7-1.6 2.7 0 3.1 1.7 7.2.3Z" fill="#ff8a1f"/>
+      <path d="M-2.6 10.4h5.2L1.4 13h-2.8Z" fill="#1d1e21"/>
+    </g>
   </defs>
-  <rect width="64" height="64" rx="14" fill="#15233b"/>
-  <path d="M5 64C7 46 19 38 32 38s25 8 27 26Z" fill="#f0a202"/>
-  <path d="M8.5 54c7-4.5 15-6.5 23.5-6.5S48.5 49.5 55.5 54" fill="none" stroke="#15233b" stroke-width="3"/>
-  <g fill="#f0a202" stroke="#15233b" stroke-width="2.5" paint-order="stroke">
-    <g transform="translate(13.5 33) rotate(-22) scale(.8)"><use href="#h"/></g>
-    <g transform="translate(50.5 33) rotate(22) scale(.8)"><use href="#h"/></g>
-    <g transform="translate(32 30)"><use href="#h"/></g>
+  <rect width="64" height="64" rx="14" fill="#26272b"/>
+  <path d="M5 64C7 46 19 38 32 38s25 8 27 26Z" fill="#46474c"/>
+  <g transform="translate(13.5 33) rotate(-22) scale(.8)"><use href="#d"/></g>
+  <g transform="translate(50.5 33) rotate(22) scale(.8)"><use href="#d"/></g>
+  <g transform="translate(32 30)"><use href="#d"/></g>
+  <g fill="none" stroke="#c9ccd1" stroke-width="1.8">
+    <ellipse cx="13" cy="52" rx="3" ry="2" transform="rotate(-28 13 52)"/>
+    <ellipse cx="19" cy="49" rx="3" ry="2" transform="rotate(-18 19 49)"/>
+    <ellipse cx="25.5" cy="47.3" rx="3" ry="2" transform="rotate(-8 25.5 47.3)"/>
+    <ellipse cx="38.5" cy="47.3" rx="3" ry="2" transform="rotate(8 38.5 47.3)"/>
+    <ellipse cx="45" cy="49" rx="3" ry="2" transform="rotate(18 45 49)"/>
+    <ellipse cx="51" cy="52" rx="3" ry="2" transform="rotate(28 51 52)"/>
   </g>
-  <g fill="#15233b">
-    <g transform="translate(13.5 33) rotate(-22) scale(.8)"><use href="#f"/></g>
-    <g transform="translate(50.5 33) rotate(22) scale(.8)"><use href="#f"/></g>
-    <g transform="translate(32 30)"><use href="#f"/></g>
-  </g>
+  <circle cx="32" cy="50.5" r="4" fill="#c9ccd1"/>
+  <path d="M30.2 49.6h1.2v1.2h-1.2ZM32.6 49.6h1.2v1.2h-1.2Z" fill="#26272b"/>
+  <path d="M31.4 52.4h1.2v1h-1.2Z" fill="#26272b"/>
 </svg>

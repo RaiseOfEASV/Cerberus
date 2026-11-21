@@ -38,7 +38,10 @@ export default function Login() {
     <div className="auth-page">
       <aside className="auth-aside">
         <Link to="/" className="brand light"><img className="brand-mark" src="/favicon.svg" alt="" width={30} height={30} /> Cerberoast</Link>
-        <p className="auth-quote">Nothing gets past the gate.</p>
+        <div>
+          <img className="auth-hound" src="/favicon.svg" alt="" width={168} height={168} />
+          <p className="auth-quote">Nothing gets past the gate.</p>
+        </div>
         <small>Secure Software Development, EASV 2026</small>
       </aside>
       <main className="auth-main">
