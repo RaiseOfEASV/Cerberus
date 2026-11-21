@@ -5,4 +5,5 @@ resources:
   - vuln-db-application.yaml
   - vuln-api-application.yaml
   - vuln-web-application.yaml
+  - vuln-scanner-application.yaml
   - vulnman.yaml
