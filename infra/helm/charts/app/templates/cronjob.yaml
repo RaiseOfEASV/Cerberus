@@ -1,0 +1,69 @@
+{{- if .Values.cronJob.schedule }}
+{{- $image := include "app.image" . -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cronJob.schedule | quote }}
+  timeZone: {{ .Values.cronJob.timeZone | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ .Values.cronJob.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "app.selectorLabels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+            fsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+            seccompProfile:
+              type: RuntimeDefault
+          {{- if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "app.serviceAccountName" . }}
+          {{- end }}
+          containers:
+            - name: app
+              image: "{{ $image }}"
+              {{- with .Values.cronJob.args }}
+              args:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.envFromSecrets }}
+              envFrom:
+                {{- range . }}
+                - secretRef:
+                    name: {{ . | quote }}
+                {{- end }}
+              {{- end }}
+              {{- with .Values.env }}
+              env:
+                {{- range . }}
+                - name: {{ .name | quote }}
+                  value: {{ .value | quote }}
+                {{- end }}
+              {{- end }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+              securityContext:
+                {{- include "app.containerSecurityContext" . | nindent 16 }}
+              {{- with (include "app.volumeMounts" .) }}
+              volumeMounts:
+                {{- . | nindent 16 }}
+              {{- end }}
+          {{- with (include "app.volumes" .) }}
+          volumes:
+            {{- . | nindent 12 }}
+          {{- end }}
+{{- end }}

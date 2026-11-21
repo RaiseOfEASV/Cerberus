@@ -43,4 +43,30 @@ rm -f /tmp/render-full.$$.yaml
 out=$(helm template x . -f tests/full-values.yaml --set 'initContainer.args=null' 2>&1 || true)
 check "initContainer.args required" 'grep -q "initContainer.args is required" <<<"$out"'
 
+# 3. CronJob mode: no Deployment or Service; same baseline; kube API token opt-in.
+helm template vuln-scanner . -n dev -f tests/full-values.yaml \
+  --set cronJob.schedule="0 2 * * *" --set kubeApiToken.enabled=true --set initContainer.enabled=false \
+  > /tmp/render-cron.$$.yaml
+check "cronjob fixture assertions" 'python3 - /tmp/render-cron.$$.yaml <<"EOF"
+import sys, yaml
+docs = [d for d in yaml.safe_load_all(open(sys.argv[1])) if d]
+kinds = [d["kind"] for d in docs]
+assert "Deployment" not in kinds and "Service" not in kinds, kinds
+cj = next(d for d in docs if d["kind"] == "CronJob")
+assert cj["spec"]["schedule"] == "0 2 * * *"
+assert cj["spec"]["concurrencyPolicy"] == "Forbid"
+pod = cj["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+assert pod["automountServiceAccountToken"] is False and pod["restartPolicy"] == "Never"
+app = pod["containers"][0]
+assert app["securityContext"]["readOnlyRootFilesystem"] is True and app["securityContext"]["runAsNonRoot"] is True
+assert "livenessProbe" not in app and "ports" not in app
+vols = {v["name"]: v for v in pod["volumes"]}
+srcs = vols["kube-api"]["projected"]["sources"]
+assert srcs[0]["serviceAccountToken"]["path"] == "token" and "audience" not in srcs[0]["serviceAccountToken"]
+assert srcs[1]["configMap"]["name"] == "kube-root-ca.crt"
+mounts = {m["name"]: m["mountPath"] for m in app["volumeMounts"]}
+assert mounts["kube-api"] == "/var/run/secrets/kubernetes.io/serviceaccount"
+EOF'
+rm -f /tmp/render-cron.$$.yaml
+
 exit $fail
