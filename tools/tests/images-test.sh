@@ -52,6 +52,8 @@ check "scan list skips digest-less entries" '! grep -q wazuh $R/infra/helm/vuln-
 sed -i "s/vault, tag: \"1.17\", digest: $D1/vault, tag: \"1.18\", digest: $D2/" "$R/docker/images.yaml"
 out=$(IMAGES_ROOT=$R python3 "$tool" changed --base HEAD 2>&1)
 check "changed lists only the bumped entry" '[ "$out" = "hashicorp/vault hashicorp/vault:1.18@$D2" ]'
+out=$(IMAGES_ROOT=$R python3 "$tool" changed --base HEAD --with-old 2>&1)
+check "changed --with-old adds the previous ref" '[ "$out" = "hashicorp/vault hashicorp/vault:1.18@$D2 hashicorp/vault:1.17@$D1" ]'
 out=$(IMAGES_ROOT=$R python3 "$tool" check 2>&1); rc=$?
 check "a catalog bump makes check fail until synced" '[ $rc = 1 ] && grep -q "catalog says .1.18@$D2" <<<"$out"'
 
