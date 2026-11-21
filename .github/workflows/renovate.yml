@@ -1,0 +1,51 @@
+name: Renovate
+
+# Self-hosted Renovate: bumps Go/npm dependencies, GitHub Actions and the
+# image catalog (docker/images.yaml), configured by /renovate.json.
+#
+# Self-hosted (not the Mend app) so it can run `python3 tools/images.py sync`
+# after a catalog bump: each PR then changes the catalog and every file that
+# references the image, and passes `images-check` on its own.
+#
+# Needs the RENOVATE_TOKEN secret: a fine-grained PAT on this repository with
+# Contents, Pull requests, Issues and Workflows read/write, plus Commit
+# statuses and Dependabot alerts read (fine-grained tokens have no Checks
+# permission; automerge is left to GitHub's native auto-merge, which waits
+# for checks itself). GITHUB_TOKEN won't do - PRs
+# it opens don't trigger CI. Commits go through the GitHub API
+# (platformCommit), so they are signed (Verified).
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # Mondays 04:00 UTC, inside renovate.json's "before 6am on monday"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # The repo's own tools/images.py runs inside Renovate's checkout of each
+      # branch; the runner provides python3 + PyYAML.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run Renovate
+        run: npx --yes renovate@44.257.9
+        env:
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_PLATFORM_COMMIT: enabled
+          # The only command a repo config may run after an update.
+          RENOVATE_ALLOWED_COMMANDS: '["^python3 tools/images\\.py sync$"]'
+          LOG_LEVEL: info
