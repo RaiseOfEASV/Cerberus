@@ -29,7 +29,9 @@ the `helm install`/`upgrade` command in the component's README, which
 `.github/workflows/renovate.yml` runs Renovate every Monday (or on demand:
 Actions -> Renovate -> Run workflow). For the catalog it bumps `tag` and
 `digest` together, runs `python3 tools/images.py sync` in the same branch,
-and opens one PR per week ("image catalog") that updates every reference.
+and opens one PR per image that updates every reference. Images that come
+from an upstream Helm chart or k3s are left alone: they change when the
+chart or k3s is upgraded.
 Catalog PRs always wait for a human review.
 
 ## Scanning
