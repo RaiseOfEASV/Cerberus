@@ -16,10 +16,19 @@ protected (PR + review + signed commits), so every change lands through a
 reviewed PR:
 
 - **dev**: edit `values-dev.yaml` (tag + digest) in a normal PR.
-- **staging/prod**: run `.github/workflows/deploy.yml`
-  (`gh workflow run deploy.yml -f app=<app> -f version=<tag> -f environment=<staging|prod>`).
-  It resolves the digest, commits the bump on a `deploy/*` branch (signed by
-  GitHub) and opens a PR. prod first waits for the `production` environment
+- **staging/prod**: run `.github/workflows/deploy.yml`. One run deploys the
+  whole release (backend and frontend together) as one PR:
+
+  ```
+  # 1. staging: every app at the commit CI built
+  gh workflow run deploy.yml -f environment=staging -f source=tag -f version=<commit-sha>
+  # 2. after testing staging: prod gets exactly what staging runs
+  gh workflow run deploy.yml -f environment=prod -f source=staging
+  ```
+
+  `apps` defaults to `all`; pass `-f apps=vuln-web` to deploy one app. The
+  workflow resolves each digest (or copies staging's), commits the bump on a
+  `deploy/*` branch (signed by GitHub) and opens a PR. prod first waits for the `production` environment
   approval. The PR is merged (by a reviewing teammate, or by an admin via
   the ruleset bypass - so one admin *can* promote to prod alone; see
   deploy.yml's header); staging then auto-syncs, prod needs a

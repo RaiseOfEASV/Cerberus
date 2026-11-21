@@ -74,6 +74,7 @@ jobs:
           infra/helm/charts/postgres/tests/render-test.sh
           infra/helm/render-all.sh
           python3 tools/check-vulnman-config.py
+          tools/tests/deploy-bump-test.sh
       # Builds vuln-web and checks nginx CSP, caching/404 and security
       # headers, run read-only like in the cluster.
       - name: vuln-web image test
