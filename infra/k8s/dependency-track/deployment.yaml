@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+          image: postgres:16-alpine@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
           env:
             - name: POSTGRES_DB
               value: dtrack
@@ -135,7 +135,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: dependencytrack/frontend:4.12.3@sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
+          image: dependencytrack/frontend:4.14.7@sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
           env:
             - { name: API_BASE_URL, value: "http://dt-apiserver:8080" }
           resources:

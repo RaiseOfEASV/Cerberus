@@ -1,6 +1,6 @@
-# keycloak-public (VulnMan's IdP)
+# keycloak-public (Cerberoast's IdP)
 
-A second Keycloak, public at `auth.cerberoast.site`, for VulnMan's users only
+A second Keycloak, public at `auth.cerberoast.site`, for Cerberoast's users only
 (design decision D3 in `docs/superpowers/plans/2026-11-16-vulnman.md`). The admin
 Keycloak in `infra/k8s/keycloak/` guards Vault, ArgoCD and oauth2-proxy and stays
 VPN-only; keeping them apart means a public-facing bug or brute-force campaign
@@ -20,11 +20,19 @@ boot-time build then writes to (see `keycloak-public-values.yaml`).
 |---|---|---|
 | `vulnman-dev` | `https://vulns-dev.admin.cerberus.internal` (VPN) | optional |
 | `vulnman-staging` | `https://vulns-staging.admin.cerberus.internal` (VPN) | optional |
-| `vulnman` | `https://cerberoast.site` | TOTP required on first login (AUTH-05) |
+| `vulnman` | `https://cerberoast.site` | off (switched off 2026-11-21; `CONFIGURE_TOTP` kept with defaultAction false) |
+
+Display names are "Cerberoast (dev)", "Cerberoast (staging)" and "Cerberoast";
+the realm IDs keep their `vulnman*` names.
 
 Each has the four app roles (`analyst`, `developer`, `pm`, `auditor`), a
-confidential `vuln-api` login client (code flow + PKCE S256 only) and a
-`vuln-api-admin` service-account client limited to managing this realm's users.
+confidential `vuln-api` login client (code flow + PKCE S256, plus the
+password grant used by the app's own sign-in page) and a `vuln-api-admin`
+service-account client limited to managing this realm's users.
+
+The prod user profile requires an email, and the password grant can't ask for
+missing profile fields, so every account needs one (placeholders like
+`manager@example.invalid`, marked verified, are fine).
 
 ## Order of operations
 
@@ -44,8 +52,13 @@ confidential `vuln-api` login client (code flow + PKCE S256 only) and a
 4. `kubectl apply -f ingressroute.yaml`, and in Cloudflare an A record
    `auth.cerberoast.site` -> the cluster's public IP (`terraform output cluster_public_ip`).
 5. Realms - see the header of `../../keycloak-public/apply-realm-config.yaml`.
-6. Create users by hand in each realm (admin console via port-forward), one
-   per role for testing, with temporary passwords. Never commit users.
+   ArgoCD doesn't apply realm files: re-run that Job after every change. The
+   files only define realm settings and service accounts, so re-running it
+   never touches people's accounts.
+6. Create users by hand in each realm (admin console or `kcadm.sh`), never in
+   git. Current accounts, named after their role: `manager` (pm), `analyst`,
+   `developer`, `auditor` in `vulnman` and `vulnman-dev`, with permanent
+   passwords and placeholder emails. `vulnman-staging` has none yet.
 
 ## Checks
 

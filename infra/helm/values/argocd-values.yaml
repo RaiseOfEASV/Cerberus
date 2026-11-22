@@ -92,9 +92,12 @@ configs:
     scopes: "[groups]"
 
 controller:
+  # 512Mi was OOMKilled in a loop on 2026-11-22 (10 restarts) once dev,
+  # staging and prod each had their apps plus root apps to reconcile - syncs
+  # started and never finished. 1536Mi leaves headroom on the 16 GB node.
   resources:
-    requests: { cpu: 250m, memory: 256Mi }
-    limits: { cpu: 500m, memory: 512Mi }
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1536Mi }
 
 repoServer:
   resources:

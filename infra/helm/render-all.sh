@@ -13,9 +13,9 @@ for values in "$root"/infra/helm/*/values-*.yaml; do
   n=$((n+1))
   chart="$root/infra/helm/charts/$(cat "$(dirname "$values")/.chart" 2>/dev/null || echo app)"
   extra=()
-  # prod's vuln-scanner also gets the image catalog's scan list (tools/images.py).
+  # dev's and prod's vuln-scanner also get the image catalog's scan list (tools/images.py).
   overlay="$(dirname "$values")/scan-images.yaml"
-  if [ "$(basename "$values")" = values-prod.yaml ] && [ -f "$overlay" ]; then extra=(-f "$overlay"); fi
+  case "$(basename "$values")" in values-dev.yaml|values-prod.yaml) [ -f "$overlay" ] && extra=(-f "$overlay");; esac
   if out=$(helm template "$app" "$chart" -f "$values" "${extra[@]}" 2>&1); then
     echo "PASS render $app/$(basename "$values")"
   else

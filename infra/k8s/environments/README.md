@@ -66,20 +66,25 @@ cutover was done):
 `infra/k8s/cerberoast`'s namespace is annotated `Prune=false,Delete=false`, so
 no root-prod sync can delete it (or the Let's Encrypt certificate in it).
 
-## Nightly Trivy scan (dev)
+## Nightly Trivy scan
 
-`vuln-scanner` runs at 02:00 (Europe/Copenhagen) as a CronJob in `dev`. It
-lists the images the namespace's pods run, scans each of ours
-(`ghcr.io/raiseofeasv/*`) with Trivy, and posts the reports to vuln-api's
-internal `/internal/scans/trivy` endpoint. New vulnerabilities become
+`vuln-scanner` runs at 02:00 (Europe/Copenhagen) as a CronJob in each app
+namespace (`dev`, `staging`, `cerberoast`). It lists the images the
+namespace's pods run and scans each of ours (`ghcr.io/raiseofeasv/*`) with
+Trivy. In `dev` and prod it also scans every image in the image catalog
+(`docker/images.yaml`, via `infra/helm/vuln-scanner/scan-images.yaml`);
+staging doesn't, so third-party findings aren't filed three times. Reports go
+to vuln-api's internal `/internal/scans/trivy` endpoint. New vulnerabilities become
 findings (source `trivy`, asset = image repository) and findings no longer
 reported are set to Remediated, both recorded in the audit trail as
-`system:trivy-scanner`. Its token, Role and network rules are in
-`dev/vulnman.yaml`. To run it now instead of waiting:
+`system:trivy-scanner`. An image whose scan or upload fails is skipped, so it
+never closes findings. Its token, Role and network rules are in each
+environment's `vulnman.yaml`. To run it now instead of waiting (job names must
+be unique):
 
 ```
-kubectl -n dev create job --from=cronjob/vuln-scanner vuln-scanner-manual
-kubectl -n dev logs -f job/vuln-scanner-manual
+kubectl -n dev create job --from=cronjob/vuln-scanner vuln-scanner-$(date +%H%M)
+kubectl -n dev logs -f job/vuln-scanner-<that name>
 ```
 
 ## Team previews of dev/staging (admin side)

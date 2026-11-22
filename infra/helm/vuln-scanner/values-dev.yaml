@@ -4,8 +4,8 @@
 image:
   repository: ghcr.io/raiseofeasv/vuln-scanner
   # tag + digest set by deploy.yml (placeholder until the first dev deploy).
-  tag: "cf6cf3040d9d013688b52bc82ed2f678724c5bbc"
-  digest: "sha256:f85079c10ba92d85393b40d8ecc04c121114cedb0aa19e55a153d2e18769762d"
+  tag: "fcb0265c16536d06db7b73246dfb6f1c9927d211"
+  digest: "sha256:a5037fa6b7aeb64e4447c35d316e360d84423661732e807ef35776a372771b97"
 serviceAccount:
   create: true
   name: vuln-scanner
@@ -14,7 +14,8 @@ kubeApiToken:
 cronJob:
   schedule: "0 2 * * *"
   timeZone: Europe/Copenhagen
-  activeDeadlineSeconds: 3600
+  # About 40 catalog images on top of the running ones, some large (Wazuh).
+  activeDeadlineSeconds: 10800
 # Trivy's database and image layers (about 2 GB at peak).
 writablePaths: [/tmp]
 envFromSecrets: [vuln-scanner-token]
@@ -26,3 +27,7 @@ env:
   - {name: TRIVY_CACHE_DIR, value: /tmp/trivy-cache}
   - {name: TMPDIR, value: /tmp}
   - {name: HOME, value: /tmp}
+  # The image catalog's scan list (docker/images.yaml via scan-images.yaml,
+  # added to this release's value files in the dev Application) - so the
+  # third-party findings can be checked in dev before prod.
+  - {name: IMAGES_FILE, value: /etc/app/images.txt}

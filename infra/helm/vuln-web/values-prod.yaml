@@ -2,8 +2,8 @@
 # as vuln-api, so no runtime configuration at all.
 image:
   repository: ghcr.io/raiseofeasv/vuln-web
-  tag: "2472367b54347397583a053e59e9c46a27a9bee4"
-  digest: sha256:4ab449c7aa68440b320fedafcfc92fc9d377ad5249c1cbaed7570a96050765a8
+  tag: "fcb0265c16536d06db7b73246dfb6f1c9927d211"
+  digest: sha256:8499c135983b083308fc048c587e2c40662df53331ff17bf32164a0bfb700cb4
 podSecurityContext:
   runAsUser: 101
   runAsGroup: 101

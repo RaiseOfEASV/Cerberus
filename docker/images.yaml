@@ -25,7 +25,7 @@ images:
   postgres:
     image: postgres
     tag: 16-alpine
-    digest: sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+    digest: sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857
     source: direct
     status: active
     note: vuln-db (chart default), keycloak DBs, dependency-track DB, DB backups, terraform-state VM, CI test DB
@@ -66,8 +66,8 @@ images:
     note: DB backup CronJobs. Chainguard's free tier only publishes latest, so it is pinned by digest alone.
   kube-bench:
     image: docker.io/aquasec/kube-bench
-    tag: v0.9.1
-    digest: sha256:543ba45ed2499a17d32b08dda2a9f9428ef6f14d387117ac5fc38decfc481511
+    tag: v0.16.0
+    digest: sha256:75506f222d1eb6ce2a751a5533bdc0a3b54c898e2e49e7751d0ee22cfb862679
     source: direct
     status: inactive
     note: CIS benchmark CronJob
@@ -90,8 +90,8 @@ images:
     note: Dependency-Track
   dependency-track-frontend:
     image: dependencytrack/frontend
-    tag: 4.12.3
-    digest: sha256:a88a62fdbcf1441b26a15854691c8b459d607e6e7f61214ea264e32387009b19
+    tag: 4.14.7
+    digest: sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
     source: direct
     status: inactive
     note: Dependency-Track
@@ -106,32 +106,32 @@ images:
     note: VPN control server (bootstrap VM)
   wazuh-manager:
     image: wazuh/wazuh-manager
-    tag: 4.9.0
-    digest: sha256:e0a78683d35556465d599a923ddc2eaec38110f911fc2c82e578f7c4ab038004
+    tag: 4.14.10
+    digest: sha256:beda27e1e88bfe5fe5e882eea3b006dfc4a77e19f31d5a0292e5126f23900e75
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-indexer:
     image: wazuh/wazuh-indexer
     tag: 4.14.10
     digest: sha256:1780a13d5950deda05860fdb2e2d6cc466a15b341a88de01452d99932e05f610
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-dashboard:
     image: wazuh/wazuh-dashboard
-    tag: 4.9.0
-    digest: sha256:9cc37f86a1efac76c0f0ddbc955dda0bdf72517b5067f384d66bcc7d95338a6c
+    tag: 4.14.10
+    digest: sha256:2987776f76cbf3d47452a51b0e59792453686e5d37bbff7768ec033987b073a0
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   alpine:
     image: alpine
     tag: "3.24"
     digest: sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
     source: vm
     status: active
-    note: one-shot setup helpers on the Wazuh and headscale VMs
+    note: one-shot setup helpers in the headscale and (not deployed) Wazuh compose files
   minio:
     image: cgr.dev/chainguard/minio
     tag: ""
