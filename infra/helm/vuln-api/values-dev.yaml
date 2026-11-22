@@ -3,8 +3,8 @@
 image:
   repository: ghcr.io/raiseofeasv/vuln-api
   # tag + digest bumped by hand for dev (deploy.yml for staging/prod).
-  tag: "6944752374ca230f25a8277eb15ebd42664abc71"
-  digest: "sha256:918ace48861d8707038eb11360da978d61c8446e8d3b47dea8794d6a50a95c3c"
+  tag: "fcb0265c16536d06db7b73246dfb6f1c9927d211"
+  digest: "sha256:a65a0e3c5b9c17c6cce46c5f913ec8f87934909fa9adb740b2fe3b64e592131b"
 serviceAccount:
   create: true
   name: vuln-api
