@@ -60,7 +60,7 @@ func TestScanAllUploadsAndSkipsFailures(t *testing.T) {
 		if strings.Contains(ref, "vuln-web") {
 			return nil, errors.New("registry unreachable")
 		}
-		return []byte(`{"SchemaVersion":2}`), nil
+		return []byte(`{"SchemaVersion":2,"Results":[]}`), nil
 	}
 
 	c := config{VulnAPIURL: api.URL, Token: "tok", TrivyBin: "trivy", ScanTimeout: 1e9}
@@ -71,7 +71,7 @@ func TestScanAllUploadsAndSkipsFailures(t *testing.T) {
 		t.Fatalf("failed = %d, want 1", failed)
 	}
 	// The failed image was never uploaded, so none of its findings get closed.
-	if len(posted) != 1 || posted[0] != `ghcr.io/raiseofeasv/vuln-api {"SchemaVersion":2}` {
+	if len(posted) != 1 || posted[0] != `ghcr.io/raiseofeasv/vuln-api {"SchemaVersion":2,"ArtifactName":"","Results":[]}` {
 		t.Fatalf("posted %q", posted)
 	}
 }
@@ -104,5 +104,46 @@ func TestImagesFileRejectsUnpinnedOrMalformed(t *testing.T) {
 		if _, err := readImagesFile(bad); err == nil {
 			t.Errorf("accepted %q", bad)
 		}
+	}
+}
+
+func TestCompactKeepsWhatVulnAPIReads(t *testing.T) {
+	in := `{"SchemaVersion":2,"ArtifactName":"img","Results":[{"Target":"t","Class":"os-pkgs","Vulnerabilities":[
+	  {"VulnerabilityID":"CVE-2026-1234","PkgName":"zlib","InstalledVersion":"1","FixedVersion":"2","Severity":"HIGH",
+	   "Title":"T","Description":"D","PrimaryURL":"u","References":["r1","r2"],"Layer":{"Digest":"x"},
+	   "CVSS":{"nvd":{"V3Score":7.5,"V3Vector":"AV:N"},"redhat":{"V3Score":5}}}]}]}`
+	out, err := compact([]byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{`"VulnerabilityID":"CVE-2026-1234"`, `"PkgName":"zlib"`, `"FixedVersion":"2"`, `"Severity":"HIGH"`, `"Description":"D"`, `"PrimaryURL":"u"`, `"CVSS":{"nvd":{"V3Score":7.5}}`, `"ArtifactName":"img"`, `"Target":"t"`} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %s in %s", want, s)
+		}
+	}
+	for _, gone := range []string{"References", "Layer", "redhat", "V3Vector", "Class"} {
+		if strings.Contains(s, gone) {
+			t.Errorf("%s should be dropped: %s", gone, s)
+		}
+	}
+	if _, err := compact([]byte("not json")); err == nil {
+		t.Error("accepted a non-JSON report")
+	}
+}
+
+func TestUpdateDBFetchesTheJavaDBToo(t *testing.T) {
+	old := runner
+	defer func() { runner = old }()
+	var calls []string
+	runner = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		calls = append(calls, strings.Join(args, " "))
+		return nil, nil
+	}
+	if err := updateDB(context.Background(), config{TrivyBin: "trivy", CacheDir: "/c"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 || !strings.Contains(calls[0], "--download-db-only") || !strings.Contains(calls[1], "--download-java-db-only") {
+		t.Fatalf("calls: %q", calls)
 	}
 }

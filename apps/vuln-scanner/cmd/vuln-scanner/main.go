@@ -232,9 +232,57 @@ var runner = func(ctx context.Context, bin string, args ...string) ([]byte, erro
 	return cmd.Output()
 }
 
+// updateDB fetches Trivy's vulnerability database and its Java database
+// (needed for .jar files - Keycloak, Dependency-Track, the Wazuh indexer).
+// Each scan then runs with --skip-db-update --skip-java-db-update.
 func updateDB(ctx context.Context, c config) error {
-	_, err := runner(ctx, c.TrivyBin, "image", "--download-db-only", "--quiet", "--cache-dir", c.CacheDir)
+	if _, err := runner(ctx, c.TrivyBin, "image", "--download-db-only", "--quiet", "--cache-dir", c.CacheDir); err != nil {
+		return err
+	}
+	_, err := runner(ctx, c.TrivyBin, "image", "--download-java-db-only", "--quiet", "--cache-dir", c.CacheDir)
 	return err
+}
+
+// compact keeps only what vuln-api reads from a Trivy report (see
+// apps/vuln-api/internal/intake/trivy.go), so big images' reports - full of
+// reference lists, layer and data-source details - fit the upload limit.
+func compact(report []byte) ([]byte, error) {
+	var rep struct {
+		SchemaVersion int    `json:"SchemaVersion"`
+		ArtifactName  string `json:"ArtifactName"`
+		Results       []struct {
+			Target          string `json:"Target"`
+			Vulnerabilities []struct {
+				VulnerabilityID  string `json:"VulnerabilityID"`
+				PkgName          string `json:"PkgName"`
+				InstalledVersion string `json:"InstalledVersion"`
+				FixedVersion     string `json:"FixedVersion,omitempty"`
+				Severity         string `json:"Severity"`
+				Title            string `json:"Title,omitempty"`
+				Description      string `json:"Description,omitempty"`
+				PrimaryURL       string `json:"PrimaryURL,omitempty"`
+				CVSS             map[string]struct {
+					V3Score float64 `json:"V3Score,omitempty"`
+				} `json:"CVSS,omitempty"`
+			} `json:"Vulnerabilities,omitempty"`
+		} `json:"Results"`
+	}
+	if err := json.Unmarshal(report, &rep); err != nil {
+		return nil, fmt.Errorf("trivy report: %w", err)
+	}
+	for i := range rep.Results {
+		for j := range rep.Results[i].Vulnerabilities {
+			v := &rep.Results[i].Vulnerabilities[j]
+			if nvd, ok := v.CVSS["nvd"]; ok {
+				v.CVSS = map[string]struct {
+					V3Score float64 `json:"V3Score,omitempty"`
+				}{"nvd": nvd}
+			} else {
+				v.CVSS = nil
+			}
+		}
+	}
+	return json.Marshal(rep)
 }
 
 func scan(ctx context.Context, c config, ref string) ([]byte, error) {
@@ -285,6 +333,11 @@ func scanAll(ctx context.Context, log *slog.Logger, c config, api *http.Client, 
 		report, err := scan(ctx, c, ref)
 		if err != nil {
 			log.Error("scan failed; its findings are left as they are", "image", ref, "err", err)
+			failed++
+			continue
+		}
+		if report, err = compact(report); err != nil {
+			log.Error("scan output unreadable; its findings are left as they are", "image", ref, "err", err)
 			failed++
 			continue
 		}

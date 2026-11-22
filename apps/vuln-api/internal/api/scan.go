@@ -25,6 +25,15 @@ func init() {
 	})
 }
 
+// The scanner's reports are bigger than a user's upload: whole third-party
+// images (Wazuh, Keycloak...) with hundreds of findings. The scanner already
+// strips each report to the fields ParseTrivy reads, and the endpoint is
+// token-only, so it gets more room than /api/import/trivy.
+const (
+	maxScanBytes    = 16 << 20
+	maxScanFindings = 5000
+)
+
 var scannerActor = store.Actor{Sub: "system:trivy-scanner", Name: "Trivy nightly scan", Role: domain.Role("system")}
 
 func (s *server) scannerAuthorized(r *http.Request) bool {
@@ -52,11 +61,11 @@ func (s *server) scanTrivy(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "asset is required")
 		return
 	}
-	body, ok := readBody(w, r, maxTrivyBytes)
+	body, ok := readBody(w, r, maxScanBytes)
 	if !ok {
 		return
 	}
-	nfs, err := intake.ParseTrivy(bytes.NewReader(body), maxTrivyFindings, asset)
+	nfs, err := intake.ParseTrivy(bytes.NewReader(body), maxScanFindings, asset)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
