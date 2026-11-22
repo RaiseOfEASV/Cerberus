@@ -4,8 +4,8 @@
 image:
   repository: ghcr.io/raiseofeasv/vuln-scanner
   # tag + digest set by deploy.yml (placeholder until the first dev deploy).
-  tag: "cf6cf3040d9d013688b52bc82ed2f678724c5bbc"
-  digest: "sha256:f85079c10ba92d85393b40d8ecc04c121114cedb0aa19e55a153d2e18769762d"
+  tag: "6944752374ca230f25a8277eb15ebd42664abc71"
+  digest: "sha256:e59ebedf0d25a7a12ceafe7746ff42d7203d42ba8ca198deead5e7d9404f573c"
 serviceAccount:
   create: true
   name: vuln-scanner
