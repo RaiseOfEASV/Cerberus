@@ -36,7 +36,7 @@ Catalog PRs always wait for a human review.
 
 ## Scanning
 
-Every night the prod `vuln-scanner` scans all catalog images that have a
+Every night the dev and prod `vuln-scanner` scan all catalog images that have a
 digest (plus everything running in its namespace) and files the results in
 Cerberoast: new vulnerabilities become findings with the image repository as
 the asset, and findings no longer reported are closed automatically. The
