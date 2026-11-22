@@ -113,8 +113,8 @@ images:
     note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-indexer:
     image: wazuh/wazuh-indexer
-    tag: 4.9.0
-    digest: sha256:a7adcac99648b73e075c4fa8daa5bd552da46ec4a7700d7faccd579a2c5e7cc2
+    tag: 4.14.10
+    digest: sha256:1780a13d5950deda05860fdb2e2d6cc466a15b341a88de01452d99932e05f610
     source: vm
     status: inactive
     note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
