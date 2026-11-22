@@ -120,8 +120,8 @@ images:
     note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-dashboard:
     image: wazuh/wazuh-dashboard
-    tag: 4.9.0
-    digest: sha256:9cc37f86a1efac76c0f0ddbc955dda0bdf72517b5067f384d66bcc7d95338a6c
+    tag: 4.14.10
+    digest: sha256:2987776f76cbf3d47452a51b0e59792453686e5d37bbff7768ec033987b073a0
     source: vm
     status: inactive
     note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
