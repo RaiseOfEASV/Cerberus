@@ -109,29 +109,29 @@ images:
     tag: 4.14.10
     digest: sha256:beda27e1e88bfe5fe5e882eea3b006dfc4a77e19f31d5a0292e5126f23900e75
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-indexer:
     image: wazuh/wazuh-indexer
     tag: 4.9.0
     digest: sha256:a7adcac99648b73e075c4fa8daa5bd552da46ec4a7700d7faccd579a2c5e7cc2
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   wazuh-dashboard:
     image: wazuh/wazuh-dashboard
     tag: 4.9.0
     digest: sha256:9cc37f86a1efac76c0f0ddbc955dda0bdf72517b5067f384d66bcc7d95338a6c
     source: vm
-    status: active
-    note: Wazuh VM
+    status: inactive
+    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   alpine:
     image: alpine
     tag: "3.24"
     digest: sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
     source: vm
     status: active
-    note: one-shot setup helpers on the Wazuh and headscale VMs
+    note: one-shot setup helpers in the headscale and (not deployed) Wazuh compose files
   minio:
     image: cgr.dev/chainguard/minio
     tag: ""

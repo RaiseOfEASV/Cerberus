@@ -22,15 +22,13 @@ and run as a non-root user already.
 
 - Built, scanned (Trivy), SBOM'd (Syft), and signed (cosign, keyless) by
   `.github/workflows/base-images.yml` on every change under `docker/base/**`,
-  plus weekly on a schedule so a Renovate-driven digest bump gets rebuilt and
+  plus weekly on a schedule so an upstream digest bump gets rebuilt and
   rescanned even if nothing else in the Dockerfile changed.
-- Renovate tracks the upstream `FROM` digest in each Dockerfile here
-  (`renovate.json`'s `dockerfile` manager, `pinDigests: true`) and opens a PR
-  whenever a new digest is published upstream.
-- App Dockerfiles must pin the tag they consume from GHCR by digest too -
-  Renovate tracks that the same way, one ecosystem, one mechanism.
-  **Not done yet:** `apps/vuln-api` uses `base-go:latest` (no digest existed
-  when it was written) - pin it.
+- The upstream `FROM` images (distroless) are entries in the image catalog,
+  `docker/images.yaml`, pinned by tag and digest. Renovate bumps them there
+  and `just images-sync` rewrites these Dockerfiles - see `docker/README.md`.
+- **Not done yet:** `apps/vuln-api` and `apps/vuln-scanner` use
+  `base-go:latest` (our own image, so not in the catalog) - pin it by digest.
 - Trivy's gate fails on any *fixed* CRITICAL. When an upstream distroless tag
   lags behind a Debian fix (as `nodejs22-debian12` did with CVE-2026-31789),
   move to a newer upstream tag rather than ignoring the finding.
@@ -40,4 +38,4 @@ and run as a non-root user already.
 1. New directory here with a minimal `Dockerfile` (distroless runtime stage,
    non-root).
 2. Add it to the `matrix.image` list in `base-images.yml`.
-3. Nothing else changes - Renovate and the workflow already generalize.
+3. Add its upstream `FROM` image to `docker/images.yaml` (`just images-sync`).

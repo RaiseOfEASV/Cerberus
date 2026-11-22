@@ -3,7 +3,8 @@
 One directory per app. The root `Justfile`, `build.yml` and `release.yml`
 discover apps automatically - nothing in CI needs editing to add one.
 `vuln-api` (Go) and `vuln-web` (React) are the reference implementation
-of this convention.
+of this convention. `vuln-scanner` (Go plus the Trivy binary) is the nightly
+scan, deployed as a CronJob through the app chart's `cronJob:` mode.
 
 ## What an app directory needs
 

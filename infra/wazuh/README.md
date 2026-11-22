@@ -35,3 +35,12 @@ Needs a persistent host (same "plain VM for now, Epic 5's golden image later" ca
 as `infra/terraform-state/`). Nothing here has actually been deployed - both
 consumers (VM agents, in-cluster DaemonSet) are still pointed at placeholder
 addresses, by design, not oversight.
+
+**Decision (2026-11-22): not deploying it for now.** The only place it fits
+without a quota increase is the bootstrap VM, which would have to grow from
+`B2ats_v2` (1 GiB, about $8/month, free-tier eligible) to `B2as_v2` (8 GiB,
+about $63/month); running it inside the cluster would break the isolation
+above. The images stay in `docker/images.yaml` as `inactive` and are still
+scanned nightly. When it is deployed: install 4.14.x (the agent image
+`wazuh/wazuh-agent` only exists from 4.13 on, and agents must not be newer
+than the manager).

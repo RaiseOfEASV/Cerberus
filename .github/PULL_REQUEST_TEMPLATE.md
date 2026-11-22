@@ -22,7 +22,8 @@ doesn't close the issue outright, use "Part of #<n>" instead. -->
 - [ ] No secrets, tokens, or credentials in this diff (push protection and
       GitGuardian are backstops, not a substitute for checking).
 - [ ] New dependencies are pinned (no floating versions), and Renovate will track
-      them going forward.
+      them going forward. New third-party container images go in
+      `docker/images.yaml` first (`just images-sync`, `just images-check`).
 - [ ] If this touches `infra/k8s/` or `infra/helm/`: resource requests/limits,
       non-root, and read-only root filesystem are set (Kyverno will reject the
       deploy otherwise, but check before pushing).

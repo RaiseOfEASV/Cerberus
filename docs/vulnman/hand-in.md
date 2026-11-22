@@ -53,6 +53,9 @@ Evidence names the automated test(s) that prove the behaviour (Go tests in
 - **Disclosure approval:** the spec says no role may approve public disclosures,
   so we built no disclosure workflow (D18).
 - **Reports as JSON, not PDF** (the spec allows either); signed instead.
+- **Name (2026-11-21):** the app is presented as **Cerberoast** (themed on
+  Cerberus, the guard dog of the underworld); "VulnMan" stays the exam
+  brief's name and the internal name (repos, realms, `VM-` references).
 - **Own login page (2026-11-21):** sign-in happens on VulnMan's own page,
   with vuln-api checking the password against Keycloak (password grant). This
   is a deliberate trade-off against OAuth guidance, which prefers the redirect
