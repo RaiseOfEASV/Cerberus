@@ -27,7 +27,9 @@ fullnameOverride: keycloak
 
 image:
   repository: quay.io/keycloak/keycloak
-  tag: "26.8.2@sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3"
+  # Plain version in tag (the chart also puts it in a label), pin in digest.
+  tag: "26.8.2"
+  digest: "sha256:7e66a96e4739239070aeaf72e4c5decf0f7f682cfc725b9f7ea2b336eaba38b3"
 
 # Chart defaults command/args to [] - with nothing overriding the
 # image's own entrypoint, the container just printed kc.sh's help text
