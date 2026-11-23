@@ -25,6 +25,14 @@ describe('permission matrix mirrors the server (domain.go)', () => {
   }
 })
 
+describe('guest (pentest account)', () => {
+  it('can do nothing at all, not even view', () => {
+    const all: Action[] = ['view', 'create', 'import', 'edit', 'change_status', 'assign', 'link', 'attach', 'export', 'view_audit', 'set_sla', 'manage_roles']
+    for (const a of all) expect(can('guest', a), a).toBe(false)
+    expect(nextStatuses('guest', 'New')).toEqual([])
+  })
+})
+
 describe('ownership and transitions', () => {
   it('developers only act on their own findings', () => {
     expect(canOnFinding('developer', 'edit', 'u1', 'u2')).toBe(false)

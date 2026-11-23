@@ -12,6 +12,8 @@ const matrix: Record<Role, Action[]> = {
   developer: ['view', 'edit', 'change_status', 'link', 'attach'],
   pm: ['view', 'create', 'import', 'edit', 'change_status', 'assign', 'link', 'attach', 'export', 'view_audit', 'set_sla', 'manage_roles'],
   auditor: ['view', 'export', 'view_audit'],
+  // The pentest account: signed in, no access to anything.
+  guest: [],
 }
 
 export function can(role: Role, a: Action): boolean {

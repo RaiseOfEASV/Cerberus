@@ -11,7 +11,7 @@ function Item({ to, icon, label, end }: { to: string; icon: string; label: strin
   )
 }
 
-const roleLabel: Record<string, string> = { pm: 'Project manager', analyst: 'Analyst', developer: 'Developer', auditor: 'Auditor' }
+const roleLabel: Record<string, string> = { pm: 'Project manager', analyst: 'Analyst', developer: 'Developer', auditor: 'Auditor', guest: 'Guest' }
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, can } = useAuth()
@@ -21,8 +21,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="brand"><img className="brand-mark" src="/favicon.svg" alt="" width={30} height={30} /> Cerberoast</div>
         <nav aria-label="Main">
-          <Item to="/app" end icon="grid" label="Dashboard" />
-          <Item to="/app/findings" end icon="list" label="Findings" />
+          {can('view') && <Item to="/app" end icon="grid" label="Dashboard" />}
+          {can('view') && <Item to="/app/findings" end icon="list" label="Findings" />}
           {can('create') && <Item to="/app/findings/new" icon="plus" label="New finding" />}
           {can('import') && <Item to="/app/import" icon="upload" label="Import" />}
           {can('view_audit') && <Item to="/app/audit" icon="history" label="Audit trail" />}

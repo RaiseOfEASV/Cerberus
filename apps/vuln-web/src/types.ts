@@ -1,5 +1,5 @@
 // Mirrors vuln-api's JSON (internal/store, internal/domain).
-export type Role = 'analyst' | 'developer' | 'pm' | 'auditor'
+export type Role = 'analyst' | 'developer' | 'pm' | 'auditor' | 'guest'
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low'
 export type Status = 'New' | 'Triaged' | 'In Progress' | 'Remediated' | 'Accepted Risk'
 export const severities: Severity[] = ['Critical', 'High', 'Medium', 'Low']

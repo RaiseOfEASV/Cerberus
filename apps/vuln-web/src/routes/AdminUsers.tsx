@@ -4,7 +4,7 @@ import { useAuth } from '../auth'
 import ErrorText, { message } from '../components/ErrorText'
 import type { Person } from '../types'
 
-const roles = ['analyst', 'developer', 'pm', 'auditor'] as const
+const roles = ['analyst', 'developer', 'pm', 'auditor', 'guest'] as const
 
 // AUTH-04: a PM changes other users' roles (in Keycloak). The change ends
 // that user's sessions, so it applies on their next request.

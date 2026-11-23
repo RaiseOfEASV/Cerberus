@@ -43,6 +43,7 @@ export const users: Record<string, User> = {
   developer: { sub: 'dev-1', name: 'Dee Dev', email: '', role: 'developer' },
   pm: { sub: 'pm-1', name: 'Pat PM', email: '', role: 'pm' },
   auditor: { sub: 'au-1', name: 'Aud Auditor', email: '', role: 'auditor' },
+  guest: { sub: 'gu-1', name: 'Pen Tester', email: '', role: 'guest' },
 }
 
 export function LocationProbe() {
