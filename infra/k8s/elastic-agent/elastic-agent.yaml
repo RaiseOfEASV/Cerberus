@@ -8,8 +8,10 @@
 # /sys/kernel/debug and the BPF filesystem for integrations not used here
 # (Defend for Containers, CSPM, Universal Profiling). Kept: read-only /var/log
 # (container logs under /var/log/pods and /var/log/containers, the k3s API
-# audit log under /var/log/kubernetes/audit), read-only /proc and cgroups for
-# host metrics, and a state directory.
+# audit log under /var/log/kubernetes/audit), machine-id and a state directory.
+# No host /proc or cgroups (Trivy KSV-0121): the System integration only reads
+# them when the policy sets system.hostfs, which it doesn't; host-level
+# monitoring is Wazuh's job (infra/wazuh/).
 #
 # Runs as UID 0 because the pod log files (0640) and the audit log directory
 # (0700) are root-only on the node, but with every capability dropped, no
@@ -137,15 +139,11 @@ spec:
             limits: { cpu: 500m, memory: 1200Mi }
           volumeMounts:
             - { name: varlog, mountPath: /var/log, readOnly: true }
-            - { name: proc, mountPath: /hostfs/proc, readOnly: true }
-            - { name: cgroup, mountPath: /hostfs/sys/fs/cgroup, readOnly: true }
             - { name: machine-id, mountPath: /etc/machine-id, readOnly: true }
             - { name: state, mountPath: /usr/share/elastic-agent/state }
             - { name: tmp, mountPath: /tmp }
       volumes:
         - { name: varlog, hostPath: { path: /var/log } }
-        - { name: proc, hostPath: { path: /proc } }
-        - { name: cgroup, hostPath: { path: /sys/fs/cgroup } }
         - { name: machine-id, hostPath: { path: /etc/machine-id, type: File } }
         - name: state
           hostPath: { path: /var/lib/elastic-agent-managed/monitoring/state, type: DirectoryOrCreate }

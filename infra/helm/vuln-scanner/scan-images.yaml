@@ -10,6 +10,7 @@ files:
     curlimages/curl curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
     cgr.dev/chainguard/minio-client cgr.dev/chainguard/minio-client@sha256:1260ca38acf78bf8d2833845fda6636b27388ab919b750d79f2c7167fb45ec74
     aquasec/kube-bench docker.io/aquasec/kube-bench:v0.16.0@sha256:75506f222d1eb6ce2a751a5533bdc0a3b54c898e2e49e7751d0ee22cfb862679
+    docker.elastic.co/elastic-agent/elastic-agent docker.elastic.co/elastic-agent/elastic-agent:9.5.6@sha256:0852ec96b475d64a70d28644c4d898bd2c913d9962b3323998aa77f27e5393e5
     dependencytrack/apiserver dependencytrack/apiserver:4.14.7@sha256:a936a5560df5647db11942775941d5f9e3d84eac5dab7848fd3f2b2165cf0e7e
     dependencytrack/frontend dependencytrack/frontend:4.14.7@sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
     headscale/headscale headscale/headscale:0.23.0@sha256:ffe793968ef6fbec78a8d095893fe03112e6a74231afe366eb504fbc822afea6
