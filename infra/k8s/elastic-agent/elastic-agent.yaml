@@ -109,6 +109,10 @@ spec:
       labels: { app.kubernetes.io/name: elastic-agent }
     spec:
       serviceAccountName: elastic-agent
+      # Without hostNetwork the agent's host.name would be the pod name, which
+      # changes on every restart. One node, so the node's name is set here;
+      # drop this if the cluster ever gets a second node.
+      hostname: cerberus-k3s-vm
       # GID 4 = adm on Ubuntu: /var/log/auth.log and syslog are syslog:adm 0640.
       # A group is narrower than giving back CAP_DAC_OVERRIDE.
       securityContext:
@@ -128,6 +132,10 @@ spec:
               valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
             - name: POD_NAME
               valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            # Kubelet stats: the Fleet policy's Kubernetes integration uses
+            # https://${env.NODE_IP}:10250 (the node name doesn't resolve in a pod).
+            - name: NODE_IP
+              valueFrom: { fieldRef: { fieldPath: status.hostIP } }
             - { name: ELASTIC_NETINFO, value: "false" }
           securityContext:
             runAsUser: 0
@@ -136,7 +144,10 @@ spec:
             capabilities: { drop: [ALL] }
           resources:
             requests: { cpu: 100m, memory: 500Mi }
-            limits: { cpu: 500m, memory: 1200Mi }
+            # Bursts at start-up and on every policy change (was throttled more than half
+            # the time at 500m); steady state is under 100m. The request decides
+            # scheduling, so a higher limit takes nothing from the node.
+            limits: { cpu: 1000m, memory: 1200Mi }
           volumeMounts:
             - { name: varlog, mountPath: /var/log, readOnly: true }
             - { name: machine-id, mountPath: /etc/machine-id, readOnly: true }
