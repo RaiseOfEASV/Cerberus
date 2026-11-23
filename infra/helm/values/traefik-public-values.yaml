@@ -72,3 +72,29 @@ providers:
 resources:
   requests: { cpu: 100m, memory: 128Mi }
   limits: { cpu: 200m, memory: 256Mi }
+
+# Structured logs for the log shippers (Grafana Alloy / Elastic Agent / Wazuh).
+# Access logs: one JSON line per request on stdout. Headers are dropped by
+# default; only the few needed to trace a client are kept. Cookie and
+# Authorization are never logged. Query strings stay in RequestPath: that is
+# where injection payloads show up, and no secret travels in a query here
+# (the OIDC code is PKCE-bound and single-use).
+log:
+  format: json
+accessLog:
+  enabled: true
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+        Referer: keep
+        X-Forwarded-For: keep
+        X-Real-Ip: keep
+        Cf-Connecting-Ip: keep
+        Cf-Ray: keep
+        Cf-Ipcountry: keep
+        Authorization: drop
+        Cookie: drop

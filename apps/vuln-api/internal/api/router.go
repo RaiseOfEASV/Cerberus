@@ -78,7 +78,7 @@ func New(d Deps) http.Handler {
 	api.HandleFunc("GET /api/findings/{id}/attachments/{att}", s.getAttachment)
 	s.mountMore(root, api)
 	root.Handle("/api/", auth.RequireUser(d.Sessions)(auth.SameOrigin(d.Cfg.PublicBaseURL)(api)))
-	return securityHeaders(root)
+	return accessLog(d.Cfg.TrustedProxyCIDRs)(securityHeaders(root))
 }
 
 // mountMore is where later route groups register (public intake, imports,

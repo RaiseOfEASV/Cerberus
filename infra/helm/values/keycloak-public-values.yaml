@@ -25,6 +25,9 @@ proxy:
   http:
     enabled: true
 extraEnv: |
+  # JSON console logs, so the log shippers can parse login events.
+  - name: KC_LOG_CONSOLE_OUTPUT
+    value: json
   - name: KC_HOSTNAME
     value: https://auth.cerberoast.site
   - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC

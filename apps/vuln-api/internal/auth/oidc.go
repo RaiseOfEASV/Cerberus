@@ -132,10 +132,12 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, clear)
 	st, err := o.readState(r)
 	if err != nil {
+		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "oidc", "ip", o.clientIP(r), "reason", "missing_state")
 		jsonError(w, http.StatusBadRequest, "login state missing or invalid - start again")
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(st.State), []byte(r.URL.Query().Get("state"))) != 1 {
+		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "oidc", "ip", o.clientIP(r), "reason", "state_mismatch")
 		jsonError(w, http.StatusBadRequest, "login state mismatch - start again")
 		return
 	}
@@ -146,12 +148,13 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tok, err := o.oauth.Exchange(ctx, r.URL.Query().Get("code"), oauth2.VerifierOption(st.Verifier))
 	if err != nil {
-		slog.Warn("oidc code exchange failed", "err", err)
+		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "oidc", "ip", o.clientIP(r), "reason", "code_exchange", "err", err)
 		jsonError(w, http.StatusBadRequest, "login failed")
 		return
 	}
 	u, code, msg := o.verifyTokens(ctx, tok, st.Nonce)
 	if code != 0 {
+		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "oidc", "ip", o.clientIP(r), "reason", msg)
 		jsonError(w, code, msg)
 		return
 	}
@@ -164,6 +167,7 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		Name: SessionCookie, Value: id, Path: "/", MaxAge: int(AbsoluteTTL / time.Second),
 		HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
 	})
+	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "oidc", "sub", u.Sub, "ip", o.clientIP(r))
 	if o.onLogin != nil {
 		o.onLogin(ctx, u)
 	}
@@ -237,7 +241,9 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
-	if !o.userLimit.Allow(strings.ToLower(in.Username)) || !o.ipLimit.Allow(ratelimit.ClientIP(r, o.trusted)) {
+	username, ip := strings.ToLower(in.Username), o.clientIP(r)
+	if !o.userLimit.Allow(username) || !o.ipLimit.Allow(ip) {
+		securityEvent(slog.LevelWarn, "auth.login_rate_limited", "username", username, "ip", ip)
 		w.Header().Set("Retry-After", "3600")
 		jsonError(w, http.StatusTooManyRequests, "too many login attempts - try again later")
 		return
@@ -247,6 +253,7 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var re *oauth2.RetrieveError
 		if errors.As(err, &re) && (re.Response.StatusCode == http.StatusUnauthorized || re.Response.StatusCode == http.StatusBadRequest) {
+			securityEvent(slog.LevelWarn, "auth.login_failed", "method", "password", "username", username, "ip", ip, "reason", "bad_credentials")
 			jsonError(w, http.StatusUnauthorized, "invalid username or password")
 			return
 		}
@@ -256,6 +263,7 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	u, code, msg := o.verifyTokens(ctx, tok, "")
 	if code != 0 {
+		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "password", "username", username, "ip", ip, "reason", msg)
 		jsonError(w, code, msg)
 		return
 	}
@@ -268,6 +276,7 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 		Name: SessionCookie, Value: id, Path: "/", MaxAge: int(AbsoluteTTL / time.Second),
 		HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
 	})
+	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "password", "sub", u.Sub, "ip", ip)
 	if o.onLogin != nil {
 		o.onLogin(ctx, u)
 	}

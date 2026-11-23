@@ -25,6 +25,16 @@
 realm: cerberus-admin
 enabled: true
 sslRequired: external
+# Login and admin events: kept 30 days in the realm and written to Keycloak's
+# log by the jboss-logging listener (errors such as LOGIN_ERROR at WARN), so
+# the log shippers pick them up. Admin event details stay off to keep user
+# representations out of the logs.
+eventsEnabled: true
+eventsExpiration: 2592000
+eventsListeners:
+  - jboss-logging
+adminEventsEnabled: true
+adminEventsDetailsEnabled: false
 
 # oauth2-proxy's --oidc-groups-claim=groups makes it request a "groups"
 # OAuth scope in the auth request (confirmed live: the real redirect to

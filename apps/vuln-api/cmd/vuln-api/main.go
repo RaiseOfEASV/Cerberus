@@ -24,6 +24,9 @@ import (
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	// Handlers log through the package-level slog functions; without this they
+	// would print plain text instead of JSON.
+	slog.SetDefault(log)
 	if err := run(log, os.Args[1:]); err != nil {
 		log.Error("fatal", "err", err)
 		os.Exit(1)

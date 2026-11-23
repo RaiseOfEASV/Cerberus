@@ -13,5 +13,18 @@
 -w /etc/sudoers -p wa -k scope
 -w /etc/sudoers.d/ -p wa -k scope
 -w /etc/ssh/sshd_config -p wa -k sshd
--a always,exit -F arch=b64 -S execve -k exec
+# Commands run by people who logged in (SSH, sudo). auid is the login user
+# and survives sudo; container processes have no login user, so this keeps
+# the volume manageable on a Kubernetes node (Falco covers containers).
+-a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=unset -k exec
+-a always,exit -F arch=b32 -S execve -F auid>=1000 -F auid!=unset -k exec
+# Privilege use and changes to how the host or the cluster is configured.
+-w /usr/bin/sudo -p x -k priv
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd
+-w /root/.ssh/ -p wa -k sshkeys
+-w /etc/cron.d/ -p wa -k cron
+-w /etc/systemd/system/ -p wa -k systemd
+-w /etc/rancher/ -p wa -k k3s
+-w /etc/netplan/ -p wa -k network
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
 -e 2
