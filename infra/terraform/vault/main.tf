@@ -238,6 +238,9 @@ resource "vault_policy" "eso_read" {
     path "secret/data/keycloak-public/*" {
       capabilities = ["read"]
     }
+    path "secret/data/elastic/*" {
+      capabilities = ["read"]
+    }
   EOT
 }
 
