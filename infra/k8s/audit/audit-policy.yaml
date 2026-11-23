@@ -19,6 +19,36 @@ rules:
     verbs: ["get", "list", "watch"]
   - level: None
     verbs: ["watch"]
+  # Reads by named control-plane and Kyverno components (measured at about
+  # 2 MB/min before this rule). Only these exact accounts: a stolen token of
+  # any other service account still has its reads logged.
+  - level: None
+    verbs: ["get", "list"]
+    users:
+      - "system:kube-controller-manager"
+      - "system:kube-scheduler"
+      - "system:serviceaccount:kube-system:generic-garbage-collector"
+      - "system:serviceaccount:kube-system:resourcequota-controller"
+      - "system:serviceaccount:kube-system:namespace-controller"
+      - "system:serviceaccount:kyverno:kyverno-reports-controller"
+      - "system:serviceaccount:kyverno:kyverno-background-controller"
+      - "system:serviceaccount:kyverno:kyverno-cleanup-controller"
+      - "system:serviceaccount:kyverno:kyverno-admission-controller"
+      - "system:serviceaccount:argocd:argocd-application-controller"
+      - "system:k3s-supervisor"
+  # Kyverno's own policy reports, rewritten constantly.
+  - level: None
+    resources:
+      - group: "wgpolicyk8s.io"
+      - group: "reports.kyverno.io"
+      - group: "kyverno.io"
+        resources: ["updaterequests", "ephemeralreports", "clusterephemeralreports"]
+  # Kyverno's cleanup controller checks its own permissions in a loop.
+  - level: None
+    users: ["system:serviceaccount:kyverno:kyverno-cleanup-controller"]
+    resources:
+      - group: "authorization.k8s.io"
+        resources: ["selfsubjectaccessreviews"]
   - level: None
     resources:
       - group: "coordination.k8s.io"
