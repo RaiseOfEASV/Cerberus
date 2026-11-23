@@ -29,7 +29,27 @@ to reach or tamper with the security logging that would have caught it.
   (`vault kv put secret/wazuh/agent password=...`) - the in-cluster DaemonSet reads
   it via ESO (`infra/k8s/eso/external-secret-wazuh-agent.yaml`).
 
-## Not yet running
+## Wazuh Cloud (in use since 2026-11-23)
+
+For the external pentest the self-hosted manager below was skipped in favour of
+a Wazuh Cloud trial: environment `htwuxp6amhh2`, agents connect to
+`htwuxp6amhh2.cloud.wazuh.com` on 1514/1515. Vault `wazuh/cloud` holds the
+environment id, dashboard login and Cloud API key.
+
+Agents (4.14.9, held at that version) run on both VMs, installed with
+`install-agent.sh` in this directory:
+
+| Agent | Host | Extra log sources |
+|---|---|---|
+| `cerberus-k3s-vm` | 10.0.2.4 | auditd, k3s API audit log (`infra/k8s/audit/`) |
+| `cerberus-bootstrap-vm` | 10.0.1.4 | auditd, Docker container logs (headscale, terraform-state, MinIO) |
+
+journald (SSH logins, sudo) and dpkg are in the agent's default config. The
+in-cluster DaemonSet (`infra/k8s/wazuh-agent/`) is not deployed: with a single
+node it would only duplicate the k3s node's agent. Container logs from the
+cluster go to Grafana Cloud / Elastic instead.
+
+## Self-hosted manager: not yet running
 
 Needs a persistent host (same "plain VM for now, Epic 5's golden image later" caveat
 as `infra/terraform-state/`). Nothing here has actually been deployed - both
