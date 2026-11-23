@@ -2,14 +2,11 @@
 - name: Golden image hardening
   hosts: all
   become: true
-  vars:
-    wazuh_manager_address: "{{ wazuh_manager_address | default('CHANGE_ME_NO_WAZUH_MANAGER_YET') }}"
   roles:
     - devsec.hardening.os_hardening
     - devsec.hardening.ssh_hardening
     - firewall
     - auditd
-    - wazuh_agent
   tasks:
     - name: Install Lynis for the build-time gate (scripts/lynis-gate.sh runs it)
       ansible.builtin.apt:

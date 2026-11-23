@@ -5,7 +5,7 @@
 # instead of Tailscale's coordination service.
 #
 # Runs on its OWN dedicated host, same "standalone VM, not cluster" pattern
-# as infra/terraform-state/ and infra/wazuh/ - and for a sharper reason
+# as infra/terraform-state/ - and for a sharper reason
 # here: this IS the thing that gates access to admin UIs. Putting it
 # inside the cluster it's meant to gate would mean nobody could ever reach
 # it to set it up. Its coordination port (the whole point of a VPN control
@@ -16,7 +16,7 @@
 # container directly over SSH to this host, not exposed as a web UI.
 #
 # NOT YET RUNNING: needs a persistent host (same "plain VM for now, Epic
-# 5's golden image later" caveat as terraform-state/wazuh).
+# 5's golden image later" caveat as terraform-state).
 
 services:
   backup:

@@ -10,8 +10,7 @@
 # three were written together, keep them that way if the domain changes.
 #
 # NOT YET APPLIABLE: needs every backend service it references already
-# deployed (Vault, ArgoCD, Grafana, Wazuh dashboard - which is NOT in this
-# cluster, see the caveat on wazuh.admin below, Kibana, Dependency-Track),
+# deployed (Vault, ArgoCD, Grafana, Kibana, Dependency-Track),
 # plus cert-manager and oauth2-proxy.
 
 apiVersion: traefik.io/v1alpha1
@@ -139,12 +138,3 @@ spec:
   dnsNames: ["dependency-track.admin.cerberus.internal"]
   issuerRef: { name: cerberus-internal-ca, kind: ClusterIssuer }
 
-# NOTE: Wazuh dashboard is deliberately NOT in this cluster (infra/wazuh/
-# runs on its own dedicated host, separate on purpose - see that
-# directory's header). It can't get a Traefik IngressRoute here. Its
-# network-layer gate is already handled (loopback-only + headscale reaches
-# that host directly); its identity-layer gate would need either a
-# standalone oauth2-proxy + reverse-proxy pair on that same host, or
-# exposing it through this cluster's Traefik some other way - NOT solved
-# here, flagged as a real gap rather than silently covered by this file's
-# name implying otherwise.

@@ -1,5 +1,5 @@
 # Golden VM image: Debian 12 cloud image -> Ansible hardening (devsec.hardening
-# + custom firewall/auditd/Wazuh-agent roles) -> Lynis gate. This is the same
+# + custom firewall/auditd roles) -> Lynis gate. This is the same
 # "rebuild, don't patch in place" pattern as docker/base/ (Epic 2) applied to
 # VMs instead of containers - infra/terraform-state/'s Postgres host and
 # infra/nexus/'s host (Epic 2/4) are both explicitly meant to move onto this
@@ -66,9 +66,6 @@ build {
 
   provisioner "ansible" {
     playbook_file = "${path.root}/ansible/playbook.yml"
-    extra_arguments = [
-      "--extra-vars", "wazuh_manager_address=${var.wazuh_manager_address}",
-    ]
   }
 
   provisioner "shell" {

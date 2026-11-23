@@ -1,9 +1,9 @@
 # Dedicated backup object store (MinIO), separate from everything it
-# backs up - the cluster, the three standalone hosts (terraform-state,
-# headscale, wazuh). If the cluster is destroyed, the backups must still
+# backs up - the cluster and the standalone hosts (terraform-state,
+# headscale). If the cluster is destroyed, the backups must still
 # exist somewhere else; putting them anywhere inside what they back up
-# would defeat the point. Same "own dedicated host" reasoning as Wazuh's
-# manager and headscale.
+# would defeat the point. Same "own dedicated host" reasoning as
+# headscale.
 #
 # MinIO (not a shared Postgres like infra/terraform-state/) specifically
 # because Velero (the cluster backup tool this epic uses) is built around

@@ -11,7 +11,7 @@
 # audit log under /var/log/kubernetes/audit), machine-id and a state directory.
 # No host /proc or cgroups (Trivy KSV-0121): the System integration only reads
 # them when the policy sets system.hostfs, which it doesn't; host-level
-# monitoring is Wazuh's job (infra/wazuh/).
+# metrics for the bootstrap VM come from node_exporter (infra/node-exporter/).
 #
 # Runs as UID 0 because the pod log files (0640) and the audit log directory
 # (0700) are root-only on the node, but with every capability dropped, no

@@ -1,7 +1,7 @@
 # Values for the `velero` chart (vmware-tanzu). Backs up cluster
 # resources into the dedicated backup MinIO (infra/backups/) - NOT
 # anything inside the cluster Velero itself backs up, same reasoning as
-# headscale/Wazuh/terraform-state all living outside what they serve: if
+# headscale/terraform-state all living outside what they serve: if
 # the cluster is gone, the backup needs to survive that.
 #
 # IMPORTANT, easy to get wrong: Velero alone backs up Kubernetes API
@@ -23,8 +23,7 @@
 # per the plan's own wording for this epic.
 #
 # NOT YET DEPLOYABLE: needs Epic 4's cluster + infra/backups/ deployed
-# with a real, reachable address (same placeholder pattern as Wazuh's
-# manager address in Epic 7).
+# with a real, reachable address (the endpoint below is a placeholder).
 
 deployNodeAgent: true
 

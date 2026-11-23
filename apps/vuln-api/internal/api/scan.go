@@ -26,7 +26,7 @@ func init() {
 }
 
 // The scanner's reports are bigger than a user's upload: whole third-party
-// images (Wazuh, Keycloak...) with hundreds of findings. The scanner already
+// images (Keycloak, Dependency-Track...) with hundreds of findings. The scanner already
 // strips each report to the fields ParseTrivy reads, and the endpoint is
 // token-only, so it gets more room than /api/import/trivy.
 const (

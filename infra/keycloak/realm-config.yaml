@@ -6,7 +6,7 @@
 # format and widely used for Keycloak-as-code.
 #
 # UNVERIFIED against a live Keycloak instance - same caliber of caveat as
-# Epic 2's Nexus provision.sh and Epic 7's Falcosidekick->Wazuh syslog
+# Epic 2's Nexus provision.sh and Epic 7's Falcosidekick syslog
 # bridge. Double-check keycloak-config-cli's exact schema version
 # compatibility with whatever Keycloak version the chart pins before
 # relying on this.
@@ -68,7 +68,6 @@ clients:
       - "https://vault.admin.cerberus.internal/oauth2/callback"
       - "https://argocd.admin.cerberus.internal/oauth2/callback"
       - "https://grafana.admin.cerberus.internal/oauth2/callback"
-      - "https://wazuh.admin.cerberus.internal/oauth2/callback"
       - "https://kibana.admin.cerberus.internal/oauth2/callback"
       - "https://dependency-track.admin.cerberus.internal/oauth2/callback"
       # Team previews of the dev/staging quote apps

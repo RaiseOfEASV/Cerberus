@@ -40,7 +40,7 @@ drill.
    one.
 3. Spot-check row counts / a few known records against what's expected.
 
-## Drill 4: headscale / Wazuh tar restore
+## Drill 4: headscale tar restore
 
 Same shape as Drill 3: pull the latest tarball, extract into a scratch directory, and
 confirm the expected files are there and readable. These are file-level, not

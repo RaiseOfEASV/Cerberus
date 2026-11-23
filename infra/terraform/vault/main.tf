@@ -188,7 +188,7 @@ resource "vault_policy" "admin" {
 
 # --- External Secrets Operator ---
 # Reads Nexus admin creds (Epic 2), the ARC runner pool's GitHub App key
-# (Epic 3), and Grafana/Wazuh-agent/Dependency-Track-DB creds (Epic 7) -
+# (Epic 3), and Grafana/Dependency-Track-DB/Elastic creds (Epic 7) -
 # see infra/k8s/eso/ for the ExternalSecret resources that consume these
 # paths. Add a new path block here whenever a new ExternalSecret needs a
 # new prefix - don't widen this to a blanket "secret/data/*" just to save
@@ -206,9 +206,6 @@ resource "vault_policy" "eso_read" {
       capabilities = ["read"]
     }
     path "secret/data/grafana/*" {
-      capabilities = ["read"]
-    }
-    path "secret/data/wazuh/*" {
       capabilities = ["read"]
     }
     path "secret/data/dependency-track/*" {

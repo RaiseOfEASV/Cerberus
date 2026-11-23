@@ -13,8 +13,15 @@
 driver:
   kind: modern_ebpf
 
+# Alerts go to stdout as JSON. Elastic Agent's container-log stream
+# (infra/k8s/elastic-agent/) ships every pod's stdout, so no forwarder
+# (Falcosidekick) is needed.
 falcosidekick:
-  enabled: true # installed as a sub-chart dependency; see falcosidekick-values.yaml for its own output config
+  enabled: false
+
+falco:
+  json_output: true
+  json_include_output_property: true
 
 resources:
   requests: { cpu: 100m, memory: 512Mi }

@@ -1,7 +1,7 @@
 # Elastic (ECK) - general application/infra logs
 
-Separate from Wazuh (`infra/wazuh/`) by design - see that directory's header comment
-on why security logging stays apart from the general observability stack.
+Self-hosted alternative to the Elastic Cloud project used during the pentest
+(`infra/k8s/elastic-agent/`, `infra/elastic/`).
 
 ## Node prerequisite
 

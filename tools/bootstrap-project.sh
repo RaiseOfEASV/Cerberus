@@ -83,7 +83,7 @@ declare -a EPICS=(
 "Kubernetes & Infrastructure Baseline|area:infra|Terraform cluster module, encrypted/locked state backend, MetalLB/Traefik, ArgoCD, Kyverno policies, NetworkPolicies (ingress+egress), kube-bench."
 "VM / Host Hardening|area:infra|Packer/Ansible golden VM image, CIS hardening, Lynis gate in the image-build pipeline."
 "Secrets Management|area:secrets|Vault deployment, External Secrets Operator, break-glass unseal procedure documented."
-"Observability & SIEM|area:observability|kube-prometheus-stack + Alertmanager, Elastic, Wazuh (manager + agents), Falco + Falcosidekick, Trivy Operator, Dependency-Track."
+"Observability & SIEM|area:observability|kube-prometheus-stack + Alertmanager, Elastic, Falco, Trivy Operator, Dependency-Track."
 "Network & Admin Access Security|area:network|Keycloak deployment, VPN (Tailscale/headscale), oauth2-proxy in front of every admin UI."
 "Backup, DR & Incident Readiness|area:governance|Velero, scheduled restore drills, incident response runbook."
 "Application Security Testing|area:ci-cd|OWASP ZAP DAST wiring, license compliance reporting from Trivy - picked up once the first real service exists."
@@ -103,7 +103,7 @@ create_epics() {
 # --- backlog (explicitly deferred) issues ----------------------------------
 
 declare -a BACKLOG=(
-"Canary tokens|area:secrets|Decoy Vault secret path, decoy cloud credential in a repo, decoy /admin endpoint - all wired to fire into Wazuh. Pick up once Vault and Wazuh are both live."
+"Canary tokens|area:secrets|Decoy Vault secret path, decoy cloud credential in a repo, decoy /admin endpoint - all wired to fire an alert in Elastic. Pick up once Vault and Elastic are both live."
 "Service mesh / mTLS (Linkerd)|area:network|East-west traffic encryption between services. Deferred - NetworkPolicy alone covers the baseline."
 "Argo Rollouts (canary + auto-rollback)|area:infra|Automated rollback on failed health checks post-deploy."
 "DefectDojo or Kubescape|area:observability|Consolidated findings triage across scanners, if juggling separate dashboards becomes a real problem."
