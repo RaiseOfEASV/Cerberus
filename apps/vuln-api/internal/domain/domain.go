@@ -19,10 +19,13 @@ const (
 	RoleDeveloper Role = "developer"
 	RolePM        Role = "pm"
 	RoleAuditor   Role = "auditor"
+	// RoleGuest can log in but do nothing: for the external pentest, so the
+	// testers get a real session without seeing any finding.
+	RoleGuest Role = "guest"
 )
 
 // Roles is every app role, in priority order (highest first) - D4.
-var Roles = []Role{RolePM, RoleAnalyst, RoleDeveloper, RoleAuditor}
+var Roles = []Role{RolePM, RoleAnalyst, RoleDeveloper, RoleAuditor, RoleGuest}
 
 type Severity string
 
@@ -100,7 +103,7 @@ func ParseStatus(s string) (Status, error) {
 }
 
 // RoleFromClaims picks the user's app role from Keycloak realm roles: the
-// highest of pm > analyst > developer > auditor; none is ErrNoAppRole.
+// highest of pm > analyst > developer > auditor > guest; none is ErrNoAppRole.
 func RoleFromClaims(roles []string) (Role, error) {
 	have := map[string]bool{}
 	for _, r := range roles {
@@ -121,6 +124,7 @@ var matrix = map[Role]map[Action]bool{
 	RolePM: set(ActView, ActCreate, ActImport, ActEdit, ActChangeStatus, ActAssign, ActLink, ActAttach, ActExport,
 		ActViewAudit, ActSetSLA, ActManageRoles),
 	RoleAuditor: set(ActView, ActExport, ActViewAudit),
+	RoleGuest:   set(),
 }
 
 func set(as ...Action) map[Action]bool {

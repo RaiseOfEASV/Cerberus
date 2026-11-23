@@ -136,7 +136,8 @@ func TestSetRoleReplacesOthers(t *testing.T) {
 	}
 	del, add := mutations[0], mutations[1]
 	if del.Method != "DELETE" || del.Path != "/admin/realms/vulnman/users/u-dev/role-mappings/realm" ||
-		del.Body != `[{"id":"id-pm","name":"pm"},{"id":"id-developer","name":"developer"},{"id":"id-auditor","name":"auditor"}]` {
+		// guest too: making someone staff must drop the pentest role.
+		del.Body != `[{"id":"id-pm","name":"pm"},{"id":"id-developer","name":"developer"},{"id":"id-auditor","name":"auditor"},{"id":"id-guest","name":"guest"}]` {
 		t.Errorf("delete call: %+v", del)
 	}
 	if add.Method != "POST" || add.Path != del.Path || add.Body != `[{"id":"id-analyst","name":"analyst"}]` {

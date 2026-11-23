@@ -33,6 +33,7 @@ roles:
     - { name: developer, description: "View findings; update status and details of their own" }
     - { name: pm, description: "Analyst rights plus SLA targets and user roles" }
     - { name: auditor, description: "Read-only: findings, reports, audit trail" }
+    - { name: guest, description: "Can sign in, no access to findings (external pentest account)" }
 
 clients:
   # The app's login client (D2): confidential, code flow only, PKCE required.

@@ -108,6 +108,10 @@ func (s *server) me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) assignees(w http.ResponseWriter, r *http.Request) {
+	// Staff names and roles: only for roles that can see findings (not guests).
+	if !can(w, user(r), domain.ActView) {
+		return
+	}
 	list, err := s.Dir.ListAssignees(r.Context())
 	if err != nil {
 		s.fail(w, r, err)

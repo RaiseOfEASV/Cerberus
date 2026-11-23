@@ -203,7 +203,7 @@ func (c *Client) role(ctx context.Context, r domain.Role) (roleRep, error) {
 	return rep, err
 }
 
-// SetRole makes r the user's only app role: removes the other three, adds r.
+// SetRole makes r the user's only app role: removes the other app roles, adds r.
 // Other realm roles (offline_access etc.) are left alone.
 func (c *Client) SetRole(ctx context.Context, sub string, r domain.Role) error {
 	if _, err := domain.ParseRole(string(r)); err != nil {

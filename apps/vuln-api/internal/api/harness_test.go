@@ -80,6 +80,16 @@ func newHarness(t *testing.T) *harness {
 	return hs
 }
 
+// login gives u a session (the standard users get one in newHarness).
+func (hs *harness) login(u auth.User) {
+	hs.t.Helper()
+	raw, err := hs.st.Sessions().Create(context.Background(), u, time.Hour)
+	if err != nil {
+		hs.t.Fatal(err)
+	}
+	hs.cookies[u.Sub] = raw
+}
+
 // do sends a same-origin request as u (zero User = anonymous).
 func (hs *harness) do(u auth.User, method, path string, body any) *httptest.ResponseRecorder {
 	hs.t.Helper()

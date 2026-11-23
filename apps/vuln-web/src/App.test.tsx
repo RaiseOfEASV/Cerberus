@@ -33,6 +33,22 @@ describe('routing', () => {
     expect(screen.getByTestId('location').textContent).toBe('/login?return=%2Fapp%2Ffindings%2F7')
   })
 
+  it('gives a guest a no-access page instead of the dashboard, and loads no data', async () => {
+    const calls = mockApi({ 'GET /api/me': users.guest })
+    at('/app')
+    expect(await screen.findByText(/no access to findings/i)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /dashboard/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /findings/i })).not.toBeInTheDocument()
+    expect(calls.map((c) => c.url).filter((u) => u !== '/api/me')).toEqual([])
+  })
+
+  it('keeps a guest out of the findings pages too', async () => {
+    const calls = mockApi({ 'GET /api/me': users.guest })
+    at('/app/findings/7')
+    expect(await screen.findByText(/no access to findings/i)).toBeInTheDocument()
+    expect(calls.map((c) => c.url).filter((u) => u !== '/api/me')).toEqual([])
+  })
+
   it('keeps the public report form reachable without an account', async () => {
     mockApi({ 'GET /api/me': json({ error: 'not logged in' }, 401) })
     at('/report')

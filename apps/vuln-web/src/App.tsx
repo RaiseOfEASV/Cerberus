@@ -14,10 +14,13 @@ import Login from './routes/Login'
 import Report from './routes/Report'
 import type { Action } from './permissions'
 
-function Gate({ action, children }: { action: Action; children: React.ReactNode }) {
+function Gate({ action, children, denied = 'Your role does not have access to this page.' }: { action: Action; children: React.ReactNode; denied?: string }) {
   const { can } = useAuth()
-  return can(action) ? children : <p className="notice">Your role does not have access to this page.</p>
+  return can(action) ? children : <p className="notice">{denied}</p>
 }
+
+// Pages that show findings need "view"; a guest (the pentest account) has none.
+const noFindings = 'Your account has no access to findings.'
 
 // Visitors see the product page; signed-in users go straight to the app.
 function Home() {
@@ -36,10 +39,10 @@ function Staff() {
   return (
     <Layout>
       <Routes>
-        <Route index element={<Dashboard />} />
-        <Route path="findings" element={<Findings />} />
+        <Route index element={<Gate action="view" denied={noFindings}><Dashboard /></Gate>} />
+        <Route path="findings" element={<Gate action="view" denied={noFindings}><Findings /></Gate>} />
         <Route path="findings/new" element={<Gate action="create"><FindingNew /></Gate>} />
-        <Route path="findings/:id" element={<FindingDetail />} />
+        <Route path="findings/:id" element={<Gate action="view" denied={noFindings}><FindingDetail /></Gate>} />
         <Route path="import" element={<Gate action="import"><Import /></Gate>} />
         <Route path="audit" element={<Gate action="view_audit"><Audit /></Gate>} />
         <Route path="admin/users" element={<Gate action="manage_roles"><AdminUsers /></Gate>} />

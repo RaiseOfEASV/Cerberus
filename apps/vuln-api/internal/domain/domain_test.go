@@ -99,6 +99,21 @@ func TestTransitions(t *testing.T) {
 	}
 }
 
+// A guest (the pentest account) can log in but has no permission at all:
+// not even view, so it can't list findings, the dashboard or the SLA.
+func TestGuestCanNothing(t *testing.T) {
+	r, err := ParseRole("guest")
+	if err != nil || r != RoleGuest {
+		t.Fatalf("ParseRole(guest) = %q, %v", r, err)
+	}
+	for _, a := range []Action{ActView, ActCreate, ActEdit, ActChangeStatus, ActAssign, ActLink, ActAttach,
+		ActImport, ActExport, ActViewAudit, ActSetSLA, ActManageRoles} {
+		if Can(RoleGuest, a) {
+			t.Errorf("guest can %s", a)
+		}
+	}
+}
+
 func TestRoleFromClaims(t *testing.T) {
 	cases := []struct {
 		in   []string
@@ -108,6 +123,9 @@ func TestRoleFromClaims(t *testing.T) {
 		{[]string{"developer", "pm"}, RolePM, nil},
 		{[]string{"auditor", "developer"}, RoleDeveloper, nil},
 		{[]string{"offline_access", "analyst", "uma_authorization"}, RoleAnalyst, nil},
+		{[]string{"guest"}, RoleGuest, nil},
+		// Guest is the lowest: any staff role wins.
+		{[]string{"guest", "auditor"}, RoleAuditor, nil},
 		{[]string{"auditor"}, RoleAuditor, nil},
 		{[]string{"offline_access"}, "", ErrNoAppRole},
 		{nil, "", ErrNoAppRole},
