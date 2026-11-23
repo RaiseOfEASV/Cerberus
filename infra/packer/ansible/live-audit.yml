@@ -1,0 +1,16 @@
+---
+# Applies ONLY the auditd role to already-running VMs (the k3s node and the
+# bootstrap VM), for hosts that were not built from the golden image.
+# Deliberately not the full playbook.yml: os_hardening changes sysctls
+# (IP forwarding among them) that would break k3s networking on a live node.
+#
+#   ansible-playbook -i '10.0.2.4,' -u <admin_username> infra/packer/ansible/live-audit.yml
+#
+# The rules end with "-e 2" (immutable): once loaded they cannot be changed
+# or turned off until the next reboot. That is the point during a pentest,
+# but it also means a rule change needs a reboot to take effect.
+- name: Audit logging on live VMs
+  hosts: all
+  become: true
+  roles:
+    - auditd

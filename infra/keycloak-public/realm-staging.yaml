@@ -11,6 +11,16 @@ bruteForceProtected: true
 failureFactor: 5
 permanentLockout: false
 maxFailureWaitSeconds: 900
+# Login and admin events: kept 30 days in the realm and written to Keycloak's
+# log by the jboss-logging listener (errors such as LOGIN_ERROR at WARN), so
+# the log shippers pick them up. Admin event details stay off to keep user
+# representations out of the logs.
+eventsEnabled: true
+eventsExpiration: 2592000
+eventsListeners:
+  - jboss-logging
+adminEventsEnabled: true
+adminEventsDetailsEnabled: false
 passwordPolicy: "length(12) and notUsername"
 sslRequired: external
 accessTokenLifespan: 300

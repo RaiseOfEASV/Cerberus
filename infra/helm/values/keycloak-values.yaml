@@ -80,6 +80,9 @@ http:
 # X-Forwarded-*, which proxy.mode: forwarded (chart default) already
 # expects.
 extraEnv: |
+  # JSON console logs, so the log shippers can parse login events.
+  - name: KC_LOG_CONSOLE_OUTPUT
+    value: json
   - name: KC_HOSTNAME
     value: https://keycloak.admin.cerberus.internal
   - name: JAVA_OPTS_APPEND

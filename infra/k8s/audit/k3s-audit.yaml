@@ -1,0 +1,11 @@
+# k3s config drop-in: copy to /etc/rancher/k3s/config.yaml.d/audit.yaml on
+# the node, next to the policy at /etc/rancher/k3s/audit-policy.yaml, then
+# restart k3s (see README.md). The log rotates at 100 MB and keeps 5 files,
+# so it stays under about 500 MB on the node disk.
+kube-apiserver-arg:
+  - audit-policy-file=/etc/rancher/k3s/audit-policy.yaml
+  - audit-log-path=/var/log/kubernetes/audit/audit.log
+  - audit-log-format=json
+  - audit-log-maxsize=100
+  - audit-log-maxbackup=5
+  - audit-log-maxage=30
