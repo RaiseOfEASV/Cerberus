@@ -4,8 +4,8 @@ image:
   repository: ghcr.io/raiseofeasv/vuln-api
   # tag + digest: placeholder until build.yml publishes the first signed
   # image; then bumped by deploy.yml.
-  tag: "c8b291db920b68c0432738b48c5bd246c84749bd"
-  digest: sha256:d10a4f2ebbd95cf5b7b24a1047d41f5319a45f868db21ec9211f2ac4f2cddd50
+  tag: "c93b02e4ede3c3ebf99b8f100d56e9e8ddc0d034"
+  digest: sha256:ca97ff140e11ab09b8fb177fadc715d8c1e8bc050852cf344df6040263ae7db2
 serviceAccount:
   create: true
   name: vuln-api
