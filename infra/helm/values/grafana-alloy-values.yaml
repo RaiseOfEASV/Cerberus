@@ -1,0 +1,115 @@
+# Grafana Alloy (chart `alloy` 1.16.0, grafana/helm-charts) as a DaemonSet,
+# managed remotely by Grafana Cloud Fleet Management: what it collects is
+# configured in Grafana Cloud, this file only runs it.
+#
+# Not the k8s-monitoring chart Grafana's onboarding suggests. That chart
+# deploys alloy-operator, whose ClusterRole has bind/escalate on ClusterRoles
+# (cluster-admin equivalent), gives Alloy get/list/watch on every Secret in
+# the cluster, and its onboarding presets make Alloy privileged with the host
+# network. Here:
+#   - Alloy runs as UID 0 (pod logs are root-only) with every capability
+#     dropped, GID 4 (adm) for syslog/auth.log, read-only root filesystem.
+#     Same model as infra/k8s/elastic-agent/. Mounts only /var/log.
+#   - RBAC: Alloy's default read rules minus secrets and configmaps, plus
+#     nodes, nodes/metrics, nodes/stats for kubelet metrics. No nodes/proxy
+#     (GET on it is enough to exec into pods through the kubelet). The one
+#     secret it needs is granted by name in infra/k8s/grafana-cloud/rbac.yaml.
+#   - remotecfg sends the same attributes the k8s-monitoring chart would, so
+#     Fleet Management pipelines that target them still match.
+#
+# Credentials: Vault secret/grafana/cloud (username, password) -> ESO ->
+# Secret grafana-cloud-fleet (infra/k8s/grafana-cloud/external-secret.yaml).
+#
+# Install (after the ExternalSecret and rbac.yaml):
+#   helm upgrade --install grafana-alloy alloy --repo https://grafana.github.io/helm-charts \
+#     --version 1.16.0 -n monitoring -f infra/helm/values/grafana-alloy-values.yaml
+
+alloy:
+  stabilityLevel: generally-available
+  storagePath: /tmp/alloy
+  configMap:
+    create: true
+    content: |
+      remote.kubernetes.secret "fleet" {
+        name      = "grafana-cloud-fleet"
+        namespace = "monitoring"
+      }
+
+      remotecfg {
+        id  = string.format("grafana-cloud-%s-%s-%s-%s", "cerberus-k3s", "monitoring", "alloy-daemon", sys.env("K8S_NODE_NAME"))
+        url = "https://fleet-management-prod-011.grafana.net"
+        basic_auth {
+          username = convert.nonsensitive(remote.kubernetes.secret.fleet.data["username"])
+          password = remote.kubernetes.secret.fleet.data["password"]
+        }
+        poll_frequency = "30s"
+        attributes = {
+          "cluster"       = "cerberus-k3s",
+          "namespace"     = "monitoring",
+          "platform"      = "kubernetes",
+          "presets"       = "small,filesystem-log-reader,daemonset",
+          "release"       = "grafana-cloud",
+          "source"        = "k8s-monitoring",
+          "sourceVersion" = "4.6.1",
+          "workloadName"  = "alloy-daemon",
+          "workloadType"  = "daemonset",
+        }
+      }
+  extraEnv:
+    - name: K8S_NODE_NAME
+      valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+    - name: NAMESPACE
+      valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+    - name: POD_NAME
+      valueFrom: { fieldRef: { fieldPath: metadata.name } }
+    - name: CLUSTER_NAME
+      value: cerberus-k3s
+    # Fleet Management pipelines authenticate their writes with this.
+    - name: GCLOUD_RW_API_KEY
+      valueFrom: { secretKeyRef: { name: grafana-cloud-fleet, key: password } }
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 4
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities: { drop: [ALL] }
+    seccompProfile: { type: RuntimeDefault }
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  mounts:
+    varlog: true
+    dockercontainers: false
+    extra:
+      - { name: alloy-tmp, mountPath: /tmp }
+
+configReloader:
+  resources:
+    requests: { cpu: 10m, memory: 50Mi }
+    limits: { cpu: 50m, memory: 100Mi }
+
+controller:
+  type: daemonset
+  tolerations:
+    - { effect: NoSchedule, operator: Exists }
+  volumes:
+    extra:
+      - { name: alloy-tmp, emptyDir: {} }
+
+rbac:
+  create: true
+  rules:
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces", "events", "nodes", "nodes/metrics", "nodes/stats"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps", "extensions"]
+      resources: ["replicasets", "deployments", "daemonsets", "statefulsets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["batch"]
+      resources: ["jobs", "cronjobs"]
+      verbs: ["get", "list", "watch"]
+    - nonResourceURLs: ["/metrics"]
+      verbs: ["get"]

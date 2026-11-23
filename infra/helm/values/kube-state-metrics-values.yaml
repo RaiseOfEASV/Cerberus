@@ -1,0 +1,42 @@
+# kube-state-metrics (prometheus-community chart 9.1.0) for Grafana Cloud:
+# object state (deployment replicas, pod restarts, job results) that neither
+# Elastic Agent nor Alloy collects. Scraped by the Fleet Management pipelines
+# running in Alloy (infra/helm/values/grafana-alloy-values.yaml).
+#
+# No secrets or configmaps collectors: their metrics are only names and
+# labels, but kube-state-metrics would need list/watch on every Secret in
+# the cluster to produce them.
+#
+#   helm upgrade --install kube-state-metrics kube-state-metrics \
+#     --repo https://prometheus-community.github.io/helm-charts --version 9.1.0 \
+#     -n monitoring -f infra/helm/values/kube-state-metrics-values.yaml
+collectors:
+  - certificatesigningrequests
+  - cronjobs
+  - daemonsets
+  - deployments
+  - endpointslices
+  - horizontalpodautoscalers
+  - ingresses
+  - jobs
+  - leases
+  - limitranges
+  - namespaces
+  - networkpolicies
+  - nodes
+  - persistentvolumeclaims
+  - persistentvolumes
+  - poddisruptionbudgets
+  - pods
+  - replicasets
+  - resourcequotas
+  - services
+  - statefulsets
+  - storageclasses
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { cpu: 100m, memory: 192Mi }
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }

@@ -1,0 +1,22 @@
+# Alloy (infra/helm/values/grafana-alloy-values.yaml) may read exactly one
+# Secret: its Fleet Management credentials. Its cluster-wide role has no
+# secrets access at all.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grafana-alloy-fleet-secret
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["grafana-cloud-fleet"]
+    verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grafana-alloy-fleet-secret
+  namespace: monitoring
+subjects:
+  - { kind: ServiceAccount, name: grafana-alloy, namespace: monitoring }
+roleRef: { kind: Role, name: grafana-alloy-fleet-secret, apiGroup: rbac.authorization.k8s.io }
