@@ -226,8 +226,8 @@ images:
     status: active
   traefik:
     image: docker.io/traefik
-    tag: v3.7.16
-    digest: sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
+    tag: v3.7.19
+    digest: sha256:a6c0194dda77bcb804824580f36fa7edc56e315b1acfe933366c8b52844a78a4
     source: chart
     status: active
   external-secrets:
@@ -285,7 +285,7 @@ charts:
   kyverno: { chart: kyverno/kyverno, version: 3.9.2, releases: [kyverno], images: [kyverno, kyverno-pre, kyverno-background-controller, kyverno-cleanup-controller, kyverno-reports-controller] }
   metallb: { chart: metallb/metallb, version: 0.16.1, releases: [metallb], images: [metallb-controller, metallb-speaker] }
   oauth2-proxy: { chart: oauth2-proxy/oauth2-proxy, version: 10.7.1, releases: [oauth2-proxy], images: [oauth2-proxy] }
-  traefik: { chart: traefik/traefik, version: 42.1.3, releases: [traefik, traefik-public], images: [traefik] }
+  traefik: { chart: traefik/traefik, version: 42.4.2, releases: [traefik, traefik-public], images: [traefik] }
   vault: { chart: hashicorp/vault, version: 0.34.1, releases: [vault], images: [vault] }
 
 k3s:

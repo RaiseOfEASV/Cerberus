@@ -65,7 +65,7 @@ module ever needs a third post-boot IP, this manual step is needed again.
    `match`/`exclude` is ever edited again, repeat this whole procedure, not
    just the `kubectl apply`.
 3. `kubectl apply -f namespace.yaml`
-4. `helm install traefik-public traefik/traefik --version 42.1.3 -n traefik-public -f ../../helm/values/traefik-public-values.yaml`
+4. `helm install traefik-public traefik/traefik --version 42.4.2 -n traefik-public -f ../../helm/values/traefik-public-values.yaml`
 5. `kubectl apply -f ../cert-manager/cluster-issuers.yaml` - adds
    `letsencrypt-public` (ACME DNS-01 via Cloudflare), separate from the
    internal-CA issuer every admin UI uses.

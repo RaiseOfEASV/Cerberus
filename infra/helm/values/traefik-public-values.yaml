@@ -18,13 +18,14 @@
 # avoid touching the already-stable admin Traefik config at all.)
 
 service:
-  type: LoadBalancer
   annotations:
     metallb.universe.tf/address-pool: cerberus-public-pool
   # Local, not Cluster: keeps the connecting address (a Cloudflare edge)
   # instead of SNATing it to the node, so trustedIPs below can match it.
   # Single node, so no traffic is dropped by Local.
   spec:
+    # type under spec: chart 42.4+ rejects a top-level service.type.
+    type: LoadBalancer
     externalTrafficPolicy: Local
 
 ports:
