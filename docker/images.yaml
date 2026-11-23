@@ -31,8 +31,8 @@ images:
     note: vuln-db (chart default), keycloak DBs, dependency-track DB, DB backups, terraform-state VM, CI test DB
   vault:
     image: hashicorp/vault
-    tag: "1.17"
-    digest: sha256:74a4ab138ab5d64725e89cd9a9c73f7040c7fe49e98b71697b275ca9a69919df
+    tag: "1.21"
+    digest: sha256:4e33b126a59c0c333b76fb4e894722462659a6bec7c48c9ee8cea56fccfd2569
     source: direct
     status: active
     note: Vault server (Helm values) and the raft snapshot CronJob
