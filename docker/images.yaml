@@ -99,8 +99,8 @@ images:
   # --- VMs (docker-compose) -------------------------------------------------
   headscale:
     image: headscale/headscale
-    tag: 0.23.0
-    digest: sha256:ffe793968ef6fbec78a8d095893fe03112e6a74231afe366eb504fbc822afea6
+    tag: v0.29.7
+    digest: sha256:11f81665e842809db9fe3006a38c56a66e968baa5abd4bac498e86445572b970
     source: vm
     status: active
     note: VPN control server (bootstrap VM)

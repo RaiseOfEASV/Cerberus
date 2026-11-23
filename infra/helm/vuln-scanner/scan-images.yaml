@@ -13,7 +13,7 @@ files:
     docker.elastic.co/elastic-agent/elastic-agent docker.elastic.co/elastic-agent/elastic-agent:9.5.6@sha256:0852ec96b475d64a70d28644c4d898bd2c913d9962b3323998aa77f27e5393e5
     dependencytrack/apiserver dependencytrack/apiserver:4.14.7@sha256:a936a5560df5647db11942775941d5f9e3d84eac5dab7848fd3f2b2165cf0e7e
     dependencytrack/frontend dependencytrack/frontend:4.14.7@sha256:3ca8ca16bce633525a12b535803cc046a0870dfb6ea0c78904e9b130534bf696
-    headscale/headscale headscale/headscale:0.23.0@sha256:ffe793968ef6fbec78a8d095893fe03112e6a74231afe366eb504fbc822afea6
+    headscale/headscale headscale/headscale:v0.29.7@sha256:11f81665e842809db9fe3006a38c56a66e968baa5abd4bac498e86445572b970
     alpine alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
     cgr.dev/chainguard/minio cgr.dev/chainguard/minio@sha256:268d68a2a3b6fc65f905a61f84d7eab6345ce6bff14f551e2b028ec31e6a1341
     golang golang:1.27-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280
