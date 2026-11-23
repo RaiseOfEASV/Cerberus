@@ -55,9 +55,8 @@ alloy:
           "workloadType"  = "daemonset",
         }
       }
+  # K8S_NODE_NAME (used in the remotecfg id) is set by the chart itself.
   extraEnv:
-    - name: K8S_NODE_NAME
-      valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
     - name: NAMESPACE
       valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
     - name: POD_NAME
@@ -74,9 +73,11 @@ alloy:
     readOnlyRootFilesystem: true
     capabilities: { drop: [ALL] }
     seccompProfile: { type: RuntimeDefault }
+  # 420 MiB right after start-up with Fleet's default pipelines; the request
+  # (scheduling) stays small, the limit leaves room so it isn't OOM-killed.
   resources:
     requests: { cpu: 100m, memory: 128Mi }
-    limits: { cpu: 500m, memory: 512Mi }
+    limits: { cpu: 500m, memory: 1Gi }
   mounts:
     varlog: true
     dockercontainers: false
