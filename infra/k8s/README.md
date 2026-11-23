@@ -8,7 +8,7 @@ Order of operations once `infra/terraform/cluster/` has provisioned a cluster:
    this IP also has to be registered as a secondary IP configuration on the
    cluster VM's NIC (see `infra/terraform/modules/k8s-cluster/azure-k3s/main.tf`) -
    MetalLB's default L2/ARP mode doesn't work unmodified on Azure's SDN otherwise.
-2. **Traefik** - `helm install traefik traefik/traefik --version 42.1.3 -n traefik --create-namespace -f ../helm/values/traefik-values.yaml`.
+2. **Traefik** - `helm install traefik traefik/traefik --version 42.4.2 -n traefik --create-namespace -f ../helm/values/traefik-values.yaml`.
    Gets its external IP from MetalLB. **Done** - confirmed serving traffic on
    `10.0.2.50` (301 on :80, redirecting to :443 per `traefik-values.yaml`; 404 on
    :443, expected with no IngressRoutes registered yet). Also had to fix the

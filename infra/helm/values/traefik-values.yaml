@@ -8,8 +8,11 @@
 # (`additional properties 'redirectTo'/'tls' not allowed`) the first time
 # this was actually installed. Nested under `http` now.
 
+# type goes under spec: chart 42.4+ rejects a top-level service.type (older
+# charts ignored it; LoadBalancer is the default either way).
 service:
-  type: LoadBalancer
+  spec:
+    type: LoadBalancer
 
 ports:
   web:
