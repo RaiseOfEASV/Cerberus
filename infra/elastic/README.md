@@ -38,3 +38,19 @@ curl -X PUT "$KIBANA_URL/api/security/role/pentest-dashboard-viewer" \
 People are added in the Elastic Cloud console (Organization > Members >
 Invite), with this custom role on the project. Remove them when the pentest
 ends. The logs contain client IPs and usernames (personal data).
+
+## Fleet policy (Agent policy 1)
+
+Configured in Kibana, not in this repo. Current settings worth knowing:
+
+- **Kubernetes integration:** kubelet streams (container, node, pod, system,
+  volume) on, host `https://${env.NODE_IP}:10250` (`NODE_IP` comes from the
+  DaemonSet). kube-state-metrics, kube-proxy, scheduler and
+  controller-manager are off: none of them is reachable without
+  kube-state-metrics or hostNetwork. Container logs have `decode_json_fields`
+  for the app namespaces (matched on `log.file.path`) and a `fingerprint`
+  processor (`@metadata._id`, so re-read lines are dropped as duplicates).
+  Audit logs have the same fingerprint.
+- **System integration:** host metrics and auth/syslog.
+- **Prometheus integration** `node-exporter-bootstrap-vm`: see
+  `infra/node-exporter/`.
