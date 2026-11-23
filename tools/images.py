@@ -155,16 +155,33 @@ def find_refs(path: str, text: str, repos: dict[str, Entry], charts: dict) -> li
             if m and m.group(3):
                 refs.append(Ref(path, i, m.start(3), m.end(3), m.group(3), "image"))
                 continue
-            # Helm values that split the reference: repository: X / tag: Y
+            # Helm values that split the reference: repository: X / tag: Y,
+            # optionally with the chart's own digest: Z (keycloakx and others).
+            # With a digest key, tag holds the plain version (charts put it in
+            # a label, where "@sha256:" is invalid) and digest the sha256;
+            # without one, tag holds "version@sha256:...".
             m = re.match(r"""^(\s*)repository:\s*["']?([^"'\s#]+)["']?""", line)
             if m and m.group(2):
                 indent = m.group(1)
-                for j in range(i, min(i + 4, len(lines))):
-                    t = re.match(r"^" + re.escape(indent) + r"""tag:\s*(["']?)([^"'\s#]*)\1""", lines[j])
-                    if t:
-                        repo = m.group(2)
-                        refs.append(Ref(path, j + 1, t.start(2), t.end(2), f"{repo}|{t.group(2)}", "pair-tag"))
-                        break
+                repo = m.group(2)
+                block = range(i, min(i + 6, len(lines)))
+                tag = digest = None
+                for j in block:
+                    if tag is None:
+                        tag = (j, re.match(r"^" + re.escape(indent) + r"""tag:\s*(["']?)([^"'\s#]*)\1""", lines[j]))
+                        if not tag[1]:
+                            tag = None
+                    if digest is None:
+                        digest = (j, re.match(r"^" + re.escape(indent) + r"""digest:\s*(["'])([^"'\s#]*)\1""", lines[j]))
+                        if not digest[1]:
+                            digest = None
+                if tag and digest:
+                    (tj, t), (dj, d) = tag, digest
+                    refs.append(Ref(path, tj + 1, t.start(2), t.end(2), f"{repo}|{t.group(2)}", "pair-tag-plain"))
+                    refs.append(Ref(path, dj + 1, d.start(2), d.end(2), f"{repo}|{d.group(2)}", "pair-digest"))
+                elif tag:
+                    tj, t = tag
+                    refs.append(Ref(path, tj + 1, t.start(2), t.end(2), f"{repo}|{t.group(2)}", "pair-tag"))
     elif path.endswith(".sh"):
         # Any repo:tag token whose repository is in the catalog (shell has no
         # image: key to anchor on, so unknown tokens are left alone).
@@ -197,16 +214,18 @@ def expected(ref: Ref, repos: dict[str, Entry], charts: dict) -> tuple[str | Non
         else:
             new = ref.text.replace(chart_ref, f"{chart_ref} --version {want}", 1)
         return new, f"helm install {chart_ref} should use --version {want}"
-    if ref.kind == "pair-tag":
-        repo, tag = ref.text.split("|", 1)
+    if ref.kind in ("pair-tag", "pair-tag-plain", "pair-digest"):
+        repo, value = ref.text.split("|", 1)
         if repo.startswith(OWN) or not repo:
             return None, None
         e = repos.get(normalize(repo))
         if e is None:
             return None, f"{repo} is not in {CATALOG}"
-        if tag == e.pin:
+        field, want = {"pair-tag": ("tag", e.pin), "pair-tag-plain": ("tag", e.tag),
+                       "pair-digest": ("digest", e.digest)}[ref.kind]
+        if value == want:
             return None, None
-        return e.pin, f"{repo} tag {tag!r} -> catalog says {e.pin!r}"
+        return want, f"{repo} {field} {value!r} -> catalog says {want!r}"
     repo, tag, digest = split_ref(ref.text)
     if repo.startswith(OWN):
         return None, None
