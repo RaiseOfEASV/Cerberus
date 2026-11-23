@@ -65,9 +65,105 @@ alloy:
         scrape_interval = "30s"
         targets = [
           {"__address__" = "10.0.2.4:9100", "instance" = "cerberus-k3s-vm"},
-          {"__address__" = "10.0.1.4:9100", "instance" = "cerberus-bootstrap-vm"},
+          // Its own cluster label: not part of the Kubernetes cluster, so the
+          // Kubernetes dashboards don't count it as a node.
+          {"__address__" = "10.0.1.4:9100", "instance" = "cerberus-bootstrap-vm", "cluster" = "cerberus-bootstrap"},
         ]
         forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      // Kubernetes object state for the "Kubernetes / Views" dashboards
+      // (infra/grafana/). Only the series those dashboards query: about 1,600
+      // of the ~5,700 kube-state-metrics exposes (Grafana Cloud free tier caps
+      // active series).
+      prometheus.scrape "kube_state_metrics" {
+        job_name        = "integrations/kubernetes/kube-state-metrics"
+        scrape_interval = "60s"
+        targets         = [{"__address__" = "kube-state-metrics.monitoring.svc:8080"}]
+        forward_to      = [prometheus.relabel.kube_state_metrics.receiver]
+      }
+
+      prometheus.relabel "kube_state_metrics" {
+        rule {
+          source_labels = ["__name__"]
+          regex         = "kube_(node_info|namespace_created|namespace_labels|pod_info|pod_status_phase|pod_status_qos_class|pod_status_reason|pod_status_scheduled|pod_container_info|pod_container_resource_limits|pod_container_resource_requests|pod_container_status_restarts_total|pod_container_status_running|pod_container_status_last_terminated_exitcode|pod_container_status_last_terminated_reason|pod_container_status_waiting_reason|deployment_labels|daemonset_labels|statefulset_labels|hpa_labels|ingress_info|service_info|endpoint_info|networkpolicy_labels|persistentvolumeclaim_info)"
+          action        = "keep"
+        }
+        forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      // Per-container CPU, memory, OOM and pod network from the kubelet's
+      // cAdvisor endpoint on this node (RBAC: nodes/metrics, not nodes/proxy).
+      // The kubelet's serving certificate is self-signed by k3s and not in
+      // the pod's CA bundle, hence insecure_skip_verify; the target is the
+      // node's own IP.
+      prometheus.scrape "cadvisor" {
+        job_name          = "integrations/kubernetes/cadvisor"
+        scheme            = "https"
+        metrics_path      = "/metrics/cadvisor"
+        scrape_interval   = "60s"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          insecure_skip_verify = true
+        }
+        targets    = [{"__address__" = string.format("%s:10250", sys.env("HOST_IP")), "instance" = "cerberus-k3s-vm"}]
+        forward_to = [prometheus.relabel.cadvisor.receiver]
+      }
+
+      prometheus.relabel "cadvisor" {
+        rule {
+          source_labels = ["__name__"]
+          regex         = "container_(cpu_usage_seconds_total|cpu_cfs_throttled_seconds_total|memory_working_set_bytes|oom_events_total|network_(receive|transmit)_(bytes|packets|errors|packets_dropped)_total)"
+          action        = "keep"
+        }
+        // CPU/memory/OOM only per container (the pod- and node-level cgroups
+        // have container=""); network only for the pod's eth0.
+        rule {
+          source_labels = ["__name__", "container"]
+          regex         = "container_(cpu|memory|oom)[a-z_]*;"
+          action        = "drop"
+        }
+        rule {
+          source_labels = ["interface"]
+          regex         = "(eth0|)"
+          action        = "keep"
+        }
+        forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      // Both Traefik instances (admin and public), found by their named
+      // metrics port so pod restarts don't break the target. instance = the
+      // namespace (traefik / traefik-public).
+      discovery.kubernetes "traefik" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          label = "app.kubernetes.io/name=traefik"
+        }
+      }
+
+      discovery.relabel "traefik" {
+        targets = discovery.kubernetes.traefik.targets
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "metrics"
+          action        = "keep"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "instance"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+      }
+
+      prometheus.scrape "traefik" {
+        job_name        = "integrations/traefik"
+        scrape_interval = "30s"
+        targets         = discovery.relabel.traefik.output
+        forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
       }
 
       prometheus.remote_write "grafana_cloud" {
@@ -89,6 +185,9 @@ alloy:
       valueFrom: { fieldRef: { fieldPath: metadata.name } }
     - name: CLUSTER_NAME
       value: cerberus-k3s
+    # The node's IP, for the kubelet cAdvisor scrape.
+    - name: HOST_IP
+      valueFrom: { fieldRef: { fieldPath: status.hostIP } }
     # Fleet Management pipelines authenticate their writes with this.
     - name: GCLOUD_RW_API_KEY
       valueFrom: { secretKeyRef: { name: grafana-cloud-fleet, key: password } }
