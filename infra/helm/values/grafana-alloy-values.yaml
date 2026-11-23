@@ -55,6 +55,32 @@ alloy:
           "workloadType"  = "daemonset",
         }
       }
+
+      // Local pipeline, next to whatever Fleet Management pushes: node_exporter
+      // on both VMs (infra/node-exporter/) to Grafana Cloud Prometheus, for the
+      // "Node Exporter Full" dashboard (infra/grafana/). job/instance follow
+      // Grafana's Linux integration conventions.
+      prometheus.scrape "node_exporter" {
+        job_name        = "integrations/node_exporter"
+        scrape_interval = "30s"
+        targets = [
+          {"__address__" = "10.0.2.4:9100", "instance" = "cerberus-k3s-vm"},
+          {"__address__" = "10.0.1.4:9100", "instance" = "cerberus-bootstrap-vm"},
+        ]
+        forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      prometheus.remote_write "grafana_cloud" {
+        endpoint {
+          // Stack tenderraccoon360, Prometheus instance 3796712.
+          url = "https://prometheus-prod-72-prod-eu-west-4.grafana.net/api/prom/push"
+          basic_auth {
+            username = "3796712"
+            password = sys.env("GCLOUD_RW_API_KEY")
+          }
+        }
+        external_labels = { cluster = "cerberus-k3s" }
+      }
   # K8S_NODE_NAME (used in the remotecfg id) is set by the chart itself.
   extraEnv:
     - name: NAMESPACE
