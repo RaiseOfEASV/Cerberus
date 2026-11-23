@@ -77,7 +77,18 @@ func TestPasswordLoginLogsSuccess(t *testing.T) {
 	o, _, _, _ := setup(t)
 	passwordLogin(o, "192.0.2.13:1", `{"username":"ana","password":"correct horse"}`)
 	e := findEvent(logs(), "auth.login_succeeded")
-	if e == nil || e["sub"] != "user-123" || e["ip"] != "192.0.2.13" || e["method"] != "password" {
+	if e == nil || e["sub"] != "user-123" || e["username"] != "ana" || e["ip"] != "192.0.2.13" || e["method"] != "password" {
+		t.Fatalf("success event: %v", logs())
+	}
+}
+
+func TestCallbackLogsSuccessWithUsername(t *testing.T) {
+	logs := captureLogs(t)
+	o, idp, _, _ := setup(t)
+	loc, c := login(t, o, "/")
+	callback(o, idp.authorize(t, loc), c)
+	e := findEvent(logs(), "auth.login_succeeded")
+	if e == nil || e["sub"] != "user-123" || e["username"] != "ana" || e["method"] != "oidc" {
 		t.Fatalf("success event: %v", logs())
 	}
 }

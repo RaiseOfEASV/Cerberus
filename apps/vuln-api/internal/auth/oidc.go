@@ -152,7 +152,7 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "login failed")
 		return
 	}
-	u, code, msg := o.verifyTokens(ctx, tok, st.Nonce)
+	u, login, code, msg := o.verifyTokens(ctx, tok, st.Nonce)
 	if code != 0 {
 		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "oidc", "ip", o.clientIP(r), "reason", msg)
 		jsonError(w, code, msg)
@@ -167,7 +167,7 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 		Name: SessionCookie, Value: id, Path: "/", MaxAge: int(AbsoluteTTL / time.Second),
 		HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
 	})
-	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "oidc", "sub", u.Sub, "ip", o.clientIP(r))
+	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "oidc", "sub", u.Sub, "username", login, "ip", o.clientIP(r))
 	if o.onLogin != nil {
 		o.onLogin(ctx, u)
 	}
@@ -178,16 +178,17 @@ func (o *OIDC) Callback(w http.ResponseWriter, r *http.Request) {
 // audience and, for the redirect flow, nonce), access token (azp, same
 // subject) - and maps realm roles to one app role. Shared by the redirect
 // callback and the password login, so both trust exactly the same things.
+// login is Keycloak's preferred_username, for the security log only.
 // code is 0 on success, otherwise the HTTP status to answer with.
-func (o *OIDC) verifyTokens(ctx context.Context, tok *oauth2.Token, wantNonce string) (User, int, string) {
+func (o *OIDC) verifyTokens(ctx context.Context, tok *oauth2.Token, wantNonce string) (u User, login string, code int, msg string) {
 	rawID, _ := tok.Extra("id_token").(string)
 	idt, err := o.idVerifier.Verify(ctx, rawID)
 	if err != nil {
 		slog.Warn("id token rejected", "err", err)
-		return User{}, http.StatusBadRequest, "login failed"
+		return User{}, "", http.StatusBadRequest, "login failed"
 	}
 	if wantNonce != "" && subtle.ConstantTimeCompare([]byte(idt.Nonce), []byte(wantNonce)) != 1 {
-		return User{}, http.StatusBadRequest, "login failed"
+		return User{}, "", http.StatusBadRequest, "login failed"
 	}
 	var idClaims struct {
 		Name              string `json:"name"`
@@ -198,7 +199,7 @@ func (o *OIDC) verifyTokens(ctx context.Context, tok *oauth2.Token, wantNonce st
 	at, err := o.atVerifier.Verify(ctx, tok.AccessToken)
 	if err != nil {
 		slog.Warn("access token rejected", "err", err)
-		return User{}, http.StatusBadRequest, "login failed"
+		return User{}, "", http.StatusBadRequest, "login failed"
 	}
 	var atc struct {
 		Azp         string `json:"azp"`
@@ -207,17 +208,17 @@ func (o *OIDC) verifyTokens(ctx context.Context, tok *oauth2.Token, wantNonce st
 		} `json:"realm_access"`
 	}
 	if err := at.Claims(&atc); err != nil || atc.Azp != o.clientID || at.Subject != idt.Subject {
-		return User{}, http.StatusBadRequest, "login failed"
+		return User{}, "", http.StatusBadRequest, "login failed"
 	}
 	role, err := domain.RoleFromClaims(atc.RealmAccess.Roles)
 	if err != nil {
-		return User{}, http.StatusForbidden, "no VulnMan role assigned"
+		return User{}, "", http.StatusForbidden, "no VulnMan role assigned"
 	}
 	name := idClaims.Name
 	if name == "" {
 		name = idClaims.PreferredUsername
 	}
-	return User{Sub: idt.Subject, Name: name, Email: idClaims.Email, Role: role}, 0, ""
+	return User{Sub: idt.Subject, Name: name, Email: idClaims.Email, Role: role}, idClaims.PreferredUsername, 0, ""
 }
 
 // PasswordLogin: POST /auth/password {"username","password"} - VulnMan's own
@@ -261,7 +262,7 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadGateway, "sign-in is unavailable right now")
 		return
 	}
-	u, code, msg := o.verifyTokens(ctx, tok, "")
+	u, login, code, msg := o.verifyTokens(ctx, tok, "")
 	if code != 0 {
 		securityEvent(slog.LevelWarn, "auth.login_failed", "method", "password", "username", username, "ip", ip, "reason", msg)
 		jsonError(w, code, msg)
@@ -276,7 +277,7 @@ func (o *OIDC) PasswordLogin(w http.ResponseWriter, r *http.Request) {
 		Name: SessionCookie, Value: id, Path: "/", MaxAge: int(AbsoluteTTL / time.Second),
 		HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode,
 	})
-	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "password", "sub", u.Sub, "ip", ip)
+	securityEvent(slog.LevelInfo, "auth.login_succeeded", "method", "password", "sub", u.Sub, "username", login, "ip", ip)
 	if o.onLogin != nil {
 		o.onLogin(ctx, u)
 	}
