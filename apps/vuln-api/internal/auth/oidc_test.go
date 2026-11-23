@@ -62,7 +62,7 @@ func newIdP(t *testing.T) *fakeIdP {
 			}
 			now := time.Now()
 			std := jwt.Claims{Issuer: f.srv.URL, Subject: "user-123", Expiry: jwt.NewNumericDate(now.Add(5 * time.Minute)), IssuedAt: jwt.NewNumericDate(now)}
-			id := f.sign(t, std, jwt.Audience{"vuln-api"}, map[string]any{"name": "Ana Analyst", "email": "ana@example.com"})
+			id := f.sign(t, std, jwt.Audience{"vuln-api"}, map[string]any{"name": "Ana Analyst", "email": "ana@example.com", "preferred_username": "ana"})
 			access := f.sign(t, std, jwt.Audience{"account"}, map[string]any{"azp": "vuln-api", "realm_access": map[string]any{"roles": f.roles}})
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "id_token": id, "token_type": "Bearer", "expires_in": 300})
@@ -84,7 +84,7 @@ func newIdP(t *testing.T) *fakeIdP {
 		}
 		now := time.Now()
 		std := jwt.Claims{Issuer: f.srv.URL, Subject: "user-123", Expiry: jwt.NewNumericDate(now.Add(5 * time.Minute)), IssuedAt: jwt.NewNumericDate(now)}
-		id := f.sign(t, std, jwt.Audience{"vuln-api"}, map[string]any{"nonce": nonce, "name": "Ana Analyst", "email": "ana@example.com"})
+		id := f.sign(t, std, jwt.Audience{"vuln-api"}, map[string]any{"nonce": nonce, "name": "Ana Analyst", "email": "ana@example.com", "preferred_username": "ana"})
 		access := f.sign(t, std, jwt.Audience{"account"}, map[string]any{"azp": "vuln-api", "realm_access": map[string]any{"roles": f.roles}})
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": access, "id_token": id, "token_type": "Bearer", "expires_in": 300})
