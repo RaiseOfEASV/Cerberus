@@ -1,6 +1,6 @@
 # Values for the `oauth2-proxy` chart. ONE shared instance fronting every
-# admin UI (Vault, ArgoCD, Grafana, Wazuh dashboard, Kibana,
-# Dependency-Track) via a single Traefik ForwardAuth middleware - not six
+# admin UI (Vault, ArgoCD, Grafana, Kibana, Dependency-Track) via a
+# single Traefik ForwardAuth middleware - not five
 # separate oauth2-proxy deployments. Cookie domain covers the whole
 # *.admin.cerberus.internal zone so one login works across all of them.
 #

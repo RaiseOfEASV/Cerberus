@@ -14,15 +14,11 @@ Every alert source in this project converges on one of two places:
   response time is bounded by someone actually watching that channel. That's a real
   limitation for anything Sev1 overnight, not a solved problem - revisit if/when
   this needs genuine 24/7 on-call.
-- **Wazuh** (security events: Falco alerts via Falcosidekick's syslog bridge,
-  host-level detections, the GitHub audit log forwarder) -> the Wazuh dashboard
-  first. Wazuh has its own native Slack/email integration support
-  (`ossec.conf` `<integration>` blocks) that could point at the same
-  `#cerberus-alerts` channel or a dedicated one - **not configured here**, since it
-  requires tuning against a live manager instance to avoid alert-fatigue-inducing
-  noise. Documented as a manual follow-up step, not automated blindly.
+- **Elastic Cloud** (container, Kubernetes audit and host logs; the Pentest -
+  App Security dashboard) -> check the dashboard first. Elastic alert rules can
+  notify by email or Slack; none are configured yet.
 
-Whoever sees the alert first (in Slack or by checking the Wazuh dashboard) is the
+Whoever sees the alert first (in Slack or on the Elastic dashboard) is the
 de facto first responder until a real on-call rotation exists - there's no handoff
 schedule, which is itself worth revisiting once this is more than a solo/small-team
 project.

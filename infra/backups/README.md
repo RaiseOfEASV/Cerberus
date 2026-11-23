@@ -10,7 +10,6 @@ single answer instead of being scattered across every component's own README.
 | Vault raft data | Native `vault operator raft snapshot save`, via a CronJob | `cerberus-backups/vault/` | Daily (`infra/k8s/vault/backup-cronjob.yaml`) |
 | Terraform state Postgres | `pg_dump` sidecar | `cerberus-backups/terraform-state-pg/` | Daily (`infra/terraform-state/docker-compose.yml`) |
 | headscale sqlite + config | tar sidecar | `cerberus-backups/headscale/` | Daily (`infra/headscale/docker-compose.yml`) |
-| Wazuh indexer + manager data | tar sidecar (not point-in-time consistent, see caveat) | `cerberus-backups/wazuh/` | Daily (`infra/wazuh/docker-compose.yml`) |
 
 ## What's explicitly NOT covered here (open gaps, not oversights)
 
@@ -20,8 +19,8 @@ single answer instead of being scattered across every component's own README.
   end up hosted rather than proxy-only) would need real backup.
 - **Elasticsearch data** (Epic 7) - ECK supports native snapshot repositories
   (S3-compatible, so the same backup MinIO could serve this), but wiring that up
-  isn't done here. General logs are lower-stakes than security logs (Wazuh, which
-  IS covered above) or secrets (Vault, which IS covered above), so this was
+  isn't done here. General logs are lower-stakes than secrets (Vault, which IS
+  covered above), so this was
   deprioritized rather than silently forgotten.
 - **GHCR images** - GitHub's own infrastructure, outside this project's backup
   surface entirely. cosign signatures + Rekor's transparency log mean a re-pull is

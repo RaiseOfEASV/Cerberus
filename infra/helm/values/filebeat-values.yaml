@@ -1,7 +1,7 @@
 # Values for the `filebeat` chart (elastic/beats). DaemonSet that tails
 # every container's logs on each node and ships them to the in-cluster
 # Elasticsearch - the actual "general application and infra logs" pipe the
-# plan calls for. Wazuh (separate, see infra/wazuh/) is NOT fed through
+# plan calls for. Host security logs are NOT fed through
 # this - it has its own agents and is deliberately kept apart from this
 # stack (see that directory's header comment on why).
 #

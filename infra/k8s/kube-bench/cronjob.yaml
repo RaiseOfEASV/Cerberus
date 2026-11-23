@@ -17,7 +17,7 @@
 #
 # Results currently just go to pod logs (`kubectl logs`) - no aggregation,
 # alerting, or dashboard yet. That's Epic 7's job (kube-prometheus-stack/
-# Grafana, or forwarding into Wazuh); don't assume anyone is watching these
+# Grafana, or Elastic); don't assume anyone is watching these
 # logs until that's wired up.
 #
 # NOT YET DEPLOYABLE: needs Epic 4's cluster. Namespace creation here will

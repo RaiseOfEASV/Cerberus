@@ -21,28 +21,17 @@ misconfigurations:
   - id: KSV-0010
     paths:
       - infra/k8s/kube-bench/cronjob.yaml
-      - infra/k8s/wazuh-agent/daemonset.yaml
     statement: >-
       Host inspection tools need the host PID namespace by design; their
       namespaces are excluded from the Kyverno baseline for the same reason.
   - id: KSV-0014
     paths:
       - infra/k8s/kube-bench/cronjob.yaml
-      - infra/k8s/wazuh-agent/daemonset.yaml
     statement: Host inspection tools write scan state/agent queues locally.
   - id: KSV-0118
     paths:
       - infra/k8s/kube-bench/cronjob.yaml
-      - infra/k8s/wazuh-agent/daemonset.yaml
     statement: Host inspection tools run as root to read host files.
-  - id: KSV-0017
-    paths:
-      - infra/k8s/wazuh-agent/daemonset.yaml
-    statement: Wazuh agent needs privileged access for host FIM/log collection.
-  - id: KSV-0121
-    paths:
-      - infra/k8s/wazuh-agent/daemonset.yaml
-    statement: Wazuh agent mounts host /etc read-only for file integrity monitoring.
 
   # TIME-BOXED, not accepted risk: Dependency-Track (Epic 7) isn't deployed
   # and its manifests still lack securityContext / read-only rootfs / cpu

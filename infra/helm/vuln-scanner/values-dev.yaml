@@ -14,7 +14,7 @@ kubeApiToken:
 cronJob:
   schedule: "0 2 * * *"
   timeZone: Europe/Copenhagen
-  # About 40 catalog images on top of the running ones, some large (Wazuh).
+  # About 40 catalog images on top of the running ones, some large (Keycloak).
   activeDeadlineSeconds: 10800
 # Trivy's database and image layers (about 2 GB at peak).
 writablePaths: [/tmp]

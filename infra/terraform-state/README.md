@@ -11,7 +11,7 @@ Postgres instance defined in `docker-compose.yml`.
 - The newer S3 backend native locking (`use_lockfile`) needs Terraform >= 1.10; this
   environment has 1.6.3 installed. Postgres sidesteps that version requirement.
 - Self-hostable, consistent with the project's general self-hosted-where-reasonable
-  posture (Nexus, ARC runners, Wazuh).
+  posture (Nexus, ARC runners).
 
 ## Setup
 

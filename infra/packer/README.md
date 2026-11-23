@@ -2,7 +2,7 @@
 
 CIS-aligned hardening baseline for every VM in this project that isn't a container
 (the standalone Postgres host for `infra/terraform-state/`, the Nexus host for
-`infra/nexus/`, the eventual Wazuh manager in Epic 7, the VPN host in Epic 8) - the
+`infra/nexus/`, the VPN host in Epic 8) - the
 same "rebuild, don't patch in place" versioning idea as `docker/base/` (Epic 2),
 applied to VMs.
 
@@ -15,9 +15,8 @@ applied to VMs.
 - `ansible/` - hardening: `devsec.hardening.os_hardening` + `.ssh_hardening` (the
   maintained, independently-written CIS/STIG-inspired collection - not a
   reproduction of CIS's own copyrighted benchmark), plus custom roles for
-  `firewall` (ufw, default-deny inbound), `auditd` (baseline audit rules - see that
-  role's caveat on scope), and `wazuh_agent` (installs + enables, not yet
-  enrollable - see its caveat).
+  `firewall` (ufw, default-deny inbound) and `auditd` (baseline audit rules - see
+  that role's caveat on scope).
 - `scripts/lynis-gate.sh` - fails the build if the Lynis hardening index is below
   `LYNIS_MIN_SCORE` (default 70, set via env in `.github/workflows/golden-image.yml`).
 

@@ -129,8 +129,7 @@ resource "azurerm_network_interface_security_group_association" "bootstrap" {
 
 # Hosts headscale, terraform-state's Postgres, and the backup MinIO - all
 # three standalone docker-compose stacks that are light enough to share
-# one host (unlike Wazuh, which needed real isolation - deferred for now,
-# see BACKLOG.local.md). Deliberately does NOT run the `docker compose up`
+# one host. Deliberately does NOT run the `docker compose up`
 # for any of those stacks itself - this root's job ends at "a VM exists
 # with Docker installed and SSH access works." Deploying the actual
 # stacks (and their secrets, which must never land in cloud-init or

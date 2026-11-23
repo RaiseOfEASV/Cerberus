@@ -1,11 +1,9 @@
 #!/bin/sh
 # Generic directory backup loop, shared across every standalone host that
-# needs file-based (not database) backup: headscale (sqlite + config),
-# Wazuh (indexer/manager data volumes). Not point-in-time consistent -
-# it's a live tar of whatever's on disk, which is a real limitation for a
-# running database-like store (Wazuh's indexer especially). Acceptable
-# for now, flagged - see infra/wazuh/README.md and infra/backups/README.md
-# for the "move to native snapshot APIs later" note.
+# needs file-based (not database) backup: headscale (sqlite + config).
+# Not point-in-time consistent - it's a live tar of whatever's on disk.
+# Acceptable for now, flagged - see infra/backups/README.md for the
+# "move to native snapshot APIs later" note.
 set -eu
 
 : "${SRC_DIR:?}"

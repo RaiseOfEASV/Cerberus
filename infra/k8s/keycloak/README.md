@@ -145,7 +145,7 @@ cover `.admin.cerberus.internal`.
 
 ## Not yet done
 
-- Grafana/Wazuh/Kibana/Dependency-Track aren't deployed yet - once they are,
+- Grafana/Kibana/Dependency-Track aren't deployed yet - once they are,
   each needs the same two-layer treatment (oauth2-proxy gate + possibly their
   own native OIDC, if they support it) following this same pattern.
 - ArgoCD's `/api/*` (used by the `argocd` CLI with a bearer token, not a

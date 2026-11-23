@@ -2,7 +2,7 @@ name: Golden Image
 
 # Builds the hardened VM image (infra/packer/) and gates it on Lynis score.
 # GitHub-hosted runner, not ARC - same reasoning as base-images.yml: this
-# only touches public upstreams (Debian cloud image, Wazuh's apt repo,
+# only touches public upstreams (Debian cloud image,
 # Ansible Galaxy), never the private Nexus proxy.
 #
 # CAVEAT: needs /dev/kvm (the qemu builder's accelerator = "kvm"). GitHub-

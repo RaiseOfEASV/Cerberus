@@ -57,7 +57,7 @@ resources:
 # Epic 8's VPN/oauth2-proxy design is implemented and it's clear what, if
 # anything, here is ever public.
 
-# Structured logs for the log shippers (Grafana Alloy / Elastic Agent / Wazuh).
+# Structured logs for the log shippers (Elastic Agent / Grafana Alloy).
 # Access logs: one JSON line per request on stdout. Headers are dropped by
 # default; only the few needed to trace a client are kept. Cookie and
 # Authorization are never logged. Query strings stay in RequestPath: that is

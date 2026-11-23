@@ -233,7 +233,7 @@ var runner = func(ctx context.Context, bin string, args ...string) ([]byte, erro
 }
 
 // updateDB fetches Trivy's vulnerability database and its Java database
-// (needed for .jar files - Keycloak, Dependency-Track, the Wazuh indexer).
+// (needed for .jar files - Keycloak, Dependency-Track).
 // Each scan then runs with --skip-db-update --skip-java-db-update.
 func updateDB(ctx context.Context, c config) error {
 	if _, err := runner(ctx, c.TrivyBin, "image", "--download-db-only", "--quiet", "--cache-dir", c.CacheDir); err != nil {

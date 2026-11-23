@@ -2,8 +2,7 @@
 
 Stands up the one Azure VM that `infra/headscale/`, `infra/terraform-state/`,
 and `infra/backups/` run on - the three standalone docker-compose stacks
-light enough to share a host (unlike Wazuh, which needed real isolation and
-is deferred for now - see `BACKLOG.local.md`).
+light enough to share a host.
 
 ## Why this root uses local state, not the `pg` backend
 

@@ -228,7 +228,7 @@ external-secrets 2.14.0, keycloakx 7.4.0, oauth2-proxy 10.7.1.
 10. `kubectl apply -f argocd/root-apps.yaml`: dev and staging sync on their own.
 
 Not deployed before, not deployed now: ARC, Velero, monitoring, Falco, Elastic,
-Dependency-Track, Nexus, Wazuh agent. kube-bench's CronJob is rejected by
+Dependency-Track, Nexus. kube-bench's CronJob is rejected by
 Kyverno's `require-resource-limits` policy, so it isn't running either.
 
 ## 7. Vault data

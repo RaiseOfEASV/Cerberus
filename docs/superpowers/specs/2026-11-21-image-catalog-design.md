@@ -144,7 +144,7 @@ list at its next run.
 
 ## Calls made by the builder (not discussed)
 
-- Inactive images (kube-bench, Wazuh agent, Dependency-Track) are scanned
+- Inactive images (kube-bench, Dependency-Track) are scanned
   like active ones: they are in the repo and could be deployed.
 - Build-stage images (golang, node) are scanned too.
 - Severity gate in CI is CRITICAL with a fix available, matching `build.yml`.

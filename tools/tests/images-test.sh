@@ -14,11 +14,11 @@ images:
   postgres: { image: postgres, tag: 16-alpine, digest: $D1, source: direct, status: active }
   vault: { image: hashicorp/vault, tag: "1.17", digest: $D1, source: direct, status: active }
   nginx: { image: nginxinc/nginx-unprivileged, tag: 1.30-alpine, digest: $D1, source: build, status: active }
-  agent: { image: wazuh/wazuh-agent, tag: 4.9.0, digest: "", source: direct, status: inactive }
+  agent: { image: example/agent, tag: 4.9.0, digest: "", source: direct, status: inactive }
 charts:
   kyverno: { chart: kyverno/kyverno, version: 3.9.2, images: [] }
 YAML
-  printf 'spec:\n  containers:\n    - name: db\n      image: postgres:16-alpine\n    - name: agent\n      image: wazuh/wazuh-agent:4.9.0\n    - name: ours\n      image: ghcr.io/raiseofeasv/vuln-api:abc\n' > "$R/infra/k8s/db/db.yaml"
+  printf 'spec:\n  containers:\n    - name: db\n      image: postgres:16-alpine\n    - name: agent\n      image: example/agent:4.9.0\n    - name: ours\n      image: ghcr.io/raiseofeasv/vuln-api:abc\n' > "$R/infra/k8s/db/db.yaml"
   printf 'server:\n  image:\n    repository: hashicorp/vault\n    tag: "1.17"\n' > "$R/infra/helm/values/vault.yaml"
   printf 'FROM nginxinc/nginx-unprivileged:1.30-alpine AS base\nFROM base\n' > "$R/apps/web/Dockerfile"
   printf 'docker run --rm docker.io/library/postgres:16-alpine true\n' > "$R/scripts/db.sh"
@@ -35,7 +35,7 @@ check "split repository/tag in Helm values" 'grep -q "vault.yaml:4: hashicorp/va
 check "Dockerfile FROM, not the stage alias" '[ "$(grep -c "apps/web/Dockerfile" <<<"$out")" = 1 ]'
 check "shell script, docker.io/library/ treated as the same image" 'grep -q "scripts/db.sh:1: docker.io/library/postgres:16-alpine" <<<"$out"'
 check "helm install without --version" 'grep -q "README.md:1: helm install kyverno/kyverno should use --version 3.9.2" <<<"$out"'
-check "inactive image without digest matches its tag" '! grep -q "wazuh-agent" <<<"$out"'
+check "inactive image without digest matches its tag" '! grep -q "example/agent" <<<"$out"'
 check "our own images are ignored" '! grep -q raiseofeasv <<<"$out"'
 check "stale scan list reported" 'grep -q "scan-images.yaml: out of date" <<<"$out"'
 
@@ -46,7 +46,7 @@ check "sync pins by digest" 'grep -q "image: postgres:16-alpine@$D1" $R/infra/k8
 check "sync keeps the repository as written" 'grep -q "docker.io/library/postgres:16-alpine@$D1" $R/scripts/db.sh'
 check "sync writes tag@digest into split Helm values" 'grep -q "tag: \"1.17@$D1\"" $R/infra/helm/values/vault.yaml'
 check "sync adds --version to helm install" 'grep -q "kyverno/kyverno --version 3.9.2 -n kyverno" $R/README.md'
-check "scan list skips digest-less entries" '! grep -q wazuh $R/infra/helm/vuln-scanner/scan-images.yaml && grep -q "^    postgres postgres:16-alpine@$D1" $R/infra/helm/vuln-scanner/scan-images.yaml'
+check "scan list skips digest-less entries" '! grep -q example/agent $R/infra/helm/vuln-scanner/scan-images.yaml && grep -q "^    postgres postgres:16-alpine@$D1" $R/infra/helm/vuln-scanner/scan-images.yaml'
 
 (cd "$R" && git add -A && git -c user.email=t@t -c user.name=t commit -qm synced)
 sed -i "s/vault, tag: \"1.17\", digest: $D1/vault, tag: \"1.18\", digest: $D2/" "$R/docker/images.yaml"

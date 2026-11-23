@@ -12,7 +12,7 @@
 #   tag     human-readable version; "" for digest-only images
 #   digest  manifest digest the tag is pinned to; "" = unresolvable (not scanned)
 #   source  direct  - referenced in our manifests/values/scripts (kept in sync)
-#           vm      - docker-compose on the bootstrap/Wazuh/headscale VMs (kept in sync)
+#           vm      - docker-compose on the bootstrap/headscale VMs (kept in sync)
 #           build   - Dockerfile build or base stage (kept in sync)
 #           chart   - pulled by an upstream Helm chart (version follows `charts`)
 #           k3s     - bundled with k3s (version follows `k3s`)
@@ -71,16 +71,6 @@ images:
     source: direct
     status: inactive
     note: CIS benchmark CronJob
-  wazuh-agent:
-    image: wazuh/wazuh-agent
-    tag: 4.9.0
-    digest: ""
-    source: direct
-    status: inactive
-    note: >-
-      Agent DaemonSet. wazuh/wazuh-agent was never published for 4.9 (Docker
-      Hub starts at 4.13), and an agent must not be newer than the 4.9.0
-      manager - fix both together before deploying. Not scanned until then.
   elastic-agent:
     image: docker.elastic.co/elastic-agent/elastic-agent
     tag: 9.5.6
@@ -114,34 +104,13 @@ images:
     source: vm
     status: active
     note: VPN control server (bootstrap VM)
-  wazuh-manager:
-    image: wazuh/wazuh-manager
-    tag: 4.14.10
-    digest: sha256:beda27e1e88bfe5fe5e882eea3b006dfc4a77e19f31d5a0292e5126f23900e75
-    source: vm
-    status: inactive
-    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
-  wazuh-indexer:
-    image: wazuh/wazuh-indexer
-    tag: 4.14.10
-    digest: sha256:1780a13d5950deda05860fdb2e2d6cc466a15b341a88de01452d99932e05f610
-    source: vm
-    status: inactive
-    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
-  wazuh-dashboard:
-    image: wazuh/wazuh-dashboard
-    tag: 4.14.10
-    digest: sha256:2987776f76cbf3d47452a51b0e59792453686e5d37bbff7768ec033987b073a0
-    source: vm
-    status: inactive
-    note: Wazuh server (infra/wazuh) - never deployed; decided 2026-11-22 not to run it for now (it would need a larger, paid VM)
   alpine:
     image: alpine
     tag: "3.24"
     digest: sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
     source: vm
     status: active
-    note: one-shot setup helpers in the headscale and (not deployed) Wazuh compose files
+    note: one-shot setup helper in the headscale compose file
   minio:
     image: cgr.dev/chainguard/minio
     tag: ""

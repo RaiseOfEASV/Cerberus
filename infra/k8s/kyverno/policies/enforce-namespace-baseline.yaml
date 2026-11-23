@@ -20,7 +20,6 @@
 # vault/arc-runners are correctly NOT in this list).
 #
 # Epic 7 adds: monitoring (node-exporter needs hostPath+hostNetwork),
-# wazuh-agent (DaemonSet needs hostPath+privileged, see its own manifest),
 # falco (eBPF driver needs capabilities beyond restricted). elastic,
 # dependency-track, and vault do NOT need an exception - noted explicitly
 # so a future reader doesn't assume the omission is an oversight.
@@ -47,7 +46,7 @@ spec:
         any:
           - resources:
               names:
-                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco, traefik-public]
+                [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, falco, traefik-public]
       mutate:
         patchStrategicMerge:
           metadata:
@@ -71,6 +70,10 @@ spec:
         any:
           - resources:
               names:
+                # wazuh-agent is stale (Wazuh was removed 2026-11-23) but stays: generate
+                # rules are immutable, and recreating this policy (synchronize: true)
+                # would delete every namespace's default-deny-all NetworkPolicy. Drop
+                # it the next time this policy has to be recreated anyway.
                 [kube-system, kube-node-lease, kube-public, default, metallb-system, traefik, cert-manager, external-secrets, argocd, kyverno, arc-systems, arc-runners, kube-bench, monitoring, wazuh-agent, falco, traefik-public]
       generate:
         apiVersion: networking.k8s.io/v1

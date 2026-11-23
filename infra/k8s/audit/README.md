@@ -36,5 +36,5 @@ kubectl auth can-i --list >/dev/null   # should show up as a new entry
 ## Shipping
 
 The log is a file on the node, `/var/log/kubernetes/audit/audit.log` (JSON,
-one event per line). The log agents (Grafana Alloy, Elastic Agent, Wazuh
+one event per line). The log agents (Elastic Agent, Grafana Alloy
 agent) pick it up from that path, next to auditd's `/var/log/audit/audit.log`.
